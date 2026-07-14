@@ -10,6 +10,8 @@ jobs:
   build:
     name: Build Android APK
     runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_BASE_URL: "http://10.0.2.2:8000/api/v1"
 
     steps:
       - name: Checkout repository
