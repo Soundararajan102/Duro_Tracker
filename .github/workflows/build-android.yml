@@ -46,7 +46,7 @@ jobs:
 
       - name: Expo Prebuild
         working-directory: ./frontend
-        run: npx expo prebuild --platform android --clean --no-interactive
+        run: npx expo prebuild --platform android --clean
 
       - name: Build Debug APK with Gradle
         working-directory: ./frontend/android

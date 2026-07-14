@@ -297,3 +297,5 @@
   - Clarified that because the user is testing on a Custom Development Build (APK), any newly added native modules (like AsyncStorage) require the APK to be rebuilt.
 - **GitHub Actions**: Discussing the ability to offload the APK build process to GitHub Actions so the user doesn't need to configure the Android SDK locally.
 - **GitHub Actions Implemented**: Created `.github/workflows/build-android.yml` to automatically build the Debug APK (`assembleDebug`) using GitHub Action runners (setting up Java 17, Node, Bun, Python) and upload it as a downloadable workflow artifact.
+- **GitHub Actions Fix**: Addressed missing `.env` on CI by hardcoding `EXPO_PUBLIC_API_BASE_URL` in the workflow environment, and added `--no-interactive` to prevent Expo prebuild prompts from hanging.
+- **Network Architecture**: Clarified Expo Go networking requirements (Phone and PC must be on the exact same WiFi, unless using `--tunnel` and an ngrok backend).

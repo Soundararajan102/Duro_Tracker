@@ -1,0 +1,305 @@
+﻿2026-07-14T14:43:32.1204083Z Current runner version: '2.335.1'
+2026-07-14T14:43:32.1228559Z ##[group]Runner Image Provisioner
+2026-07-14T14:43:32.1229407Z Hosted Compute Agent
+2026-07-14T14:43:32.1230114Z Version: 20260624.560
+2026-07-14T14:43:32.1230765Z Commit: 925d229a51159bc391ae97e54a2dd1fe20af789d
+2026-07-14T14:43:32.1231522Z Build Date: 2026-06-24T18:26:47Z
+2026-07-14T14:43:32.1232253Z Worker ID: {2b1d2eee-6a56-4529-9d55-414cf06b1d8d}
+2026-07-14T14:43:32.1232971Z Azure Region: westus
+2026-07-14T14:43:32.1233531Z ##[endgroup]
+2026-07-14T14:43:32.1235036Z ##[group]Operating System
+2026-07-14T14:43:32.1236249Z Ubuntu
+2026-07-14T14:43:32.1236857Z 24.04.4
+2026-07-14T14:43:32.1237381Z LTS
+2026-07-14T14:43:32.1237901Z ##[endgroup]
+2026-07-14T14:43:32.1238511Z ##[group]Runner Image
+2026-07-14T14:43:32.1239145Z Image: ubuntu-24.04
+2026-07-14T14:43:32.1239693Z Version: 20260705.232.1
+2026-07-14T14:43:32.1240966Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260705.232/images/ubuntu/Ubuntu2404-Readme.md
+2026-07-14T14:43:32.1242851Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260705.232
+2026-07-14T14:43:32.1243881Z ##[endgroup]
+2026-07-14T14:43:32.1245100Z ##[group]GITHUB_TOKEN Permissions
+2026-07-14T14:43:32.1247506Z Contents: read
+2026-07-14T14:43:32.1248124Z Metadata: read
+2026-07-14T14:43:32.1248813Z Packages: read
+2026-07-14T14:43:32.1249368Z ##[endgroup]
+2026-07-14T14:43:32.1251428Z Secret source: Actions
+2026-07-14T14:43:32.1252283Z Prepare workflow directory
+2026-07-14T14:43:32.1703696Z Prepare all required actions
+2026-07-14T14:43:32.1743280Z Getting action download info
+2026-07-14T14:43:32.5707535Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+2026-07-14T14:43:32.6531502Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-07-14T14:43:32.7496192Z Download action repository 'oven-sh/setup-bun@v1' (SHA:f4d14e03ff726c06358e5557344e1da148b56cf7)
+2026-07-14T14:43:33.3034200Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+2026-07-14T14:43:33.4216599Z Download action repository 'actions/setup-java@v4' (SHA:c1e323688fd81a25caa38c78aa6df2d33d3e20d9)
+2026-07-14T14:43:34.0540126Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2026-07-14T14:43:34.3047573Z Complete job name: Build Android APK
+2026-07-14T14:43:34.3963352Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-14T14:43:34.3974496Z ##[group]Run actions/checkout@v4
+2026-07-14T14:43:34.3976227Z with:
+2026-07-14T14:43:34.3977132Z   repository: Soundararajan102/Duro_Tracker
+2026-07-14T14:43:34.3987071Z   token: ***
+2026-07-14T14:43:34.3987921Z   ssh-strict: true
+2026-07-14T14:43:34.3988820Z   ssh-user: git
+2026-07-14T14:43:34.3989707Z   persist-credentials: true
+2026-07-14T14:43:34.3990674Z   clean: true
+2026-07-14T14:43:34.3991574Z   sparse-checkout-cone-mode: true
+2026-07-14T14:43:34.3992616Z   fetch-depth: 1
+2026-07-14T14:43:34.3993473Z   fetch-tags: false
+2026-07-14T14:43:34.3994342Z   show-progress: true
+2026-07-14T14:43:34.3995401Z   lfs: false
+2026-07-14T14:43:34.3996262Z   submodules: false
+2026-07-14T14:43:34.3997133Z   set-safe-directory: true
+2026-07-14T14:43:34.3998359Z env:
+2026-07-14T14:43:34.3999324Z   EXPO_PUBLIC_API_BASE_URL: http://10.0.2.2:8000/api/v1
+2026-07-14T14:43:34.4000546Z ##[endgroup]
+2026-07-14T14:43:34.5079477Z Syncing repository: Soundararajan102/Duro_Tracker
+2026-07-14T14:43:34.5082192Z ##[group]Getting Git version info
+2026-07-14T14:43:34.5083611Z Working directory is '/home/runner/work/Duro_Tracker/Duro_Tracker'
+2026-07-14T14:43:34.5086197Z [command]/usr/bin/git version
+2026-07-14T14:43:34.5087200Z git version 2.54.0
+2026-07-14T14:43:34.5115932Z ##[endgroup]
+2026-07-14T14:43:34.5131004Z Temporarily overriding HOME='/home/runner/work/_temp/9fb1b53f-9019-4cd7-82d7-6d9e29ca2958' before making global git config changes
+2026-07-14T14:43:34.5133797Z Adding repository directory to the temporary git global config as a safe directory
+2026-07-14T14:43:34.5137367Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Duro_Tracker/Duro_Tracker
+2026-07-14T14:43:34.5184831Z Deleting the contents of '/home/runner/work/Duro_Tracker/Duro_Tracker'
+2026-07-14T14:43:34.5189402Z ##[group]Initializing the repository
+2026-07-14T14:43:34.5193307Z [command]/usr/bin/git init /home/runner/work/Duro_Tracker/Duro_Tracker
+2026-07-14T14:43:34.5311902Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-07-14T14:43:34.5313921Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-07-14T14:43:34.5316342Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-07-14T14:43:34.5318748Z hint: call:
+2026-07-14T14:43:34.5320272Z hint:
+2026-07-14T14:43:34.5322058Z hint: 	git config --global init.defaultBranch <name>
+2026-07-14T14:43:34.5324256Z hint:
+2026-07-14T14:43:34.5326639Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-07-14T14:43:34.5330012Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-07-14T14:43:34.5332722Z hint:
+2026-07-14T14:43:34.5334093Z hint: 	git branch -m <name>
+2026-07-14T14:43:34.5335899Z hint:
+2026-07-14T14:43:34.5338161Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-07-14T14:43:34.5340362Z Initialized empty Git repository in /home/runner/work/Duro_Tracker/Duro_Tracker/.git/
+2026-07-14T14:43:34.5344286Z [command]/usr/bin/git remote add origin https://github.com/Soundararajan102/Duro_Tracker
+2026-07-14T14:43:34.5376835Z ##[endgroup]
+2026-07-14T14:43:34.5379702Z ##[group]Disabling automatic garbage collection
+2026-07-14T14:43:34.5381256Z [command]/usr/bin/git config --local gc.auto 0
+2026-07-14T14:43:34.5410411Z ##[endgroup]
+2026-07-14T14:43:34.5411797Z ##[group]Setting up auth
+2026-07-14T14:43:34.5417842Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-07-14T14:43:34.5453204Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-07-14T14:43:34.5803579Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-07-14T14:43:34.5833412Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-07-14T14:43:34.6049545Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-14T14:43:34.6079317Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-07-14T14:43:34.6294439Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-07-14T14:43:34.6329564Z ##[endgroup]
+2026-07-14T14:43:34.6331013Z ##[group]Fetching the repository
+2026-07-14T14:43:34.6339540Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +0237c373738dbcc962a058a8b40223b1971e3c2c:refs/remotes/origin/main
+2026-07-14T14:43:35.1809842Z From https://github.com/Soundararajan102/Duro_Tracker
+2026-07-14T14:43:35.1810466Z  * [new ref]         0237c373738dbcc962a058a8b40223b1971e3c2c -> origin/main
+2026-07-14T14:43:35.1844424Z ##[endgroup]
+2026-07-14T14:43:35.1845454Z ##[group]Determining the checkout info
+2026-07-14T14:43:35.1847739Z ##[endgroup]
+2026-07-14T14:43:35.1854845Z [command]/usr/bin/git sparse-checkout disable
+2026-07-14T14:43:35.1902361Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-07-14T14:43:35.1931094Z ##[group]Checking out the ref
+2026-07-14T14:43:35.1936965Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-07-14T14:43:35.2115894Z Switched to a new branch 'main'
+2026-07-14T14:43:35.2118171Z branch 'main' set up to track 'origin/main'.
+2026-07-14T14:43:35.2125738Z ##[endgroup]
+2026-07-14T14:43:35.2185734Z [command]/usr/bin/git log -1 --format=%H
+2026-07-14T14:43:35.2210716Z 0237c373738dbcc962a058a8b40223b1971e3c2c
+2026-07-14T14:43:35.2497170Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-14T14:43:35.2499169Z ##[group]Run actions/setup-node@v4
+2026-07-14T14:43:35.2499442Z with:
+2026-07-14T14:43:35.2499635Z   node-version: 22
+2026-07-14T14:43:35.2499861Z   cache: npm
+2026-07-14T14:43:35.2500118Z   cache-dependency-path: frontend/package-lock.json
+2026-07-14T14:43:35.2500449Z   always-auth: false
+2026-07-14T14:43:35.2500675Z   check-latest: false
+2026-07-14T14:43:35.2504723Z   token: ***
+2026-07-14T14:43:35.2504949Z env:
+2026-07-14T14:43:35.2505371Z   EXPO_PUBLIC_API_BASE_URL: http://10.0.2.2:8000/api/v1
+2026-07-14T14:43:35.2505865Z ##[endgroup]
+2026-07-14T14:43:35.3934315Z Found in cache @ /opt/hostedtoolcache/node/22.23.1/x64
+2026-07-14T14:43:35.3938992Z (node:2205) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-07-14T14:43:35.3940350Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-07-14T14:43:35.3942228Z ##[group]Environment details
+2026-07-14T14:43:37.4770129Z node: v22.23.1
+2026-07-14T14:43:37.4770463Z npm: 10.9.8
+2026-07-14T14:43:37.4770659Z yarn: 1.22.22
+2026-07-14T14:43:37.4771973Z ##[endgroup]
+2026-07-14T14:43:37.4813144Z [command]/opt/hostedtoolcache/node/22.23.1/x64/bin/npm config get cache
+2026-07-14T14:43:37.7512718Z /home/runner/.npm
+2026-07-14T14:43:38.0068457Z npm cache is not found
+2026-07-14T14:43:38.0206951Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-14T14:43:38.0208265Z ##[group]Run oven-sh/setup-bun@v1
+2026-07-14T14:43:38.0208511Z with:
+2026-07-14T14:43:38.0208697Z   bun-version: latest
+2026-07-14T14:43:38.0208901Z   no-cache: false
+2026-07-14T14:43:38.0209085Z env:
+2026-07-14T14:43:38.0209317Z   EXPO_PUBLIC_API_BASE_URL: http://10.0.2.2:8000/api/v1
+2026-07-14T14:43:38.0209632Z ##[endgroup]
+2026-07-14T14:43:38.1421493Z Downloading a new version of Bun: https://bun.sh/download/latest/linux/x64?avx2=true&profile=false
+2026-07-14T14:43:38.1427449Z (node:2251) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-07-14T14:43:38.1431383Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-07-14T14:43:39.1367729Z [command]/usr/bin/unzip -o -q /home/runner/work/_temp/3efa75e8-d1bc-4376-a3f1-de98c7e12df8
+2026-07-14T14:43:39.8021484Z [command]/home/runner/.bun/bin/bun --revision
+2026-07-14T14:43:39.8061435Z 1.3.14+0d9b296af
+2026-07-14T14:43:39.8208295Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-14T14:43:39.8209540Z ##[group]Run actions/setup-python@v5
+2026-07-14T14:43:39.8209793Z with:
+2026-07-14T14:43:39.8209989Z   python-version: 3.10
+2026-07-14T14:43:39.8210209Z   check-latest: false
+2026-07-14T14:43:39.8213058Z   token: ***
+2026-07-14T14:43:39.8213268Z   update-environment: true
+2026-07-14T14:43:39.8213518Z   allow-prereleases: false
+2026-07-14T14:43:39.8213771Z   freethreaded: false
+2026-07-14T14:43:39.8214017Z env:
+2026-07-14T14:43:39.8214258Z   EXPO_PUBLIC_API_BASE_URL: http://10.0.2.2:8000/api/v1
+2026-07-14T14:43:39.8214574Z ##[endgroup]
+2026-07-14T14:43:39.9542138Z ##[group]Installed versions
+2026-07-14T14:43:39.9638445Z (node:2265) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-07-14T14:43:39.9639540Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-07-14T14:43:39.9640559Z Successfully set up CPython (3.10.20)
+2026-07-14T14:43:39.9641417Z ##[endgroup]
+2026-07-14T14:43:39.9802875Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-14T14:43:39.9804149Z ##[group]Run actions/setup-java@v4
+2026-07-14T14:43:39.9804397Z with:
+2026-07-14T14:43:39.9804593Z   distribution: temurin
+2026-07-14T14:43:39.9804804Z   java-version: 17
+2026-07-14T14:43:39.9805007Z   java-package: jdk
+2026-07-14T14:43:39.9805480Z   check-latest: false
+2026-07-14T14:43:39.9805691Z   server-id: github
+2026-07-14T14:43:39.9805911Z   server-username: GITHUB_ACTOR
+2026-07-14T14:43:39.9806159Z   server-password: GITHUB_TOKEN
+2026-07-14T14:43:39.9806403Z   overwrite-settings: true
+2026-07-14T14:43:39.9806626Z   job-status: success
+2026-07-14T14:43:39.9833148Z   token: ***
+2026-07-14T14:43:39.9833406Z env:
+2026-07-14T14:43:39.9833708Z   EXPO_PUBLIC_API_BASE_URL: http://10.0.2.2:8000/api/v1
+2026-07-14T14:43:39.9834112Z   pythonLocation: /opt/hostedtoolcache/Python/3.10.20/x64
+2026-07-14T14:43:39.9834554Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.10.20/x64/lib/pkgconfig
+2026-07-14T14:43:39.9834987Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.10.20/x64
+2026-07-14T14:43:39.9835646Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.10.20/x64
+2026-07-14T14:43:39.9836025Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.10.20/x64
+2026-07-14T14:43:39.9836402Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.10.20/x64/lib
+2026-07-14T14:43:39.9836717Z ##[endgroup]
+2026-07-14T14:43:40.1433530Z ##[group]Installed distributions
+2026-07-14T14:43:40.1497352Z Resolved Java 17.0.19+10 from tool-cache
+2026-07-14T14:43:40.1498085Z Setting Java 17.0.19+10 as the default
+2026-07-14T14:43:40.1509553Z (node:2273) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-07-14T14:43:40.1511374Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-07-14T14:43:40.1514329Z Creating toolchains.xml for JDK version 17 from temurin
+2026-07-14T14:43:40.1594523Z Writing to /home/runner/.m2/toolchains.xml
+2026-07-14T14:43:40.1595425Z 
+2026-07-14T14:43:40.1595709Z Java configuration:
+2026-07-14T14:43:40.1596196Z   Distribution: temurin
+2026-07-14T14:43:40.1596691Z   Version: 17.0.19+10
+2026-07-14T14:43:40.1597376Z   Path: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+2026-07-14T14:43:40.1597925Z 
+2026-07-14T14:43:40.1598398Z ##[endgroup]
+2026-07-14T14:43:40.1602097Z Creating settings.xml with server-id: github
+2026-07-14T14:43:40.1614293Z Writing to /home/runner/.m2/settings.xml
+2026-07-14T14:43:40.1741639Z ##[group]Run npm ci || npm install
+2026-07-14T14:43:40.1742000Z [36;1mnpm ci || npm install[0m
+2026-07-14T14:43:40.1916523Z shell: /usr/bin/bash -e {0}
+2026-07-14T14:43:40.1916790Z env:
+2026-07-14T14:43:40.1917055Z   EXPO_PUBLIC_API_BASE_URL: http://10.0.2.2:8000/api/v1
+2026-07-14T14:43:40.1917469Z   pythonLocation: /opt/hostedtoolcache/Python/3.10.20/x64
+2026-07-14T14:43:40.1917923Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.10.20/x64/lib/pkgconfig
+2026-07-14T14:43:40.1918420Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.10.20/x64
+2026-07-14T14:43:40.1919017Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.10.20/x64
+2026-07-14T14:43:40.1919417Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.10.20/x64
+2026-07-14T14:43:40.1919818Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.10.20/x64/lib
+2026-07-14T14:43:40.1920277Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+2026-07-14T14:43:40.1920814Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+2026-07-14T14:43:40.1921239Z ##[endgroup]
+2026-07-14T14:43:41.4707759Z npm warn EBADDEVENGINES The developer of this package has specified the following through devEngines
+2026-07-14T14:43:41.4708680Z npm warn EBADDEVENGINES Invalid devEngines.packageManager
+2026-07-14T14:43:41.4709274Z npm warn EBADDEVENGINES Invalid name "nub" does not match "npm" for "packageManager"
+2026-07-14T14:43:41.4709744Z npm warn EBADDEVENGINES {
+2026-07-14T14:43:41.4710474Z npm warn EBADDEVENGINES   current: { name: 'npm', version: '10.9.8' },
+2026-07-14T14:43:41.4711505Z npm warn EBADDEVENGINES   required: { name: 'nub', version: '^0.1.14', onFail: 'warn' }
+2026-07-14T14:43:41.4712276Z npm warn EBADDEVENGINES }
+2026-07-14T14:43:44.4264947Z npm warn deprecated sudo-prompt@9.2.1: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+2026-07-14T14:43:44.5561430Z npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+2026-07-14T14:43:45.4211506Z npm warn deprecated metro-react-native-babel-preset@0.72.4: Use @react-native/babel-preset instead
+2026-07-14T14:43:45.7221847Z npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+2026-07-14T14:43:45.8450481Z npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+2026-07-14T14:43:47.0606517Z npm warn deprecated uglify-es@3.3.10: support for ECMAScript is superseded by `uglify-js` as of v3.13.0
+2026-07-14T14:43:48.5317732Z npm warn deprecated @babel/plugin-proposal-optional-catch-binding@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-optional-catch-binding instead.
+2026-07-14T14:43:48.5728559Z npm warn deprecated @babel/plugin-proposal-optional-chaining@7.21.0: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-optional-chaining instead.
+2026-07-14T14:43:48.5731018Z npm warn deprecated @babel/plugin-proposal-nullish-coalescing-operator@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-nullish-coalescing-operator instead.
+2026-07-14T14:43:48.5736904Z npm warn deprecated @babel/plugin-proposal-class-properties@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-class-properties instead.
+2026-07-14T14:43:48.6663030Z npm warn deprecated @babel/plugin-proposal-object-rest-spread@7.20.7: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-object-rest-spread instead.
+2026-07-14T14:43:48.7761232Z npm warn deprecated @babel/plugin-proposal-async-generator-functions@7.20.7: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-async-generator-functions instead.
+2026-07-14T14:43:48.8136858Z npm warn deprecated rimraf@2.6.3: Rimraf versions prior to v4 are no longer supported
+2026-07-14T14:43:48.9048799Z npm warn deprecated uuid@7.0.3: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+2026-07-14T14:43:49.8069673Z npm warn deprecated rimraf@2.7.1: Rimraf versions prior to v4 are no longer supported
+2026-07-14T14:43:49.9808127Z npm warn deprecated rimraf@2.2.8: Rimraf versions prior to v4 are no longer supported
+2026-07-14T14:44:10.6771121Z 
+2026-07-14T14:44:10.6771722Z > frontend@1.0.0 postinstall
+2026-07-14T14:44:10.6772306Z > node ./scripts/cleanup-bundled-native-deps.js
+2026-07-14T14:44:10.6772562Z 
+2026-07-14T14:44:10.7120784Z Removed bundled duplicate dependency: react
+2026-07-14T14:44:10.8762473Z Removed bundled duplicate dependency: react-native
+2026-07-14T14:44:10.8996023Z 
+2026-07-14T14:44:10.8997079Z added 1448 packages, and audited 1449 packages in 31s
+2026-07-14T14:44:10.8997548Z 
+2026-07-14T14:44:10.8997833Z 206 packages are looking for funding
+2026-07-14T14:44:10.8998434Z   run `npm fund` for details
+2026-07-14T14:44:11.0489262Z 
+2026-07-14T14:44:11.0490132Z 22 vulnerabilities (17 moderate, 5 high)
+2026-07-14T14:44:11.0490467Z 
+2026-07-14T14:44:11.0490759Z To address issues that do not require attention, run:
+2026-07-14T14:44:11.0491181Z   npm audit fix
+2026-07-14T14:44:11.0491345Z 
+2026-07-14T14:44:11.0491630Z To address all issues (including breaking changes), run:
+2026-07-14T14:44:11.0492062Z   npm audit fix --force
+2026-07-14T14:44:11.0492277Z 
+2026-07-14T14:44:11.0492428Z Run `npm audit` for details.
+2026-07-14T14:44:11.1307732Z ##[group]Run npx expo prebuild --platform android --clean --no-interactive
+2026-07-14T14:44:11.1308313Z [36;1mnpx expo prebuild --platform android --clean --no-interactive[0m
+2026-07-14T14:44:11.1343907Z shell: /usr/bin/bash -e {0}
+2026-07-14T14:44:11.1344150Z env:
+2026-07-14T14:44:11.1344408Z   EXPO_PUBLIC_API_BASE_URL: http://10.0.2.2:8000/api/v1
+2026-07-14T14:44:11.1344800Z   pythonLocation: /opt/hostedtoolcache/Python/3.10.20/x64
+2026-07-14T14:44:11.1345619Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.10.20/x64/lib/pkgconfig
+2026-07-14T14:44:11.1346063Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.10.20/x64
+2026-07-14T14:44:11.1346461Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.10.20/x64
+2026-07-14T14:44:11.1346838Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.10.20/x64
+2026-07-14T14:44:11.1347234Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.10.20/x64/lib
+2026-07-14T14:44:11.1347685Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+2026-07-14T14:44:11.1348162Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+2026-07-14T14:44:11.1348532Z ##[endgroup]
+2026-07-14T14:44:11.4242198Z npm warn EBADDEVENGINES The developer of this package has specified the following through devEngines
+2026-07-14T14:44:11.4242989Z npm warn EBADDEVENGINES Invalid devEngines.packageManager
+2026-07-14T14:44:11.4243737Z npm warn EBADDEVENGINES Invalid name "nub" does not match "npm" for "packageManager"
+2026-07-14T14:44:11.4247135Z npm warn EBADDEVENGINES {
+2026-07-14T14:44:11.4248066Z npm warn EBADDEVENGINES   current: { name: 'npm', version: '10.9.8' },
+2026-07-14T14:44:11.4249011Z npm warn EBADDEVENGINES   required: { name: 'nub', version: '^0.1.14', onFail: 'warn' }
+2026-07-14T14:44:11.4249570Z npm warn EBADDEVENGINES }
+2026-07-14T14:44:11.4691668Z unknown or unexpected option: --no-interactive
+2026-07-14T14:44:11.4873649Z ##[error]Process completed with exit code 1.
+2026-07-14T14:44:11.4994132Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-14T14:44:11.4995675Z Post job cleanup.
+2026-07-14T14:44:11.6388286Z (node:2373) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-07-14T14:44:11.6389765Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-07-14T14:44:11.6601380Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-14T14:44:11.6602620Z Post job cleanup.
+2026-07-14T14:44:11.7546353Z [command]/usr/bin/git version
+2026-07-14T14:44:11.7582132Z git version 2.54.0
+2026-07-14T14:44:11.7622664Z Temporarily overriding HOME='/home/runner/work/_temp/f6ae4e7c-76fe-4d7b-b822-1e4a6c8e3565' before making global git config changes
+2026-07-14T14:44:11.7624524Z Adding repository directory to the temporary git global config as a safe directory
+2026-07-14T14:44:11.7661337Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Duro_Tracker/Duro_Tracker
+2026-07-14T14:44:11.7705407Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-07-14T14:44:11.7745037Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-07-14T14:44:11.7998900Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-07-14T14:44:11.8027047Z http.https://github.com/.extraheader
+2026-07-14T14:44:11.8038868Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-07-14T14:44:11.8072291Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-07-14T14:44:11.8302589Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-14T14:44:11.8337912Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-07-14T14:44:11.8729230Z Cleaning up orphan processes
+2026-07-14T14:44:11.9103451Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-java@v4, actions/setup-node@v4, actions/setup-python@v5, oven-sh/setup-bun@v1. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

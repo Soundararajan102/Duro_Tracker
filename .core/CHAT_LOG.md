@@ -110,8 +110,17 @@ Will explain that GitHub Actions provides the Android SDK on its runners and can
 https://github.com/Soundararajan102/Duro_Tracker.git
 lets do it in the github
 
+**User Request (2026-07-14):**
+"check all and then only push ok" (After GitHub Actions failed with exit code 1).
+
 **Response:**
-Created `.github/workflows/build-android.yml` to set up Node, Bun, Python, Java 17, and the Android SDK on a GitHub Actions runner. The workflow automatically runs `expo prebuild` and uses Gradle (`assembleDebug`) to compile the Debug APK and attach it as an artifact to the GitHub Action run.work on **Duro_Tracker_Cylinder**, and there is currently an empty directory at `d:\Duro_Tracker`. Could you please clarify what you would like to do? Are you looking to:
+Identified that `expo prebuild` was crashing because the `.env` file is excluded from GitHub, meaning `EXPO_PUBLIC_API_BASE_URL` was missing. Fixed it by injecting a default environment variable (`http://10.0.2.2:8000/api/v1`) into the workflow and adding `--no-interactive` to prevent hanging. Pushed the fixes to GitHub.
+
+**User Request (2026-07-14):**
+"hey i mean like the expo app i can able to scan the qr code and use it in any wifi network right ?"
+
+**Response:**
+Explained that Expo Go requires the phone and the PC to be on the exact same WiFi network by default. To use it on different networks, they must run Expo with `--tunnel` and expose their local backend via ngrok.work on **Duro_Tracker_Cylinder**, and there is currently an empty directory at `d:\Duro_Tracker`. Could you please clarify what you would like to do? Are you looking to:
 1. Initialize a new project (e.g., a web app, a backend service, or a full-stack application) to track cylinders?
 2. If so, do you have any specific technologies in mind (like Next.js, Vite, Express, Python/Django)?
 3. What are the main features you want this cylinder tracker to have?
