@@ -117,6 +117,21 @@ lets do it in the github
 Identified that `expo prebuild` was crashing because the `.env` file is excluded from GitHub, meaning `EXPO_PUBLIC_API_BASE_URL` was missing. Fixed it by injecting a default environment variable (`http://10.0.2.2:8000/api/v1`) into the workflow and adding `--no-interactive` to prevent hanging. Pushed the fixes to GitHub.
 
 **User Request (2026-07-14):**
+"hey buddy check the Duro_POS in the debug build i am able use the custom development app to this app connected to the lap running through the wifi like that check it ok?"
+
+**Response:**
+Confirmed that `expo-dev-client` is installed in this project, meaning the Debug APK will behave exactly like Duro_POS: allowing wifi connections to the local laptop via QR code.
+
+**User Request (2026-07-14):**
+"why it is failing again and again ?" and provided a GitHub PAT to fetch the logs.
+
+**User Request (2026-07-14):**
+"OK STORE THE TOCKEN IN D:\Duro_Tracker\.agents in this folde in .env file the access tocken"
+
+**Response:**
+Created `.env` in the `.agents` folder and stored the GitHub PAT for future use.
+
+**User Request (2026-07-14):**
 "hey i mean like the expo app i can able to scan the qr code and use it in any wifi network right ?"
 
 **Response:**

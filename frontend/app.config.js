@@ -35,6 +35,7 @@ const config = {
   scheme: "brolier360",
   userInterfaceStyle: "light",
   splash: {
+    image: "./assets/Logo.png",
     resizeMode: "contain",
     backgroundColor: splashBackgroundColor,
   },
@@ -44,6 +45,7 @@ const config = {
   },
   android: {
     splash: {
+      image: "./assets/Logo.png",
       resizeMode: "contain",
       backgroundColor: splashBackgroundColor,
     },
@@ -65,6 +67,7 @@ const config = {
     [
       "expo-splash-screen",
       {
+        image: "./assets/Logo.png",
         backgroundColor: splashBackgroundColor,
       },
     ],

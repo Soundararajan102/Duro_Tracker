@@ -299,3 +299,4 @@
 - **GitHub Actions Implemented**: Created `.github/workflows/build-android.yml` to automatically build the Debug APK (`assembleDebug`) using GitHub Action runners (setting up Java 17, Node, Bun, Python) and upload it as a downloadable workflow artifact.
 - **GitHub Actions Fix**: Addressed missing `.env` on CI by hardcoding `EXPO_PUBLIC_API_BASE_URL` in the workflow environment, and added `--no-interactive` to prevent Expo prebuild prompts from hanging.
 - **Network Architecture**: Clarified Expo Go networking requirements (Phone and PC must be on the exact same WiFi, unless using `--tunnel` and an ngrok backend).
+- **GitHub Actions Fix 2**: Using the user's PAT, downloaded the GitHub Actions logs and identified that `npx expo prebuild` threw `unknown or unexpected option: --no-interactive`. Removed the invalid flag as Expo automatically disables prompts in CI environments.
