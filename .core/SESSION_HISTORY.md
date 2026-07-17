@@ -522,3 +522,9 @@ User requested to check and configure all admin and user functions.
 - **Action:** Added GET /organization endpoint in ackend/app/routers/admin.py to fetch current organization data for Tenant Admins.
 - **Action:** Created useOrganization hook and connected it to SettingsScreen.tsx to display real dynamic max_users quota for drivers, renaming the text to Driver Account Usage.
 - **Action:** Fixed SuperAdminDashboard.tsx navigation bug by explicitly passing orgMaxUsers: org.max_users to the ManageOrganizationScreen, ensuring the max_users input pre-fills correctly instead of reverting to 10.
+
+### [2026-07-17 20:27:00] Handoff Preparation
+- **Action:** Created a comprehensive README.md at the project root documenting architecture, requirements, and startup scripts.
+- **Action:** Fixed markdown formatting (corrupted backticks) in CHAT_LOG.md.
+- **Action:** Deleted unused scratch script 	est_admin_login.py.
+- **Action:** Set guidelines for handing the project off to a friend to implement PDF generation, ensuring they utilize .core documentation and git history.
