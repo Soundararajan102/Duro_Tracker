@@ -533,7 +533,8 @@ users or delevires - to enter the data bill
 	he admin and the deliver concept i tolu you from the idea i provided check the Duro_POS db structure we use it or you have any other suggestions to tell
 
 **Agent:** 
-(Current Turn) I have reviewed the Duro_POS database structure via Postgres. In Duro_POS, the users table utilizes a ole column (which handles roles like admin vs user). However, to properly support a scalable **Multi-Tenant SaaS** for Gas Agencies, we need to introduce a "Tenant" (Agency) level to the hierarchy. 
+(Current Turn) I have reviewed the Duro_POS database structure via Postgres. In Duro_POS, the users table utilizes a 
+ole column (which handles roles like admin vs user). However, to properly support a scalable **Multi-Tenant SaaS** for Gas Agencies, we need to introduce a "Tenant" (Agency) level to the hierarchy. 
 
 I've just written out a full proposal for these Data Models in the implementation_plan.md artifact on your screen. Please review the tables and the Open Questions at the bottom and let me know if you approve so we can formalize this!
 
@@ -1596,3 +1597,8 @@ Copied the Caddy configuration template from `Duro_POS` and adapted it for `Duro
 
 ### [2026-07-16 16:54:01] E2E Audit
 **Thought Process:** We audited the entire flow and discovered 500 errors when making deliveries due to SQL Alchemy decimal types mapping incorrectly to Pydantic floats. We casted the values to fix it.
+
+### [2026-07-17] Bluetooth Printer Implementation
+User requested to use the exact same Bluetooth connection method from the Duro_POS project.
+Copied the \printer/index.ts\ engine from Duro_POS, adapted it to Duro_Tracker's \DeliveryEntry\ format, and built a \PrinterSettingsModal\ UI using NativeWind to match the app's styling. The \DeliveryScreen\ now auto-prints a receipt when a delivery is successful.
+

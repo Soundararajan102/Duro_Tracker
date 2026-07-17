@@ -3,6 +3,10 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator,
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
+import PrinterSettingsModal from '../../components/PrinterSettingsModal';
+import { usePrinterStore } from '../../store/printer-store';
+import { printDeliveryReceipt, DeliveryReceiptData } from '../../utils/printer';
+
 
 interface Item { id: string; name: string; price: number; }
 interface Buyer { id: string; name: string; }
@@ -19,6 +23,7 @@ export default function DeliveryScreen() {
   // Modals state
   const [buyerModalVisible, setBuyerModalVisible] = useState(false);
   const [itemModalVisible, setItemModalVisible] = useState(false);
+  const [printerModalVisible, setPrinterModalVisible] = useState(false);
 
   const [idempotencyKey, setIdempotencyKey] = useState<string>(
     Date.now().toString(36) + Math.random().toString(36).substring(2)
@@ -46,8 +51,27 @@ export default function DeliveryScreen() {
         headers: { 'X-Idempotency-Key': idempotencyKey }
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       Alert.alert("Success", "Delivery logged successfully!");
+      
+      const preferredPrinter = usePrinterStore.getState().preferredPrinter;
+      if (preferredPrinter && selectedBuyer && selectedItem) {
+        const receiptData: DeliveryReceiptData = {
+          receipt_number: data?.data?.id ? data.data.id.split('-')[0].toUpperCase() : Math.random().toString(36).substring(2, 8).toUpperCase(),
+          date: data?.data?.created_at || new Date().toISOString(),
+          buyer_name: selectedBuyer.name,
+          item_name: selectedItem.name,
+          full_delivered: parseInt(fullDelivered || '0'),
+          empty_received: parseInt(emptyReceived || '0'),
+          total_bill: parseFloat((selectedItem.price * parseInt(fullDelivered || '0')).toFixed(2)),
+          cash_collected: parseFloat(cashCollected || '0'),
+          upi_collected: parseFloat(upiCollected || '0'),
+        };
+        printDeliveryReceipt(receiptData, preferredPrinter).catch(err => {
+          Alert.alert("Print Error", err.message || "Failed to print receipt");
+        });
+      }
+
       // Reset form
       setBuyerId('');
       setItemId('');
@@ -85,6 +109,13 @@ export default function DeliveryScreen() {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-zinc-50">
       <ScrollView className="p-4">
         
+        <View className="flex-row justify-between items-center mb-6">
+          <Text className="text-2xl font-bold text-zinc-900">New Delivery</Text>
+          <TouchableOpacity onPress={() => setPrinterModalVisible(true)} className="bg-white p-2 rounded-full shadow-sm border border-zinc-200">
+            <Ionicons name="print-outline" size={24} color="#52525b" />
+          </TouchableOpacity>
+        </View>
+
         {/* Buyer Selection */}
         <View className="bg-white rounded-2xl p-4 shadow-sm mb-4 border border-zinc-100">
           <Text className="text-zinc-500 font-medium mb-2">Select Buyer</Text>
@@ -255,6 +286,11 @@ export default function DeliveryScreen() {
           </View>
         </View>
       </Modal>
+
+      <PrinterSettingsModal 
+        visible={printerModalVisible} 
+        onClose={() => setPrinterModalVisible(false)} 
+      />
 
     </KeyboardAvoidingView>
   );

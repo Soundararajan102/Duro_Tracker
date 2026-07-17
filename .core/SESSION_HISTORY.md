@@ -411,3 +411,12 @@ User requested to check and configure all admin and user functions.
 - Removed organization_id from ProviderOut and PurchaseEntryOut schemas to fix serialization crashes.
 - Wired up the Create New Driver button in SettingsScreen to a new Modal and useCreateDriver hook.
 - Validated all endpoints with an e2e python script.
+
+### [2026-07-17] Bluetooth Printer Implementation
+- Ported printer utility from Duro_POS to Duro_Tracker for ESC/POS formatting.
+- Copied required type definitions for @haroldtran/react-native-thermal-printer.
+- Created Zustand store \printer-store.ts\ using AsyncStorage for persisting the selected MAC address.
+- Created \PrinterSettingsModal.tsx\ (NativeWind UI) for scanning and connecting to Bluetooth printers.
+- Integrated the printer modal into \DeliveryScreen.tsx\.
+- Implemented automatic receipt printing upon successful delivery mutation.
+
