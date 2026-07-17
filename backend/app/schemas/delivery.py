@@ -2,6 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
+from app.schemas.buyer import BuyerOut
 
 
 class DeliveryEntryCreate(BaseModel):
@@ -21,6 +22,7 @@ class DeliveryEntryOut(BaseModel):
     adhoc_buyer_name: str | None = None
     item_id: UUID
     idempotency_key: str | None = None
+    buyer: BuyerOut | None = None
     
     unit_price_at_delivery: float
     total_bill_amount: float

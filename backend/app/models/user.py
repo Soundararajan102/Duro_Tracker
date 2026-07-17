@@ -31,19 +31,9 @@ class User(Base, BaseModelMixin):
             "is_active",
         ),
         Index(
-            "uq_users_org_username",
-            func.lower(column("username")),
-            "organization_id",
-            unique=True,
-            postgresql_where=text("organization_id IS NOT NULL"),
-            sqlite_where=text("organization_id IS NOT NULL"),
-        ),
-        Index(
-            "uq_users_platform_username",
+            "uq_users_username",
             func.lower(column("username")),
             unique=True,
-            postgresql_where=text("organization_id IS NULL"),
-            sqlite_where=text("organization_id IS NULL"),
         ),
     )
 

@@ -1,8 +1,9 @@
 import React from 'react';
+// Force Metro Bundler cache invalidation
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import DeliveryScreen from '../screens/driver/DeliveryScreen';
-import HistoryScreen from '../screens/driver/HistoryScreen';
+import BillsScreen from '../screens/driver/BillsScreen';
 import { useAuth } from '../context/AuthContext';
 import { TouchableOpacity } from 'react-native';
 
@@ -52,12 +53,12 @@ export default function DriverTabNavigator() {
         }} 
       />
       <Tab.Screen 
-        name="History" 
-        component={HistoryScreen} 
+        name="Bills" 
+        component={BillsScreen} 
         options={{
-          title: 'Route History',
+          title: 'Bills',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="time-outline" size={size} color={color} />
+            <Ionicons name="receipt-outline" size={size} color={color} />
           ),
         }} 
       />

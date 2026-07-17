@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_active_user, require_roles, get_tenant_db
@@ -45,6 +46,9 @@ async def create_delivery_entry(
 
         # Snapshot pricing
         unit_price = float(item.price)
+        if buyer and buyer.price_per_kg is not None and item.capacity_kg is not None:
+            unit_price = float(buyer.price_per_kg) * float(item.capacity_kg)
+            
         total_bill = unit_price * entry_in.full_delivered
 
         # Create Entry
@@ -77,8 +81,18 @@ async def create_delivery_entry(
             buyer.balance_pending = float(buyer.balance_pending) + total_bill
             buyer.balance_pending = float(buyer.balance_pending) - (entry_in.cash_collected + entry_in.upi_collected)
             
-    await db.refresh(entry)
-    return entry
+    await db.flush()
+    # Capture ID before commit to avoid expired attribute lazy-load errors
+    entry_id = entry.id
+    await db.commit()
+    
+    # Eagerly load the buyer to satisfy Pydantic's DeliveryEntryOut schema without lazy load errors
+    final_entry = await db.scalar(
+        select(DeliveryEntry)
+        .options(joinedload(DeliveryEntry.buyer))
+        .where(DeliveryEntry.id == entry_id)
+    )
+    return final_entry
 
 
 @router.get("/entries", response_model=list[DeliveryEntryOut])
@@ -86,7 +100,9 @@ async def list_delivery_entries(
     db: AsyncSession = Depends(get_tenant_db),
 ):
     result = await db.scalars(
-        select(DeliveryEntry).order_by(DeliveryEntry.timestamp.desc())
+        select(DeliveryEntry)
+        .options(joinedload(DeliveryEntry.buyer))
+        .order_by(DeliveryEntry.timestamp.desc())
     )
     return result.all()
 

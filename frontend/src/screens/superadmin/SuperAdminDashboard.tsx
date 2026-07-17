@@ -3,7 +3,7 @@ import { View, Text, Pressable, ScrollView, Modal, TextInput, ActivityIndicator,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LogOut, Building2, Users, Plus, ChevronRight, X } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
-import { useOrganizations, useCreateOrganization } from '../../hooks/useSuperAdmin';
+import { useOrganizations, useCreateOrganization, useSuperAdminStats } from '../../hooks/useSuperAdmin';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SuperAdminDashboardStackParamList } from '../../navigation/SuperAdminDashboardStack';
 
@@ -12,6 +12,7 @@ type Props = NativeStackScreenProps<SuperAdminDashboardStackParamList, 'Dashboar
 export default function SuperAdminDashboard({ navigation }: Props) {
   const { logout } = useAuth();
   const { data: organizations, isLoading, error } = useOrganizations();
+  const { data: stats } = useSuperAdminStats();
   const createOrgMutation = useCreateOrganization();
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -46,7 +47,7 @@ export default function SuperAdminDashboard({ navigation }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={['top']}>
-      <View className="px-6 pt-6 pb-4 bg-white border-b border-zinc-100 flex-row justify-between items-center shadow-sm">
+      <View className="px-6 pt-6 pb-4 bg-white border-b border-zinc-100 flex-row justify-between items-center">
         <View>
           <Text className="text-[28px] font-extrabold text-slate-900 tracking-tight">Platform</Text>
           <Text className="text-[15px] font-medium text-slate-500 mt-1">Super Admin Controls</Text>
@@ -59,18 +60,18 @@ export default function SuperAdminDashboard({ navigation }: Props) {
       <ScrollView className="flex-1 px-6 pt-6">
         <Text className="text-lg font-bold text-slate-900 mb-4">Quick Stats</Text>
         <View className="flex-row gap-4 mb-8">
-          <View className="flex-1 bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm">
+          <View className="flex-1 bg-white p-5 rounded-2xl border border-zinc-100">
             <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mb-3">
               <Building2 size={20} color="#3b82f6" />
             </View>
             <Text className="text-3xl font-black text-slate-900">{organizations ? organizations.length : 0}</Text>
             <Text className="text-sm font-medium text-slate-500 mt-1">Active Tenants</Text>
           </View>
-          <View className="flex-1 bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm">
+          <View className="flex-1 bg-white p-5 rounded-2xl border border-zinc-100">
             <View className="w-10 h-10 rounded-full bg-emerald-50 items-center justify-center mb-3">
               <Users size={20} color="#10b981" />
             </View>
-            <Text className="text-3xl font-black text-slate-900">-</Text>
+            <Text className="text-3xl font-black text-slate-900">{stats ? stats.total_users : '-'}</Text>
             <Text className="text-sm font-medium text-slate-500 mt-1">Total Users</Text>
           </View>
         </View>
@@ -91,7 +92,7 @@ export default function SuperAdminDashboard({ navigation }: Props) {
         ) : error ? (
           <Text className="text-red-500">Failed to load organizations</Text>
         ) : (
-          <View className="bg-white rounded-2xl border border-zinc-100 overflow-hidden shadow-sm mb-8">
+          <View className="bg-white rounded-2xl border border-zinc-100 overflow-hidden mb-8">
             {organizations?.length === 0 ? (
               <View className="p-8 items-center">
                 <Text className="text-slate-500">No organizations found.</Text>
@@ -100,8 +101,9 @@ export default function SuperAdminDashboard({ navigation }: Props) {
               organizations?.map((org, index) => (
                 <Pressable 
                   key={org.id}
-                  className={`p-5 flex-row items-center active:bg-slate-50 ${index !== organizations.length - 1 ? 'border-b border-zinc-50' : ''}`}
-                  onPress={() => navigation.navigate('ManageOrganization', { orgId: org.id, orgName: org.name })}
+                  className="p-5 flex-row items-center active:bg-slate-50"
+                  style={index !== organizations.length - 1 ? { borderBottomWidth: 1, borderBottomColor: '#f8fafc' } : undefined}
+                  onPress={() => navigation.navigate('ManageOrganization', { orgId: org.id, orgName: org.name, orgMaxUsers: org.max_users })}
                 >
                   <View className="w-12 h-12 bg-indigo-50 rounded-xl items-center justify-center mr-4">
                     <Building2 size={24} color="#6366f1" />

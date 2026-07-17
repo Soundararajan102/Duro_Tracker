@@ -77,7 +77,8 @@ export default function LoginScreen() {
         </View>
 
         <TouchableOpacity 
-          className={`w-full py-4 rounded-xl items-center mt-6 ${isLoading ? 'bg-blue-600/50' : 'bg-blue-600 active:bg-blue-700'}`}
+          className="w-full py-4 rounded-xl items-center mt-6"
+          style={{ backgroundColor: isLoading ? 'rgba(37, 99, 235, 0.5)' : '#2563eb' }}
           onPress={handleLogin}
           disabled={isLoading}
         >

@@ -69,5 +69,29 @@ export const superAdminApi = {
   createTenantAdmin: async (orgId: string, data: any) => {
     const response = await api.post(`/super-admin/organizations/${orgId}/admins`, data);
     return response.data;
+  },
+  getStats: async () => {
+    const response = await api.get('/super-admin/stats');
+    return response.data;
+  },
+  getOrganizationUsers: async (orgId: string) => {
+    const response = await api.get(`/super-admin/organizations/${orgId}/users`);
+    return response.data;
+  },
+  updateOrganization: async (orgId: string, data: { name?: string; max_users?: number }) => {
+    const response = await api.put(`/super-admin/organizations/${orgId}`, data);
+    return response.data;
+  },
+  deleteOrganization: async (orgId: string) => {
+    const response = await api.delete(`/super-admin/organizations/${orgId}`);
+    return response.data;
+  },
+  updateOrganizationUser: async (orgId: string, userId: string, data: { password?: string; is_active?: boolean }) => {
+    const response = await api.put(`/super-admin/organizations/${orgId}/users/${userId}`, data);
+    return response.data;
+  },
+  deleteOrganizationUser: async (orgId: string, userId: string) => {
+    const response = await api.delete(`/super-admin/organizations/${orgId}/users/${userId}`);
+    return response.data;
   }
 };

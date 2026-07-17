@@ -91,7 +91,7 @@ export default function PurchasesScreen() {
           <View className="flex flex-row items-center gap-4">
             <Pressable 
               onPress={() => setSelectedProvider(null)}
-              className="p-2 bg-white border border-gray-200 rounded-lg shadow-sm"
+              className="p-2 bg-white border border-gray-200 rounded-lg"
             >
               <ArrowLeft size={20} color="#475569" />
             </Pressable>
@@ -102,7 +102,7 @@ export default function PurchasesScreen() {
           </View>
           <Pressable 
             onPress={() => setIsPurchaseModalOpen(true)}
-            className="flex flex-row items-center justify-center gap-2 px-4 h-10 bg-indigo-600 rounded-lg shadow-sm"
+            className="flex flex-row items-center justify-center gap-2 px-4 h-10 bg-indigo-600 rounded-lg"
           >
             <Plus size={16} color="#ffffff" />
             <Text className="text-white text-sm font-medium">Record Purchase</Text>
@@ -110,10 +110,10 @@ export default function PurchasesScreen() {
         </View>
 
         <View className="flex flex-row gap-4 mb-6">
-          <View className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-row items-center justify-between">
+          <View className="flex-1 bg-white rounded-xl border border-gray-200 p-4 flex flex-row items-center justify-between">
             <View>
               <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Outstanding</Text>
-              <Text className={`text-xl font-mono tracking-tight font-bold ${selectedProvider.balance_pending > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+              <Text className="text-xl font-mono tracking-tight font-bold" style={{ color: selectedProvider.balance_pending > 0 ? '#e11d48' : '#059669' }}>
                 {selectedProvider.balance_pending > 0 ? `₹${selectedProvider.balance_pending.toLocaleString()} Due` : `₹${Math.abs(selectedProvider.balance_pending).toLocaleString()} Adv`}
               </Text>
             </View>
@@ -122,7 +122,7 @@ export default function PurchasesScreen() {
             </View>
           </View>
           
-          <View className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-row items-center justify-between">
+          <View className="flex-1 bg-white rounded-xl border border-gray-200 p-4 flex flex-row items-center justify-between">
             <View>
               <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Empty Cylinders</Text>
               <Text className="text-xl font-mono tracking-tight font-bold text-amber-600">
@@ -135,7 +135,7 @@ export default function PurchasesScreen() {
           </View>
         </View>
 
-        <View className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6 flex-1">
+        <View className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6 flex-1">
           <View className="px-4 py-4 border-b border-gray-200 bg-gray-50 flex flex-row items-center justify-between">
             <Text className="font-semibold text-slate-900">Purchase History</Text>
             <Text className="text-xs font-medium text-slate-500">{providerPurchases.length} Records</Text>
@@ -175,7 +175,7 @@ export default function PurchasesScreen() {
         
         {/* Record Purchase Modal (Scoped to Provider) */}
         <Modal animationType="fade" transparent={true} visible={isPurchaseModalOpen} onRequestClose={() => setIsPurchaseModalOpen(false)}>
-          <View className="flex-1 items-center justify-center p-4 bg-slate-900/50">
+          <View className="flex-1 items-center justify-center p-4" style={{ backgroundColor: 'rgba(15, 23, 42, 0.5)' }}>
             <View className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
               <View className="flex flex-row items-center justify-between px-6 py-4 border-b border-gray-200 bg-indigo-50">
                 <View>
@@ -197,9 +197,10 @@ export default function PurchasesScreen() {
                       <Pressable 
                         key={item.id} 
                         onPress={() => setItemId(item.id)}
-                        className={`px-3 py-2 rounded-lg border ${itemId === item.id ? 'bg-indigo-50 border-indigo-600' : 'bg-white border-gray-300'}`}
+                        className="px-3 py-2 rounded-lg border"
+                        style={itemId === item.id ? { backgroundColor: '#eef2ff', borderColor: '#4f46e5' } : { backgroundColor: '#ffffff', borderColor: '#d1d5db' }}
                       >
-                        <Text className={`text-xs font-medium ${itemId === item.id ? 'text-indigo-700' : 'text-slate-700'}`}>
+                        <Text className="text-xs font-medium" style={{ color: itemId === item.id ? '#4338ca' : '#334155' }}>
                           {item.name}
                         </Text>
                       </Pressable>
@@ -256,7 +257,8 @@ export default function PurchasesScreen() {
                 <Pressable 
                   onPress={handleSavePurchase}
                   disabled={createPurchase.isPending || !itemId}
-                  className={`w-full rounded-lg py-3 items-center justify-center mt-2 ${(createPurchase.isPending || !itemId) ? 'bg-indigo-300' : 'bg-indigo-600'}`}
+                  className="w-full rounded-lg py-3 items-center justify-center mt-2"
+                  style={{ backgroundColor: (createPurchase.isPending || !itemId) ? '#a5b4fc' : '#4f46e5' }}
                 >
                   <Text className="text-white font-medium text-sm">
                     {createPurchase.isPending ? 'Saving...' : 'Save Purchase'}
@@ -290,7 +292,7 @@ export default function PurchasesScreen() {
         </View>
       </View>
 
-      <View className="border border-gray-200 rounded-2xl bg-white overflow-hidden shadow-sm flex-1">
+      <View className="border border-gray-200 rounded-2xl bg-white overflow-hidden flex-1">
         {isProvidersLoading ? (
           <View className="p-8 items-center justify-center">
             <ActivityIndicator size="large" color="#4f46e5" />
@@ -310,7 +312,7 @@ export default function PurchasesScreen() {
                 <View className="flex-1 flex flex-col justify-center gap-1">
                   <Text className="text-base font-bold text-slate-900 tracking-tight">{item.name}</Text>
                   <View className="flex flex-row items-center gap-2">
-                    <Text className={`text-xs font-bold ${item.balance_pending > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    <Text className="text-xs font-bold" style={{ color: item.balance_pending > 0 ? '#e11d48' : '#059669' }}>
                       {item.balance_pending > 0 ? `₹${item.balance_pending.toLocaleString()} Due` : `₹${Math.abs(item.balance_pending).toLocaleString()} Adv`}
                     </Text>
                     <View className="w-1 h-1 rounded-full bg-slate-300" />
@@ -334,14 +336,14 @@ export default function PurchasesScreen() {
       {/* Floating Action Button */}
       <Pressable 
         onPress={() => setIsProviderModalOpen(true)}
-        className="absolute bottom-6 right-6 w-14 h-14 bg-indigo-600 rounded-full items-center justify-center shadow-lg active:bg-indigo-700"
+        className="absolute bottom-6 right-6 w-14 h-14 bg-indigo-600 rounded-full items-center justify-center active:bg-indigo-700"
       >
         <Plus size={24} color="#ffffff" />
       </Pressable>
 
       {/* Add Provider Modal */}
       <Modal animationType="fade" transparent={true} visible={isProviderModalOpen} onRequestClose={() => setIsProviderModalOpen(false)}>
-        <View className="flex-1 items-center justify-center p-4 bg-slate-900/50">
+        <View className="flex-1 items-center justify-center p-4" style={{ backgroundColor: 'rgba(15, 23, 42, 0.5)' }}>
           <View className="bg-white rounded-[24px] shadow-xl w-full max-w-sm overflow-hidden">
             <View className="flex flex-row items-center justify-between px-6 py-4 border-b border-gray-200">
               <Text className="text-lg font-bold text-slate-900">Add Provider</Text>
@@ -374,7 +376,8 @@ export default function PurchasesScreen() {
               <Pressable 
                 onPress={handleSaveProvider}
                 disabled={createProvider.isPending || !newProviderName.trim()}
-                className={`w-full rounded-xl py-3.5 items-center justify-center mt-2 ${(createProvider.isPending || !newProviderName.trim()) ? 'bg-indigo-300' : 'bg-indigo-600'}`}
+                className="w-full rounded-xl py-3.5 items-center justify-center mt-2"
+                style={{ backgroundColor: (createProvider.isPending || !newProviderName.trim()) ? '#a5b4fc' : '#4f46e5' }}
               >
                 <Text className="text-white font-bold text-sm">
                   {createProvider.isPending ? 'Saving...' : 'Save Provider'}

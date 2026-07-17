@@ -42,13 +42,25 @@ type PrinterRuntime = {
 export type DeliveryReceiptData = {
   receipt_number: string;
   date: string;
+  
+  agency_name?: string;
+  agency_address?: string;
+  agency_mobile?: string;
+
   buyer_name: string;
-  item_name: string;
+  buyer_address: string;
+  
+  opening_balance: number;
+  
+  item_capacity_kg: number;
   full_delivered: number;
-  empty_received: number;
+  price_per_kg: number;
+  
   total_bill: number;
   cash_collected: number;
   upi_collected: number;
+  
+  closing_balance: number;
 };
 
 const RECEIPT_COPY = {
@@ -62,7 +74,7 @@ const RECEIPT_COPY = {
   poweredBy: "Powered by Duro Tracker",
 };
 
-function formatCurrency(amount: number) {
+export function formatCurrency(amount: number) {
   return `Rs. ${amount.toFixed(2)}`;
 }
 
@@ -161,32 +173,43 @@ function padColumns(left: string, right: string, width = PAPER_WIDTH_58) {
 }
 
 function buildPrintableReceiptLines(data: DeliveryReceiptData): PrintableReceiptLine[] {
-  const copy = RECEIPT_COPY;
   const divider = "-".repeat(PAPER_WIDTH_58);
 
   const lines: PrintableReceiptLine[] = [
-    { text: "DURO TRACKER", align: "center", bold: true, doubleSize: true },
-    { text: "DELIVERY CHALLAN", align: "center", bold: true },
-    { text: "" },
-    { text: `${copy.receipt}: ${data.receipt_number}` },
-    { text: `${copy.date}: ${formatDateTime(data.date)}` },
-    { text: `${copy.buyer}: ${data.buyer_name}`, bold: true },
+    { text: data.agency_name || "Sree Hari Agencies", align: "center", bold: true, doubleSize: true },
+    { text: data.agency_address || "Namakkal", align: "center" },
+    { text: `Mobile: ${data.agency_mobile || "N/A"}`, align: "center" },
     { text: divider },
-    { text: `Item: ${data.item_name}` },
-    { text: `Full Delivered: ${data.full_delivered}` },
-    { text: `Empty Received: ${data.empty_received}` },
+    { text: " To:", bold: true },
+    { text: `  ${data.buyer_name}` },
+    { text: `  ${data.buyer_address || ""}` },
     { text: divider },
-    { text: padColumns(copy.total, formatCurrency(data.total_bill)), bold: true },
-    { text: padColumns(copy.cash, formatCurrency(data.cash_collected)) },
-    { text: padColumns(copy.upi, formatCurrency(data.upi_collected)) },
+    { text: padColumns("Opening Balance:", formatCurrency(data.opening_balance)), align: "center", bold: true },
+    { text: divider },
+    { text: padColumns("Kgs        Price/Kg", "Total Amount"), bold: true },
   ];
   
-  const balance = data.total_bill - (data.cash_collected + data.upi_collected);
-  lines.push({ text: padColumns("Balance Due", formatCurrency(balance)) });
+  const totalKgs = data.item_capacity_kg * data.full_delivered;
+  
+  // Format the item row nicely to match "Kgs        Price/Kg            Total Amount"
+  const itemRowLeft = `${totalKgs.toString().padEnd(10)} ₹${data.price_per_kg}`;
+  lines.push({ text: padColumns(itemRowLeft, `₹${data.total_bill}`) });
   
   lines.push({ text: divider });
-  lines.push({ text: copy.thankYou, align: "center", bold: true });
-  lines.push({ text: copy.poweredBy, align: "center" });
+  lines.push({ text: padColumns("Total Bill Amount:", `₹${data.total_bill}`), bold: true });
+  lines.push({ text: padColumns("Cash Paid:", `₹${data.cash_collected}`) });
+  lines.push({ text: padColumns("UPI Paid:", `₹${data.upi_collected}`) });
+  
+  const currentBillBal = data.total_bill - (data.cash_collected + data.upi_collected);
+  lines.push({ text: padColumns("Balance Amount:", `₹${currentBillBal}`) });
+  
+  lines.push({ text: divider });
+  lines.push({ text: padColumns("Closing Balance:", formatCurrency(data.closing_balance)), align: "center", bold: true });
+  lines.push({ text: divider });
+  
+  lines.push({ text: "Thank You", align: "center", bold: true });
+  lines.push({ text: "Software Provided By", align: "center" });
+  lines.push({ text: "Durozen Technologies Pvt. Ltd.", align: "center" });
   lines.push({ text: "" });
   lines.push({ text: "" });
 
@@ -283,6 +306,41 @@ function waitForPrintDispatch(
   });
 }
 
+function getPrintImageOptions(onError?: (error: Error) => void): NativePrinterImageOptions {
+  return {
+    beep: true,
+    cut: true,
+    tailingLine: true,
+    encoding: "UTF8",
+    imageWidth: 380, // RECEIPT_IMAGE_WIDTH
+    align: "center",
+    onError,
+  };
+}
+
+function getPrintImageSliceOptions(
+  index: number,
+  total: number,
+  onError?: (error: Error) => void,
+): NativePrinterImageOptions {
+  const isLastSlice = index === total - 1;
+
+  return {
+    ...getPrintImageOptions(onError),
+    beep: isLastSlice,
+    cut: isLastSlice,
+    tailingLine: isLastSlice,
+  };
+}
+
+function waitForImagePrintDispatch(
+  dispatch: (options: NativePrinterOptions) => void,
+  options: PrinterOptions = {},
+) {
+  // Image printing takes longer than text on many thermal drivers.
+  return waitForPrintDispatch(dispatch, options, 900);
+}
+
 function normalizeBluetoothPrinter(printer: IBLEPrinter): PrinterDevice {
   return {
     id: `bluetooth:${printer.inner_mac_address}`,
@@ -343,7 +401,15 @@ function createBluetoothRuntime(): PrinterRuntime {
         (nativeOptions) => BLEPrinter.printBill(text, nativeOptions),
         options,
       ),
-    printImageBase64: async () => {}, // Unimplemented
+    printImageBase64: (base64, options = {}) =>
+      waitForImagePrintDispatch(
+        (nativeOptions) =>
+          BLEPrinter.printImageBase64(base64, {
+            ...getPrintImageOptions(nativeOptions.onError),
+            ...options,
+          }),
+        options,
+      ),
   };
 }
 
@@ -474,5 +540,24 @@ export async function printDeliveryReceipt(
 ) {
   await withPrinterConnection(device, async (printer) => {
     await printer.printBill(buildPrintableReceipt(data));
+  });
+}
+
+export async function printReceiptImageBase64WithPrinter(
+  base64Chunks: string[],
+  device: PrinterDevice,
+) {
+  if (base64Chunks.length === 0) {
+    return;
+  }
+
+  await withPrinterConnection(device, async (printer) => {
+    for (let index = 0; index < base64Chunks.length; index += 1) {
+      const base64Chunk = base64Chunks[index];
+      await printer.printImageBase64(
+        base64Chunk,
+        getPrintImageSliceOptions(index, base64Chunks.length),
+      );
+    }
   });
 }

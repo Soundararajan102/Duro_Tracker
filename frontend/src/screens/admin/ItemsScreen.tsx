@@ -84,7 +84,7 @@ export default function ItemsScreen() {
 
   const renderItemCard = ({ item }: { item: Item }) => {
     return (
-      <View className="bg-white rounded-[24px] p-3 border border-slate-200 shadow-sm mb-4">
+      <View className="bg-white rounded-[24px] p-3 border border-slate-200 mb-4">
         <View className="flex flex-row gap-3">
           {/* Thumbnail Placeholder */}
           <View className="w-[84px] h-[84px] bg-slate-100 rounded-xl items-center justify-center border border-slate-200">
@@ -125,10 +125,11 @@ export default function ItemsScreen() {
               </Pressable>
               <Pressable 
                 onPress={() => toggleItem(item)}
-                className={`flex-1 border rounded-xl py-2 items-center justify-center flex flex-row gap-1 active:opacity-80 ${item.is_active ? 'bg-white border-slate-200' : 'bg-emerald-50 border-emerald-200'}`}
+                className="flex-1 border rounded-xl py-2 items-center justify-center flex flex-row gap-1 active:opacity-80"
+                style={item.is_active ? { backgroundColor: '#ffffff', borderColor: '#e2e8f0' } : { backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' }}
               >
                 {item.is_active ? <PauseCircle size={14} color="#475569" /> : <CheckCircle size={14} color="#10b981" />}
-                <Text className={`text-xs font-bold ${item.is_active ? 'text-slate-700' : 'text-emerald-700'}`}>
+                <Text className="text-xs font-bold" style={{ color: item.is_active ? '#334155' : '#047857' }}>
                   {item.is_active ? 'Pause' : 'Activate'}
                 </Text>
               </Pressable>
@@ -182,7 +183,7 @@ export default function ItemsScreen() {
 
       {/* Add Item Modal */}
       <Modal animationType="fade" transparent={true} visible={isModalOpen} onRequestClose={() => setIsModalOpen(false)}>
-        <View className="flex-1 items-center justify-center p-4 bg-slate-900/50">
+        <View className="flex-1 items-center justify-center p-4" style={{ backgroundColor: 'rgba(15, 23, 42, 0.5)' }}>
           <View className="bg-white rounded-[24px] shadow-xl w-full max-w-md overflow-hidden">
             <View className="flex flex-row items-center justify-between px-6 py-4 border-b border-gray-200">
               <Text className="text-lg font-bold text-slate-900">Add Cylinder Variant</Text>
@@ -243,7 +244,8 @@ export default function ItemsScreen() {
               <Pressable 
                 onPress={handleCreate}
                 disabled={createItem.isPending}
-                className={`w-full rounded-xl py-3.5 items-center justify-center mt-3 ${createItem.isPending ? 'bg-indigo-400' : 'bg-indigo-600 active:bg-indigo-700'}`}
+                className="w-full rounded-xl py-3.5 items-center justify-center mt-3"
+                style={{ backgroundColor: createItem.isPending ? '#818cf8' : '#4f46e5' }}
               >
                 <Text className="text-white font-bold text-sm">
                   {createItem.isPending ? 'Saving...' : 'Save Item'}
@@ -256,7 +258,7 @@ export default function ItemsScreen() {
 
       {/* Edit Item Modal */}
       <Modal animationType="fade" transparent={true} visible={isEditModalOpen} onRequestClose={() => setIsEditModalOpen(false)}>
-        <View className="flex-1 items-center justify-center p-4 bg-slate-900/50">
+        <View className="flex-1 items-center justify-center p-4" style={{ backgroundColor: 'rgba(15, 23, 42, 0.5)' }}>
           <View className="bg-white rounded-[24px] shadow-xl w-full max-w-md overflow-hidden">
             <View className="flex flex-row items-center justify-between px-6 py-4 border-b border-gray-200">
               <Text className="text-lg font-bold text-slate-900">Edit Cylinder Variant</Text>
@@ -302,7 +304,8 @@ export default function ItemsScreen() {
                 <Pressable 
                   onPress={handleEdit}
                   disabled={updateItem.isPending}
-                  className={`rounded-xl py-3.5 items-center justify-center flex-[2] ${updateItem.isPending ? 'bg-indigo-400' : 'bg-indigo-600 active:bg-indigo-700'}`}
+                  className="rounded-xl py-3.5 items-center justify-center flex-[2]"
+                  style={{ backgroundColor: updateItem.isPending ? '#818cf8' : '#4f46e5' }}
                 >
                   <Text className="text-white font-bold text-sm">
                     {updateItem.isPending ? 'Updating...' : 'Update Item'}

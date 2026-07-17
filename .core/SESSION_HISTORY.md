@@ -425,3 +425,100 @@ User requested to check and configure all admin and user functions.
 - Modified \uild-android.yml\ to remove \eactNativeArchitectures=arm64-v8a\ to ensure the app is built as a universal APK for all device architectures.
 - Pushed changes to GitHub to trigger the action.
 
+
+### [2026-07-17] Switch to AAB Release Build
+- Modified \uild-android.yml\ to use \undleRelease\ instead of \ssembleDebug\ to generate an Android App Bundle (.aab) suitable for the Google Play Store.
+- Pushed the update to GitHub to trigger the new build.
+
+
+### [2026-07-17] Database Reset
+- Executed a script to drop the public schema with CASCADE to wipe all database data.
+- Ran Alembic upgrade to recreate all tables.
+- Ran the seed script to re-create the base users (superadmin, admin, driver1) and demo organization.
+
+
+### [2026-07-17] Removed Dummy Data
+- Created three new backend endpoints: /admin/dashboard/recent-activity, /admin/buyers/bills, and /admin/buyers/{buyer_id}/ledger.
+- Added dynamic calculation of running financial and cylinder balances on the backend for the buyer ledger.
+- Added React Query hooks in the frontend for these endpoints.
+- Replaced hardcoded dummy arrays in DashboardScreen and BuyersScreen with live backend data.
+
+
+### [2026-07-17] Fixed White Screen Crash on Buyers Screen
+- Added defensive \!Array.isArray\ checks and try/catch around date formatting to prevent React Native rendering crashes on the Global Daily Bills tab when the backend returns unexpected data types or API errors.
+
+
+### [2026-07-17] Fixed Navigation Crash from Dashboard
+- Fixed a cascading crash where DashboardScreen would throw a date formatting exception on malformed activity data, which would destroy the entire NavigationContainer and prevent any screens from loading properly on app startup or hot reload.
+
+
+### [2026-07-17] Fixed IDE Typings and Navigation Roles
+- Fixed 'buyerLedger' type reference error in BuyersScreen.tsx which caused renderLedgerRow to receive undefined items when passing 'isHeader'.
+- Updated AuthContext UserRole types to include 'driver' and 'super_admin' to match backend roles and fix RootNavigator type mismatch.
+- Added a global ErrorBoundary in App.tsx to catch any unhandled React crashes that lead to the 'Couldn\\'t find a navigation context' error.
+
+
+### [2026-07-17] Fixed NativeWind Context Crash
+- Identified and fixed a known NativeWind v4 bug where dynamically swapping 'shadow-sm' class names at runtime on components like Pressable triggers a CSS-interop race condition. This bug manifests as a completely false 'Couldn\\'t find a navigation context' crash from React Navigation. 
+- Replaced dynamic shadow utility classes in BuyersScreen.tsx with static classes and inline shadow styles.
+
+
+### [2026-07-17] Comprehensive NativeWind Context Crash Fix
+- Further investigated the NativeWind 'Couldn\\'t find a navigation context' error which still occurred.
+- Determined that ANY dynamic class names (e.g., using \className={\...\}\ with ternary operators), as well as color-opacity shorthands (e.g., \g-slate-900/50\) and static shadow utilities (\shadow-sm\), can trigger the NativeWind v4 CSS-interop race condition.
+- Executed a comprehensive cleanup of BuyersScreen.tsx: removed all \shadow-\ utilities, replaced all dynamic template literal classNames with static strings + inline \style\ overrides, and replaced color opacities with \gba()\ inline styles.
+
+
+### [2026-07-17 06:40:00] Fixed NativeWind crash globally
+- User requested fixing the white screen crash across all screens (including Global Daily Bills tab).
+- Swept through src/screens and src/components.
+- Replaced all template strings className={...} and opacity shorthands (bg-color/50) with static classes and style={{}}.
+
+### [2026-07-17 12:12:00] Updated Driver Delivery Pricing Logic
+- Updated DeliveryScreen.tsx and routers/driver.py to calculate total amount using Buyer.price_per_kg * Item.capacity_kg * full_delivered if those fields are set, falling back to Item.price otherwise.
+
+### [2026-07-17 12:22:00] Dynamic Unit Price Display for Driver UI
+- Updated DeliveryScreen.tsx to show the dynamically calculated unit price per item in both the selection button and the Item dropdown modal, based on the selected buyers price per kg * items capacity kg.
+
+### [2026-07-17 12:40:00] Implemented Thermal Receipt Format
+- Updated printer.ts to match the thermal printing format exactly as requested by the user.
+- Updated DeliveryScreen.tsx to compute and pass opening_balance, closing_balance, item_capacity_kg, and other necessary data directly to the printReceipt method.
+
+### [2026-07-17 12:55:00] Fixed Database Transaction Bug
+- Added missing await db.commit() to the driver entries POST route. The buyer balances and item inventory were rolling back previously due to the nested transaction context manager behavior not committing the outer database session.
+
+### [2026-07-17 13:12:28] Integrated Image-Based Thermal Printing
+- **Request:** Port the exact thermal printing method used in Duro_POS to Duro_Tracker.
+- **Action:** Created use-receipt-image-print-job.tsx hook, ported printImageBase64WithPrinter to printer.ts, and created printer-html.ts to render the HTML/Canvas receipt in the exact formatting specified.
+- **Impact:** The thermal printer will now print pixel-perfect graphical receipts based on HTML styling.
+
+### [2026-07-17 18:32:00] Super Admin UI and Stats Updates
+- **Request:** 'what are need to be updated in the super admin' and '4. UI Consistency' and '1. Dashboard Statistics Total Users Metric'
+- **Action:** Refactored ManageOrganizationScreen.tsx to use NativeWind/Tailwind styling with lucide icons and SafeAreaView. Added GET /stats endpoint in backend to calculate total users. Integrated useSuperAdminStats hook to display real total user count on the Super Admin Dashboard.
+- **Impact:** Super Admin portal looks much cleaner and provides accurate real-time metrics for platform growth.
+
+### [2026-07-17 18:42:00] Super Admin Organization Management Updates
+- **Request:** Build full organization management including view users, edit org details, and delete org functionality.
+- **Action:** Created schema OrganizationUpdate. Implemented GET /organizations/{id}/users, PUT /organizations/{id}, and DELETE /organizations/{id}. Wired them into the frontend with React Query hooks. Refactored ManageOrganizationScreen into a ScrollView with distinct cards for Editing Details, Creating Users, Listing Users, and a Danger Zone for deletion.
+- **Impact:** The Super Admin can now fully control and delete organizations (which cascades to isolated tenant schemas).
+
+### [2026-07-17 18:52:00] Super Admin User Management Updates
+- **Request:** Build functionality for the Super Admin to tap into a user from the organization list to reset their password, suspend them, or delete them.
+- **Action:** Created PUT and DELETE endpoints for /organizations/{org_id}/users/{user_id}. Added ManageUserScreen to the SuperAdminDashboard stack. Updated ManageOrganizationScreen to navigate to ManageUserScreen on user row tap. Integrated React Query mutations to handle state invalidation.
+- **Impact:** Super Admin can now perform granular account recovery (password reset), offboarding (suspend), or data erasure (delete) for any user in the system.
+
+### [2026-07-17 19:25:00] Global Usernames Enforced
+- **Request:** Enforce globally unique usernames across all organizations to prevent cross-login security flaws.
+- **Action:** Removed old organization-scoped DB constraints and applied a single lower-case unique constraint on users table. Added pre-migration SQL script in alembic to append organization_id to existing duplicates. Updated backend auth and user creation routes to catch IntegrityError safely.
+- **Impact:** The system is now immune to TOCTOU race conditions and strict about username registration.
+
+### [2026-07-17 19:35:00] Enforce Max Users on Super Admin
+- **Request:** Ensure Super Admins cannot bypass the max_users limit when creating Tenant Admins.
+- **Action:** Added the user_count check against max_users in super_admin.py -> create_tenant_admin.
+- **Impact:** Organization user limits are now strictly enforced regardless of who creates the user.
+
+### [2026-07-17 20:09:00] Dashboard Dummy Data Cleanup and Quota Fixes
+- **Action:** Fixed 	odays_sales, 	otal_cash_collected, and 	otal_upi_collected in ackend/app/routers/dashboard.py to calculate metrics specifically for today instead of all-time history.
+- **Action:** Added GET /organization endpoint in ackend/app/routers/admin.py to fetch current organization data for Tenant Admins.
+- **Action:** Created useOrganization hook and connected it to SettingsScreen.tsx to display real dynamic max_users quota for drivers, renaming the text to Driver Account Usage.
+- **Action:** Fixed SuperAdminDashboard.tsx navigation bug by explicitly passing orgMaxUsers: org.max_users to the ManageOrganizationScreen, ensuring the max_users input pre-fills correctly instead of reverting to 10.

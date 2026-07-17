@@ -2,10 +2,12 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SuperAdminDashboard from '../screens/superadmin/SuperAdminDashboard';
 import ManageOrganizationScreen from '../screens/superadmin/ManageOrganizationScreen';
+import ManageUserScreen from '../screens/superadmin/ManageUserScreen';
 
 export type SuperAdminDashboardStackParamList = {
   DashboardHome: undefined;
-  ManageOrganization: { orgId: string; orgName: string };
+  ManageOrganization: { orgId: string; orgName: string; orgMaxUsers?: number };
+  ManageUser: { orgId: string; userId: string; username: string; isActive: boolean; role: string };
 };
 
 const Stack = createNativeStackNavigator<SuperAdminDashboardStackParamList>();
@@ -20,6 +22,15 @@ export default function SuperAdminDashboardStack() {
         options={{
           headerShown: true,
           title: 'Manage Organization',
+          headerBackTitle: 'Back',
+        }}
+      />
+      <Stack.Screen 
+        name="ManageUser" 
+        component={ManageUserScreen} 
+        options={{
+          headerShown: true,
+          title: 'Manage User',
           headerBackTitle: 'Back',
         }}
       />

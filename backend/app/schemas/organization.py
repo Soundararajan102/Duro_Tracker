@@ -13,6 +13,11 @@ class OrganizationCreate(OrganizationBase):
     pass
 
 
+class OrganizationUpdate(BaseModel):
+    name: str | None = None
+    max_users: int | None = None
+
+
 class OrganizationOut(OrganizationBase):
     id: UUID
     created_at: datetime

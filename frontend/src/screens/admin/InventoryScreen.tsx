@@ -61,7 +61,7 @@ export default function InventoryScreen() {
         {/* Grid Layout */}
         <View className="flex flex-col gap-6 pb-20">
           {inventoryData.map((item) => (
-            <View key={item.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+            <View key={item.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col">
               <View className="p-6 pb-4">
                 <Text className="text-lg font-semibold text-slate-900">{item.name}</Text>
               </View>
@@ -95,14 +95,14 @@ export default function InventoryScreen() {
       {/* Floating Action Button */}
       <Pressable 
         onPress={() => setIsModalOpen(true)}
-        className="absolute bottom-6 right-6 w-14 h-14 bg-indigo-600 rounded-full items-center justify-center shadow-lg active:bg-indigo-700"
+        className="absolute bottom-6 right-6 w-14 h-14 bg-indigo-600 rounded-full items-center justify-center active:bg-indigo-700"
       >
         <Settings2 size={24} color="#ffffff" />
       </Pressable>
 
       {/* Adjust Stock Modal */}
       <Modal animationType="fade" transparent={true} visible={isModalOpen} onRequestClose={() => setIsModalOpen(false)}>
-        <View className="flex-1 items-center justify-center p-4 bg-slate-900/50">
+        <View className="flex-1 items-center justify-center p-4" style={{ backgroundColor: 'rgba(15, 23, 42, 0.5)' }}>
           <View className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
             <View className="flex flex-row items-center justify-between px-6 py-4 border-b border-gray-200">
               <Text className="text-lg font-semibold text-slate-900">Adjust Stock</Text>
@@ -119,7 +119,7 @@ export default function InventoryScreen() {
                   onPress={() => setIsItemDropdownOpen(!isItemDropdownOpen)}
                   className="flex flex-row items-center justify-between w-full rounded-lg border border-gray-300 px-3 py-3 bg-white"
                 >
-                  <Text className={`text-sm font-medium ${selectedItemId ? 'text-slate-900' : 'text-slate-400'}`}>
+                  <Text className="text-sm font-medium" style={{ color: selectedItemId ? '#0f172a' : '#94a3b8' }}>
                     {selectedItemId 
                       ? inventoryData.find(i => i.id === selectedItemId)?.name 
                       : 'Select an item...'}
@@ -128,7 +128,7 @@ export default function InventoryScreen() {
                 </Pressable>
 
                 {isItemDropdownOpen && (
-                  <View className="absolute top-[70px] left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-md max-h-48 overflow-hidden z-50 elevation-5">
+                  <View className="absolute top-[70px] left-0 right-0 bg-white border border-gray-200 rounded-lg max-h-48 overflow-hidden z-50 elevation-5">
                     <ScrollView nestedScrollEnabled={true}>
                       {inventoryData.map(item => (
                         <Pressable 
@@ -137,9 +137,10 @@ export default function InventoryScreen() {
                             setSelectedItemId(item.id);
                             setIsItemDropdownOpen(false);
                           }}
-                          className={`px-4 py-3 border-b border-gray-100 active:bg-slate-50 ${selectedItemId === item.id ? 'bg-indigo-50' : ''}`}
+                          className="px-4 py-3 border-b border-gray-100 active:bg-slate-50"
+                          style={selectedItemId === item.id ? { backgroundColor: '#eef2ff' } : {}}
                         >
-                          <Text className={`text-sm ${selectedItemId === item.id ? 'font-semibold text-indigo-700' : 'text-slate-700'}`}>
+                          <Text className="text-sm" style={selectedItemId === item.id ? { fontWeight: '600', color: '#4338ca' } : { color: '#334155' }}>
                             {item.name}
                           </Text>
                         </Pressable>
@@ -154,15 +155,17 @@ export default function InventoryScreen() {
                 <View className="flex flex-row gap-2">
                   <Pressable 
                     onPress={() => setActionType('add')}
-                    className={`flex-1 py-2 items-center justify-center rounded-lg border ${actionType === 'add' ? 'bg-emerald-50 border-emerald-600' : 'bg-white border-gray-300'}`}
+                    className="flex-1 py-2 items-center justify-center rounded-lg border"
+                    style={actionType === 'add' ? { backgroundColor: '#ecfdf5', borderColor: '#059669' } : { backgroundColor: '#ffffff', borderColor: '#d1d5db' }}
                   >
-                    <Text className={`text-sm font-medium ${actionType === 'add' ? 'text-emerald-700' : 'text-slate-600'}`}>Add Stock</Text>
+                    <Text className="text-sm font-medium" style={{ color: actionType === 'add' ? '#047857' : '#475569' }}>Add Stock</Text>
                   </Pressable>
                   <Pressable 
                     onPress={() => setActionType('deduct')}
-                    className={`flex-1 py-2 items-center justify-center rounded-lg border ${actionType === 'deduct' ? 'bg-rose-50 border-rose-600' : 'bg-white border-gray-300'}`}
+                    className="flex-1 py-2 items-center justify-center rounded-lg border"
+                    style={actionType === 'deduct' ? { backgroundColor: '#fff1f2', borderColor: '#e11d48' } : { backgroundColor: '#ffffff', borderColor: '#d1d5db' }}
                   >
-                    <Text className={`text-sm font-medium ${actionType === 'deduct' ? 'text-rose-700' : 'text-slate-600'}`}>Deduct Stock</Text>
+                    <Text className="text-sm font-medium" style={{ color: actionType === 'deduct' ? '#be123c' : '#475569' }}>Deduct Stock</Text>
                   </Pressable>
                 </View>
               </View>
@@ -172,15 +175,17 @@ export default function InventoryScreen() {
                 <View className="flex flex-row gap-2">
                   <Pressable 
                     onPress={() => setCylinderType('full')}
-                    className={`flex-1 py-2 items-center justify-center rounded-lg border ${cylinderType === 'full' ? 'bg-indigo-50 border-indigo-600' : 'bg-white border-gray-300'}`}
+                    className="flex-1 py-2 items-center justify-center rounded-lg border"
+                    style={cylinderType === 'full' ? { backgroundColor: '#eef2ff', borderColor: '#4f46e5' } : { backgroundColor: '#ffffff', borderColor: '#d1d5db' }}
                   >
-                    <Text className={`text-sm font-medium ${cylinderType === 'full' ? 'text-indigo-700' : 'text-slate-600'}`}>Full Cylinders</Text>
+                    <Text className="text-sm font-medium" style={{ color: cylinderType === 'full' ? '#4338ca' : '#475569' }}>Full Cylinders</Text>
                   </Pressable>
                   <Pressable 
                     onPress={() => setCylinderType('empty')}
-                    className={`flex-1 py-2 items-center justify-center rounded-lg border ${cylinderType === 'empty' ? 'bg-indigo-50 border-indigo-600' : 'bg-white border-gray-300'}`}
+                    className="flex-1 py-2 items-center justify-center rounded-lg border"
+                    style={cylinderType === 'empty' ? { backgroundColor: '#eef2ff', borderColor: '#4f46e5' } : { backgroundColor: '#ffffff', borderColor: '#d1d5db' }}
                   >
-                    <Text className={`text-sm font-medium ${cylinderType === 'empty' ? 'text-indigo-700' : 'text-slate-600'}`}>Empty Cylinders</Text>
+                    <Text className="text-sm font-medium" style={{ color: cylinderType === 'empty' ? '#4338ca' : '#475569' }}>Empty Cylinders</Text>
                   </Pressable>
                 </View>
               </View>
@@ -199,7 +204,8 @@ export default function InventoryScreen() {
               <Pressable 
                 onPress={handleAdjust}
                 disabled={updateItem.isPending || !selectedItemId || !quantity}
-                className={`w-full rounded-lg py-3 items-center justify-center mt-2 ${(updateItem.isPending || !selectedItemId || !quantity) ? 'bg-indigo-400' : 'bg-indigo-600'}`}
+                className="w-full rounded-lg py-3 items-center justify-center mt-2"
+                style={{ backgroundColor: (updateItem.isPending || !selectedItemId || !quantity) ? '#818cf8' : '#4f46e5' }}
               >
                 <Text className="text-white font-medium text-sm">
                   {updateItem.isPending ? 'Updating...' : 'Confirm Adjustment'}

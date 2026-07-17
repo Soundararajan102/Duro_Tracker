@@ -1,12 +1,13 @@
 import React from 'react';
 import { View, Text, Pressable, FlatList, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { LogOut, Plus, FileSpreadsheet, Info, CheckCircle, PauseCircle, Edit } from 'lucide-react-native';
-import { useDrivers, useToggleDriver, useCreateDriver } from '../../hooks/useDrivers';
+import { useDrivers, useToggleDriver, useCreateDriver, useOrganization } from '../../hooks/useDrivers';
 import type { Driver } from '../../types/api';
 import { useAuth } from '../../context/AuthContext';
 
 export default function SettingsScreen() {
   const { data: drivers = [], isLoading } = useDrivers();
+  const { data: org } = useOrganization();
   const toggleMutation = useToggleDriver();
   const createMutation = useCreateDriver();
   const { logout } = useAuth();
@@ -32,7 +33,7 @@ export default function SettingsScreen() {
 
   const renderDriverCard = ({ item, index }: { item: Driver, index: number }) => {
     return (
-      <View className="bg-white rounded-3xl border border-slate-200 shadow-sm mb-4 overflow-hidden">
+      <View className="bg-white rounded-3xl border border-slate-200 mb-4 overflow-hidden">
         {/* Header */}
         <View className="flex flex-row items-start justify-between p-4 pb-3">
           <View className="flex flex-row items-center gap-3">
@@ -44,9 +45,9 @@ export default function SettingsScreen() {
               <Text className="text-slate-500 text-sm">Role: {item.role}</Text>
             </View>
           </View>
-          <View className={`px-2.5 py-1 flex flex-row items-center gap-1.5 rounded-full ${item.is_active ? 'bg-emerald-50' : 'bg-slate-100'}`}>
-            <View className={`w-2 h-2 rounded-full ${item.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-            <Text className={`text-[11px] font-bold uppercase ${item.is_active ? 'text-emerald-700' : 'text-slate-600'}`}>
+          <View className="px-2.5 py-1 flex flex-row items-center gap-1.5 rounded-full" style={{ backgroundColor: item.is_active ? '#ecfdf5' : '#f1f5f9' }}>
+            <View className="w-2 h-2 rounded-full" style={{ backgroundColor: item.is_active ? '#10b981' : '#94a3b8' }} />
+            <Text className="text-[11px] font-bold uppercase" style={{ color: item.is_active ? '#047857' : '#475569' }}>
               {item.is_active ? 'ACTIVE' : 'IDLE'}
             </Text>
           </View>
@@ -76,10 +77,11 @@ export default function SettingsScreen() {
           </Pressable>
           <Pressable
             onPress={() => toggleDriver(item)}
-            className={`flex-1 rounded-xl py-3 items-center justify-center flex flex-row gap-2 active:opacity-80 ${item.is_active ? 'bg-amber-100' : 'bg-emerald-100'}`}
+            className="flex-1 rounded-xl py-3 items-center justify-center flex flex-row gap-2 active:opacity-80"
+            style={{ backgroundColor: item.is_active ? '#fef3c7' : '#d1fae5' }}
           >
             {item.is_active ? <PauseCircle size={16} color="#b45309" /> : <CheckCircle size={16} color="#047857" />}
-            <Text className={`text-sm font-bold ${item.is_active ? 'text-amber-700' : 'text-emerald-700'}`}>
+            <Text className="text-sm font-bold" style={{ color: item.is_active ? '#b45309' : '#047857' }}>
               {item.is_active ? 'Pause' : 'Activate'}
             </Text>
           </Pressable>
@@ -123,9 +125,11 @@ export default function SettingsScreen() {
             </View>
 
             {/* Quota Text */}
-            <Text className="text-slate-500 text-sm font-semibold mb-4">
-              Driver quota: {drivers.length}/5 used · {5 - drivers.length} remaining
-            </Text>
+            {org && (
+              <Text className="text-slate-500 text-sm font-semibold mb-4">
+                Driver Account Usage: {drivers.length}/{org.max_users} used · {Math.max(0, org.max_users - drivers.length)} remaining
+              </Text>
+            )}
 
             {/* Primary Action Buttons */}
             <Pressable onPress={() => setIsModalOpen(true)} className="w-full bg-indigo-600 rounded-[16px] py-4 items-center justify-center flex flex-row gap-2 active:bg-indigo-700 mb-3">
@@ -133,7 +137,7 @@ export default function SettingsScreen() {
               <Text className="text-white font-bold text-[15px]">+ Create New Driver</Text>
             </Pressable>
 
-            <Pressable className="w-full bg-white border border-slate-200 rounded-[16px] py-4 items-center justify-center flex flex-row gap-2 shadow-sm active:bg-slate-50 mb-2">
+            <Pressable className="w-full bg-white border border-slate-200 rounded-[16px] py-4 items-center justify-center flex flex-row gap-2 active:bg-slate-50 mb-2">
               <FileSpreadsheet size={20} color="#4f46e5" />
               <Text className="text-slate-900 font-bold text-[15px]">Generate Reports</Text>
             </Pressable>
@@ -144,7 +148,7 @@ export default function SettingsScreen() {
 
       {/* Create Driver Modal */}
       <Modal visible={isModalOpen} animationType="slide" transparent={true}>
-        <View className="flex-1 justify-end bg-black/50">
+        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <View className="bg-white rounded-t-3xl p-6 h-[80%]">
             <View className="flex flex-row justify-between items-center mb-6">
               <Text className="text-xl font-bold text-slate-900">Create New Driver</Text>
@@ -179,14 +183,13 @@ export default function SettingsScreen() {
               <Pressable
                 onPress={handleCreate}
                 disabled={createMutation.isPending || !newUsername.trim() || !newPassword.trim()}
-                className={`w-full rounded-2xl py-4 items-center mt-4 shadow-sm ${
-                  (!newUsername.trim() || !newPassword.trim()) ? 'bg-slate-200' : 'bg-indigo-600 active:bg-indigo-700'
-                }`}
+                className="w-full rounded-2xl py-4 items-center mt-4"
+                style={{ backgroundColor: (!newUsername.trim() || !newPassword.trim()) ? '#e2e8f0' : '#4f46e5' }}
               >
                 {createMutation.isPending ? (
                   <ActivityIndicator color="#ffffff" />
                 ) : (
-                  <Text className={`font-bold text-base ${(!newUsername.trim() || !newPassword.trim()) ? 'text-slate-400' : 'text-white'}`}>
+                  <Text className="font-bold text-base" style={{ color: (!newUsername.trim() || !newPassword.trim()) ? '#94a3b8' : '#ffffff' }}>
                     Create Driver Account
                   </Text>
                 )}

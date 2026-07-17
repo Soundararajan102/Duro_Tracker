@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
@@ -20,22 +20,13 @@ async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: AsyncSession = Depends(get_platform_db),
 ) -> Token:
-    # First find the user globally across all tenants and platform
-    # Since username is unique per org, and platform users have org=null,
-    # we just fetch by username. Wait, if multiple orgs have the same username,
-    # this query might return multiple users!
-    # A standard OAuth2 form only takes username and password. 
-    # For a B2B SaaS, it's safer if usernames are globally unique or the user inputs an org slug.
-    # We will assume usernames are unique per org but we'll fetch the first matching user that matches the password.
+    # Since username is globally unique now, we can query safely.
+    # We use func.lower to leverage the unique index properly.
+    valid_user = await db.scalar(
+        select(User).where(func.lower(User.username) == form_data.username.lower())
+    )
     
-    users = await db.scalars(select(User).where(User.username == form_data.username))
-    valid_user = None
-    for u in users:
-        if verify_password(form_data.password, u.password_hash):
-            valid_user = u
-            break
-            
-    if not valid_user:
+    if not valid_user or not verify_password(form_data.password, valid_user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",

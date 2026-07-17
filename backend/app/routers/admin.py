@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from app.auth.dependencies import require_tenant_admin, get_tenant_db, get_platform_db
 from app.core.security import get_password_hash
@@ -12,9 +13,40 @@ from app.models.enums import UserRole
 from app.schemas.buyer import BuyerCreate, BuyerOut, BuyerUpdate
 from app.schemas.item import ItemCreate, ItemOut, ItemUpdate
 from app.schemas.user import UserCreate, UserOut, UserUpdate
+from app.schemas.organization import OrganizationOut
+from pydantic import BaseModel
+import datetime
+
+class GlobalBillOut(BaseModel):
+    id: uuid.UUID
+    time: str
+    buyer: str
+    fullGiven: int
+    emptyCollected: int
+    total: float
+
+class LedgerEntryOut(BaseModel):
+    id: uuid.UUID
+    date: str
+    type: str
+    fullGiven: int
+    emptyCollected: int
+    amount: float
+    paid: float
+    finRunBal: float
+    cylRunBal: int
 
 router = APIRouter(dependencies=[Depends(require_tenant_admin())])
 
+@router.get("/organization", response_model=OrganizationOut)
+async def get_my_organization(
+    current_user: User = Depends(require_tenant_admin()),
+    db: AsyncSession = Depends(get_platform_db),
+):
+    org = await db.get(Organization, current_user.organization_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return org
 
 @router.post("/items", response_model=ItemOut)
 async def create_item(
@@ -117,6 +149,85 @@ async def list_buyers(
     return result.all()
 
 
+@router.get("/buyers/bills", response_model=list[GlobalBillOut])
+async def get_global_bills(
+    db: AsyncSession = Depends(get_tenant_db),
+):
+    from sqlalchemy.orm import joinedload
+    from app.models import DeliveryEntry
+    result = await db.scalars(
+        select(DeliveryEntry)
+        .options(joinedload(DeliveryEntry.buyer))
+        .where(DeliveryEntry.full_delivered > 0)
+        .order_by(DeliveryEntry.timestamp.desc())
+        .limit(20)
+    )
+    entries = result.all()
+    
+    bills = []
+    for e in entries:
+        buyer_name = e.buyer.name if e.buyer else e.adhoc_buyer_name or "Unknown"
+        bills.append(
+            GlobalBillOut(
+                id=e.id,
+                time=e.timestamp.isoformat(),
+                buyer=buyer_name,
+                fullGiven=e.full_delivered,
+                emptyCollected=e.empty_received,
+                total=float(e.total_bill_amount)
+            )
+        )
+    return bills
+
+
+@router.get("/buyers/{buyer_id}/ledger", response_model=list[LedgerEntryOut])
+async def get_buyer_ledger(
+    buyer_id: uuid.UUID,
+    db: AsyncSession = Depends(get_tenant_db),
+):
+    from app.models import DeliveryEntry
+    
+    # Get all entries for the buyer in chronological order
+    result = await db.scalars(
+        select(DeliveryEntry)
+        .where(DeliveryEntry.buyer_id == buyer_id)
+        .order_by(DeliveryEntry.timestamp.asc())
+    )
+    entries = result.all()
+    
+    ledger = []
+    run_fin = 0.0
+    run_cyl = 0
+    
+    for e in entries:
+        paid = float(e.cash_collected + e.upi_collected)
+        bill_amt = float(e.total_bill_amount)
+        
+        # Financial impact: bill increases debt, paid decreases debt
+        run_fin += (bill_amt - paid)
+        
+        # Cylinder impact: full_delivered increases debt, empty_received decreases debt
+        run_cyl += (e.full_delivered - e.empty_received)
+        
+        etype = 'bill' if e.full_delivered > 0 else 'payment'
+        
+        ledger.append(
+            LedgerEntryOut(
+                id=e.id,
+                date=e.timestamp.isoformat(),
+                type=etype,
+                fullGiven=e.full_delivered,
+                emptyCollected=e.empty_received,
+                amount=bill_amt,
+                paid=paid,
+                finRunBal=run_fin,
+                cylRunBal=run_cyl
+            )
+        )
+        
+    # Return reverse chronological order for UI
+    return ledger[::-1]
+
 @router.put("/buyers/{buyer_id}", response_model=BuyerOut)
 async def update_buyer(
     buyer_id: uuid.UUID,
@@ -178,13 +289,6 @@ async def create_driver(
     user_count = await db.scalar(select(func.count(User.id)).where(User.organization_id == org_id))
     if user_count and user_count >= org.max_users:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="USER_LIMIT_REACHED")
-    
-    existing = await db.scalar(
-        select(User).where(User.username == user_in.username, User.organization_id == org_id)
-    )
-    if existing:
-        raise HTTPException(status_code=400, detail="Username already exists in this organization")
-
     driver = User(
         username=user_in.username,
         password_hash=get_password_hash(user_in.password),
@@ -193,7 +297,15 @@ async def create_driver(
         is_active=user_in.is_active,
     )
     db.add(driver)
-    await db.commit()
+    
+    try:
+        await db.commit()
+    except IntegrityError as e:
+        await db.rollback()
+        if "uq_users_username" in str(e.orig):
+            raise HTTPException(status_code=400, detail="Username is already taken globally")
+        raise e
+
     await db.refresh(driver)
     return driver
 

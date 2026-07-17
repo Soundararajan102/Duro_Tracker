@@ -12,6 +12,16 @@ export function useDrivers() {
   });
 }
 
+export function useOrganization() {
+  return useQuery({
+    queryKey: ['organization'],
+    queryFn: async () => {
+      const response = await api.get('/admin/organization');
+      return response.data;
+    }
+  });
+}
+
 export function useToggleDriver() {
   const queryClient = useQueryClient();
   

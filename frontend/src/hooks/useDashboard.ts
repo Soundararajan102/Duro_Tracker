@@ -11,3 +11,21 @@ export function useDashboardMetrics() {
     }
   });
 }
+
+export interface RecentActivity {
+  id: string;
+  type: string;
+  message: string;
+  timestamp: string;
+  amount?: number;
+}
+
+export function useRecentActivity() {
+  return useQuery({
+    queryKey: ['dashboard', 'recent-activity'],
+    queryFn: async () => {
+      const response = await api.get<RecentActivity[]>('/dashboard/recent-activity');
+      return response.data;
+    }
+  });
+}

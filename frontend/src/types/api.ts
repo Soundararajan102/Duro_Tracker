@@ -124,3 +124,17 @@ export interface UserCreate {
   role: 'super_admin' | 'tenant_admin' | 'driver';
   is_active?: boolean;
 }
+
+export interface User {
+  id: string;
+  username: string;
+  role: string;
+  is_active: boolean;
+  created_at?: string;
+  organization_id?: string;
+}
+
+export interface OrganizationUpdate {
+  name?: string;
+  max_users?: number;
+}

@@ -1,4 +1,4 @@
-name: Build Android Release AAB
+name: Build Android Release APK
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Build Android AAB
+    name: Build Android APK
     runs-on: ubuntu-latest
     env:
       EXPO_PUBLIC_API_BASE_URL: "http://10.0.2.2:8000/api/v1"
@@ -48,15 +48,15 @@ jobs:
         working-directory: ./frontend
         run: npx expo prebuild --platform android --clean
 
-      - name: Build Release AAB with Gradle
+      - name: Build Release APK with Gradle
         working-directory: ./frontend/android
         run: |
           chmod +x gradlew
-          ./gradlew :app:bundleRelease --no-daemon
+          ./gradlew :app:assembleRelease --no-daemon
 
-      - name: Upload AAB Artifact
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Duro-Tracker-Release-AAB
-          path: frontend/android/app/build/outputs/bundle/release/app-release.aab
+          name: Duro-Tracker-Release-APK
+          path: frontend/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 7

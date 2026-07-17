@@ -1600,9 +1600,82 @@ Copied the Caddy configuration template from `Duro_POS` and adapted it for `Duro
 
 ### [2026-07-17] Bluetooth Printer Implementation
 User requested to use the exact same Bluetooth connection method from the Duro_POS project.
-Copied the \printer/index.ts\ engine from Duro_POS, adapted it to Duro_Tracker's \DeliveryEntry\ format, and built a \PrinterSettingsModal\ UI using NativeWind to match the app's styling. The \DeliveryScreen\ now auto-prints a receipt when a delivery is successful.
+Copied the `printer/index.ts` engine from Duro_POS, adapted it to Duro_Tracker's `DeliveryEntry` format, and built a `PrinterSettingsModal` UI using NativeWind to match the app's styling. The `DeliveryScreen` now auto-prints a receipt when a delivery is successful.
 
 
 ### [2026-07-17] Reverted APK Optimization for Universal Compatibility
-User requested to trigger a build so the app is compatible with all mobiles. I removed the architecture restrictions from \uild-android.yml\ so React Native generates a Universal APK containing all ABIs (armeabi-v7a, arm64-v8a, x86, x86_64). Pushed the code, which successfully triggered the GitHub Actions build.
+User requested to trigger a build so the app is compatible with all mobiles. I removed the architecture restrictions from `build-android.yml` so React Native generates a Universal APK containing all ABIs (armeabi-v7a, arm64-v8a, x86, x86_64). Pushed the code, which successfully triggered the GitHub Actions build.
 
+
+### [2026-07-17] Switch to AAB Release Build
+User requested an official Play Store build extension instead of an APK. I updated the GitHub Actions workflow (`build-android.yml`) to use `bundleRelease` and output an `.aab` file instead of a debug APK. I then pushed these changes, triggering the GitHub Actions build.
+
+
+### [2026-07-17] Database Reset
+User requested to delete all data in the database. I wrote and executed a Python script to drop the public schema and clear all tables. Then, I ran Alembic migrations to build the tables fresh, and re-seeded the database with the default Super Admin, Tenant Admin, and Driver accounts.
+
+
+### [2026-07-17] Removed Dummy Data
+User requested to connect all dummy data (like recent activity) in the Admin Dashboard and Buyers screens to the live backend. I created an Implementation Plan, asked a clarifying question about where to calculate the running balance for the ledger (user decided backend), and then proceeded to build the APIs and wire them into the React Native frontend UI.
+
+
+### [2026-07-17] Fixed White Screen Crash
+User reported a white screen crash when clicking the 'Global Daily Bills' tab on the Buyers Screen. I identified that if the API returns an error or an object instead of an array, `globalBillsData.length` and `.map()` would throw fatal exceptions, causing a white screen. I wrapped the render loop with defensive checks and a try/catch block for date parsing to ensure it gracefully falls back to 'No bills found today' rather than crashing.
+
+
+### [2026-07-17] Fixed Navigation Crash from Dashboard
+User reported that the 'Couldn\\'t find a navigation context' error appeared on app reload. I realized that the same date formatting bug I just fixed in the Buyers Screen was also present in the Dashboard Screen's recent activity feed. When the Dashboard crashed on load, it destroyed the root NavigationContainer, masking the error. I wrapped the Dashboard's activity map in the same bomb-proof error boundary and try/catch block.
+
+
+### [2026-07-17] Fixed IDE Typings and Navigation Roles
+The IDE spotted a few critical errors:
+1. RootNavigator was checking for 'driver' and 'super_admin' but AuthContext didn't allow them in the TypeScript type definition.
+2. BuyersScreen had a leftover reference to 'buyerLedger' from dummy data, and renderLedgerRow was crashing when passed '{ isHeader: true }'.
+
+I fixed these bugs and added a global ErrorBoundary to App.tsx so if there's any other hidden bug causing the white screen, it will show us exactly what went wrong.
+
+
+### [2026-07-17] Fixed NativeWind Context Crash
+The global Error Boundary stack trace pointed perfectly to the culprit: NativeWind's CSS interop engine. 
+It turns out there is a known, very nasty bug in NativeWind v4 where applying dynamic shadow classes (like `activeTab === 'crm' ? 'shadow-sm' : ''`) causes a race condition that corrupts the React component tree and throws a completely false 'Couldn\\'t find a navigation context' error from React Navigation. 
+
+I fixed this by stripping the dynamic `shadow-sm` class name string and instead applying the shadow using standard React Native inline styles.
+
+
+### [2026-07-17 06:40:00] Fixed NativeWind crash globally
+- Searched all frontend code using Select-String for className interpolations.
+### [2026-07-17 13:12:28] Ported Image-Based Thermal Printing
+- **Commands Run:** 
+  - npx tsc --noEmit
+- **Reasoning:** After creating the implementation plan and the user implicitly approving it by reiterating the exact layout format, I ported use-receipt-image-print-job.tsx and printImageBase64WithPrinter logic from Duro_POS. I adapted buildReceiptHtmlMarkup in printer-html.ts to exactly match the Sree Hari Agencies text layout. I verified the typescript changes compiled.
+
+### [2026-07-17 18:32:00] Super Admin UI and Stats Updates
+- Executed replacement of ManageOrganizationScreen.tsx styles.
+- Added SuperAdminStatsOut schema and /stats endpoint to super_admin.py.
+- Integrated hook in SuperAdminDashboard.tsx.
+- Updated MCP postgres config to use Duro_Tracker.
+
+### [2026-07-17 18:42:00] Super Admin Organization Management Updates
+- Designed UI with frontend-ui-engineering practices using ScrollView, layout cards, and Danger Zone styling.
+- Created OrganizationUpdate schema and endpoints to list users, edit orgs, and delete orgs.
+- Executed full frontend integration into ManageOrganizationScreen.tsx.
+
+### [2026-07-17 18:52:00] Super Admin User Management Updates
+- Implemented ManageUserScreen.tsx following frontend-ui-engineering guidelines.
+- Built PUT and DELETE endpoints for individual users under an organization.
+- Updated ManageOrganizationScreen to navigate to the new ManageUserScreen on user row tap.
+
+### [2026-07-17 19:25:00] Global Usernames Enforced
+- Implemented defensive API engineering to prevent TOCTOU race conditions on user creation.
+- Executed Alembic database migration with pre-migration SQL script to safely rename duplicate usernames.
+- Enforced globally unique, case-insensitive usernames across the entire platform.
+
+### [2026-07-17 19:35:00] Enforce Max Users on Super Admin
+- Added logic to block Tenant Admin creation if the organization's max_users limit has been reached.
+
+### [2026-07-17] Frontend Cleanup and Quota Display
+**User:** rename the "Driver quota" yes correct wording
+**User:** ok in the super admin where we edit the organization detials the data is not correctly showing
+**Agent:** Checked ManageOrganizationScreen.tsx and SuperAdminDashboard.tsx. Found that orgMaxUsers was missing from the navigation params. Added orgMaxUsers: org.max_users to the navigate function.
+**User:** update the .core file
+**Agent:** Updating SESSION_HISTORY.md and CHAT_LOG.md with recent changes.

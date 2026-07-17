@@ -131,15 +131,16 @@ export default function PrinterSettingsModal({ visible, onClose }: Props) {
                   <TouchableOpacity
                     onPress={() => handleConnect(item)}
                     disabled={isConnecting}
-                    className={`p-4 rounded-xl mb-3 border ${isSelected ? 'bg-green-50 border-green-200' : 'bg-white border-zinc-200'}`}
+                    className="p-4 rounded-xl mb-3 border"
+                    style={isSelected ? { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' } : { backgroundColor: '#ffffff', borderColor: '#e4e4e7' }}
                   >
                     <View className="flex-row items-center justify-between">
                       <View className="flex-row items-center gap-3">
-                        <View className={`w-10 h-10 rounded-lg items-center justify-center ${isSelected ? 'bg-green-100' : 'bg-zinc-100'}`}>
+                        <View className="w-10 h-10 rounded-lg items-center justify-center" style={{ backgroundColor: isSelected ? '#dcfce7' : '#f4f4f5' }}>
                           <Ionicons name="bluetooth" size={20} color={isSelected ? '#16a34a' : '#3f3f46'} />
                         </View>
                         <View>
-                          <Text className={`font-bold ${isSelected ? 'text-green-800' : 'text-zinc-900'}`}>{item.name}</Text>
+                          <Text className="font-bold" style={{ color: isSelected ? '#166534' : '#18181b' }}>{item.name}</Text>
                           <Text className="text-zinc-500 text-xs font-mono">{item.address}</Text>
                         </View>
                       </View>

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
 
-export type UserRole = 'superadmin' | 'admin' | 'delivery';
+export type UserRole = 'super_admin' | 'admin' | 'driver' | 'delivery';
 
 interface AuthContextData {
   userToken: string | null;
