@@ -71,11 +71,11 @@ async def create_delivery_entry(
         
         # Update Buyer Balances
         if buyer:
-            buyer.cylinders_pending += entry_in.full_delivered
-            buyer.cylinders_pending -= entry_in.empty_received
+            buyer.cylinders_pending = int(buyer.cylinders_pending) + entry_in.full_delivered
+            buyer.cylinders_pending = int(buyer.cylinders_pending) - entry_in.empty_received
             
-            buyer.balance_pending += total_bill
-            buyer.balance_pending -= (entry_in.cash_collected + entry_in.upi_collected)
+            buyer.balance_pending = float(buyer.balance_pending) + total_bill
+            buyer.balance_pending = float(buyer.balance_pending) - (entry_in.cash_collected + entry_in.upi_collected)
             
     await db.refresh(entry)
     return entry

@@ -19,29 +19,55 @@ export default function DashboardScreen() {
         <Text className="text-2xl font-bold text-slate-900">Dashboard</Text>
       </View>
 
-      {/* Metrics Row */}
+      {/* Hero Metrics */}
       {isLoading ? (
-        <View className="mb-6 h-24 items-center justify-center">
+        <View className="mb-6 h-40 items-center justify-center">
           <ActivityIndicator size="large" color="#4f46e5" />
         </View>
       ) : metrics ? (
-        <View className="flex flex-row gap-3 mb-6">
-          <View className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <View className="flex flex-row items-center gap-1.5 mb-2">
-              <CheckCircle2 size={16} color="#059669" />
-              <Text className="font-medium text-xs text-slate-500">Collected</Text>
+        <View className="flex flex-col gap-4 mb-8">
+          
+          {/* Outstanding Debt - Warn Amber/Crimson */}
+          <View className="bg-rose-50 rounded-[24px] border border-rose-200 shadow-sm p-6 overflow-hidden relative">
+            <View className="absolute -right-6 -top-6 bg-rose-100 rounded-full w-32 h-32 opacity-50" />
+            <View className="flex flex-row items-center justify-between mb-2">
+              <View className="flex flex-row items-center gap-2">
+                <AlertTriangle size={20} color="#e11d48" />
+                <Text className="font-bold text-sm text-rose-800 uppercase tracking-widest">Outstanding Debts</Text>
+              </View>
             </View>
-            <Text className="text-xl font-bold text-slate-900 mb-1 tracking-tight">₹{(metrics.total_cash_collected + metrics.total_upi_collected).toLocaleString()}</Text>
-            <Text className="text-[10px] text-slate-400 font-medium">Cash & UPI</Text>
+            <Text className="text-4xl font-black text-rose-700 tracking-tighter mt-1">
+              ₹{(metrics.outstanding_balance || 0).toLocaleString()}
+            </Text>
+            <Text className="text-xs text-rose-600 font-medium mt-2">Total market credit to be recovered</Text>
           </View>
 
-          <View className="flex-1 bg-indigo-50 rounded-2xl border border-indigo-100 shadow-sm p-4">
-            <View className="flex flex-row items-center gap-1.5 mb-2">
-              <Truck size={16} color="#4f46e5" />
-              <Text className="font-medium text-xs text-indigo-800">Dispatched</Text>
+          <View className="flex flex-row gap-4">
+            {/* Today's Collection - Emerald Green */}
+            <View className="flex-1 bg-emerald-50 rounded-[24px] border border-emerald-200 shadow-sm p-5 relative overflow-hidden">
+              <View className="absolute -right-4 -bottom-4 bg-emerald-100 w-20 h-20 rounded-full opacity-50" />
+              <View className="flex flex-row items-center gap-2 mb-2">
+                <Wallet size={16} color="#059669" />
+                <Text className="font-bold text-xs text-emerald-800 uppercase tracking-widest">Collected</Text>
+              </View>
+              <Text className="text-2xl font-black text-emerald-700 tracking-tighter">
+                ₹{((metrics.total_cash_collected || 0) + (metrics.total_upi_collected || 0)).toLocaleString()}
+              </Text>
+              <Text className="text-[10px] text-emerald-600 font-bold mt-1 uppercase">Today</Text>
             </View>
-            <Text className="text-xl font-bold text-indigo-950 mb-1 tracking-tight">{metrics.total_dispatched}</Text>
-            <Text className="text-[10px] text-indigo-600 font-medium">Full Cylinders</Text>
+
+            {/* Today's Sales - Indigo */}
+            <View className="flex-1 bg-indigo-50 rounded-[24px] border border-indigo-200 shadow-sm p-5 relative overflow-hidden">
+              <View className="absolute -right-4 -top-4 bg-indigo-100 w-20 h-20 rounded-full opacity-50" />
+              <View className="flex flex-row items-center gap-2 mb-2">
+                <TrendingUp size={16} color="#4f46e5" />
+                <Text className="font-bold text-xs text-indigo-800 uppercase tracking-widest">Sales</Text>
+              </View>
+              <Text className="text-2xl font-black text-indigo-700 tracking-tighter">
+                ₹{(metrics.todays_sales || 0).toLocaleString()}
+              </Text>
+              <Text className="text-[10px] text-indigo-600 font-bold mt-1 uppercase">Today</Text>
+            </View>
           </View>
         </View>
       ) : null}

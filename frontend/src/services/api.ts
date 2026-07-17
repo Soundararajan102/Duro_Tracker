@@ -1,6 +1,6 @@
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
-import uuid from 'react-native-uuid';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
@@ -9,6 +9,7 @@ export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
 });
+
 
 // Configure Exponential Backoff for Network Errors and 5xx
 axiosRetry(api, {
@@ -33,7 +34,7 @@ api.interceptors.request.use(async (config) => {
   // Auto-inject X-Idempotency-Key for POST/PUT/PATCH/DELETE
   if (config.method && ['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
     if (!config.headers['X-Idempotency-Key']) {
-      config.headers['X-Idempotency-Key'] = uuid.v4().toString();
+      config.headers['X-Idempotency-Key'] = Date.now().toString(36) + Math.random().toString(36).substring(2);
     }
   }
 
@@ -54,3 +55,19 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Super Admin Endpoints
+export const superAdminApi = {
+  getOrganizations: async () => {
+    const response = await api.get('/super-admin/organizations');
+    return response.data;
+  },
+  createOrganization: async (data: { name: string; max_users: number }) => {
+    const response = await api.post('/super-admin/organizations', data);
+    return response.data;
+  },
+  createTenantAdmin: async (orgId: string, data: any) => {
+    const response = await api.post(`/super-admin/organizations/${orgId}/admins`, data);
+    return response.data;
+  }
+};

@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView, FlatList, Modal, TextInput, ActivityIndicator } from 'react-native';
-import { Plus, X, ShoppingCart, Truck } from 'lucide-react-native';
-import { usePurchases, useProviders, useCreatePurchase } from '../../hooks/usePurchases';
+import { Plus, X, Search, Store, ArrowLeft, Download, FileText, Receipt, PackageOpen, Truck } from 'lucide-react-native';
+import { usePurchases, useProviders, useCreatePurchase, useCreateProvider } from '../../hooks/usePurchases';
 import { useItems } from '../../hooks/useItems';
+import type { Provider } from '../../types/api';
 
 export default function PurchasesScreen() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [providerId, setProviderId] = useState('');
+  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
+
+  const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
+  const [newProviderName, setNewProviderName] = useState('');
+  const [newProviderPhone, setNewProviderPhone] = useState('');
+
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [itemId, setItemId] = useState('');
   const [fullBought, setFullBought] = useState('');
   const [emptyReturned, setEmptyReturned] = useState('');
@@ -17,11 +23,26 @@ export default function PurchasesScreen() {
   const { data: providers = [], isLoading: isProvidersLoading } = useProviders();
   const { data: items = [] } = useItems();
   const createPurchase = useCreatePurchase();
+  const createProvider = useCreateProvider();
 
-  const handleSave = () => {
-    if (!providerId || !itemId) return;
+  const handleSaveProvider = () => {
+    if (!newProviderName.trim()) return;
+    createProvider.mutate(
+      { name: newProviderName.trim(), phone: newProviderPhone.trim() },
+      {
+        onSuccess: () => {
+          setIsProviderModalOpen(false);
+          setNewProviderName('');
+          setNewProviderPhone('');
+        }
+      }
+    );
+  };
+
+  const handleSavePurchase = () => {
+    if (!selectedProvider || !itemId) return;
     createPurchase.mutate({
-      provider_id: providerId,
+      provider_id: selectedProvider.id,
       item_id: itemId,
       full_received: parseInt(fullBought) || 0,
       empty_returned: parseInt(emptyReturned) || 0,
@@ -29,8 +50,7 @@ export default function PurchasesScreen() {
       amount_paid: parseFloat(amountPaid) || 0,
     }, {
       onSuccess: () => {
-        setIsModalOpen(false);
-        setProviderId('');
+        setIsPurchaseModalOpen(false);
         setItemId('');
         setFullBought('');
         setEmptyReturned('');
@@ -40,178 +60,324 @@ export default function PurchasesScreen() {
     });
   };
 
-  const getProviderName = (id: string) => providers.find(p => p.id === id)?.name || id.split('-')[0];
   const getItemName = (id: string) => items.find(i => i.id === id)?.name || id.split('-')[0];
 
-  const totalPurchased = purchases.reduce((acc, p) => acc + Number(p.total_cost), 0);
-  const balanceOwed = providers.reduce((acc, p) => acc + Number(p.balance_pending), 0);
-  const providersOwedCount = providers.filter(p => Number(p.balance_pending) > 0).length;
-
-  const renderTableRow = ({ item }: { item: typeof purchases[0] }) => (
+  const renderPurchaseRow = ({ item }: { item: typeof purchases[0] }) => (
     <View className="flex flex-row items-center border-b border-gray-100 bg-white">
-      <Text className="w-28 px-4 py-4 text-sm text-slate-500">Recorded</Text>
-      <Text className="w-40 px-4 py-4 font-medium text-slate-900">{getProviderName(item.provider_id)}</Text>
-      <View className="w-40 px-4 py-4">
-        <View className="bg-slate-100 rounded-md px-2 py-1 self-start">
-          <Text className="text-xs font-medium text-slate-700">{getItemName(item.item_id)}</Text>
-        </View>
+      <View className="w-32 px-4 py-4 flex flex-col justify-center">
+        <Text className="font-medium text-slate-900 text-sm">{new Date(item.created_at || Date.now()).toLocaleDateString()}</Text>
       </View>
-      <Text className="w-24 px-4 py-4 text-center font-mono font-medium text-emerald-600">+{item.full_received}</Text>
-      <Text className="w-28 px-4 py-4 text-center font-mono font-medium text-amber-600">-{item.empty_returned}</Text>
-      <Text className="w-28 px-4 py-4 text-right font-mono text-slate-900 font-medium">₹{Number(item.total_cost).toLocaleString()}</Text>
-      <Text className="w-28 px-4 py-4 text-right font-mono text-slate-600">₹{Number(item.amount_paid).toLocaleString()}</Text>
-      <Text className={`w-28 px-4 py-4 text-right font-mono font-bold ${(Number(item.total_cost) - Number(item.amount_paid)) > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-        ₹{(Number(item.total_cost) - Number(item.amount_paid)).toLocaleString()}
-      </Text>
+      <View className="w-40 px-4 py-4 justify-center">
+        <Text className="text-sm font-medium text-slate-700" numberOfLines={1}>{getItemName(item.item_id)}</Text>
+      </View>
+      <Text className="w-24 px-4 py-4 text-center font-mono text-sm text-emerald-600 font-bold">+{item.full_received}</Text>
+      <Text className="w-24 px-4 py-4 text-center font-mono text-sm text-amber-500 font-bold">-{item.empty_returned}</Text>
+      <View className="w-32 px-4 py-4 flex flex-col justify-center items-end">
+        <Text className="font-mono text-sm text-slate-900 font-bold">₹{item.total_cost.toLocaleString()}</Text>
+        {item.amount_paid > 0 && <Text className="font-mono text-[11px] text-emerald-600 mt-0.5">Paid ₹{item.amount_paid.toLocaleString()}</Text>}
+      </View>
     </View>
   );
 
+  const renderProviderCRM = () => {
+    if (!selectedProvider) return null;
+    
+    // Filter purchases for this provider
+    const providerPurchases = purchases.filter(p => p.provider_id === selectedProvider.id);
+
+    return (
+      <View className="flex-1 pb-20">
+        <View className="flex flex-row items-center justify-between mb-6 mt-2">
+          <View className="flex flex-row items-center gap-4">
+            <Pressable 
+              onPress={() => setSelectedProvider(null)}
+              className="p-2 bg-white border border-gray-200 rounded-lg shadow-sm"
+            >
+              <ArrowLeft size={20} color="#475569" />
+            </Pressable>
+            <View>
+              <Text className="text-xl font-bold text-slate-900">{selectedProvider.name}</Text>
+              <Text className="text-sm text-slate-500">{selectedProvider.phone || 'No phone'}</Text>
+            </View>
+          </View>
+          <Pressable 
+            onPress={() => setIsPurchaseModalOpen(true)}
+            className="flex flex-row items-center justify-center gap-2 px-4 h-10 bg-indigo-600 rounded-lg shadow-sm"
+          >
+            <Plus size={16} color="#ffffff" />
+            <Text className="text-white text-sm font-medium">Record Purchase</Text>
+          </Pressable>
+        </View>
+
+        <View className="flex flex-row gap-4 mb-6">
+          <View className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-row items-center justify-between">
+            <View>
+              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Outstanding</Text>
+              <Text className={`text-xl font-mono tracking-tight font-bold ${selectedProvider.balance_pending > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                {selectedProvider.balance_pending > 0 ? `₹${selectedProvider.balance_pending.toLocaleString()} Due` : `₹${Math.abs(selectedProvider.balance_pending).toLocaleString()} Adv`}
+              </Text>
+            </View>
+            <View className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center">
+              <Receipt size={20} color="#94a3b8" />
+            </View>
+          </View>
+          
+          <View className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-row items-center justify-between">
+            <View>
+              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Empty Cylinders</Text>
+              <Text className="text-xl font-mono tracking-tight font-bold text-amber-600">
+                {selectedProvider.cylinders_pending} <Text className="text-sm text-amber-400 font-medium">Pending</Text>
+              </Text>
+            </View>
+            <View className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center">
+              <Store size={20} color="#f59e0b" />
+            </View>
+          </View>
+        </View>
+
+        <View className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6 flex-1">
+          <View className="px-4 py-4 border-b border-gray-200 bg-gray-50 flex flex-row items-center justify-between">
+            <Text className="font-semibold text-slate-900">Purchase History</Text>
+            <Text className="text-xs font-medium text-slate-500">{providerPurchases.length} Records</Text>
+          </View>
+          <ScrollView horizontal={true} showsHorizontalScrollIndicator={true} className="flex-1">
+            <View className="flex flex-col">
+              <View className="flex flex-row bg-white border-b border-gray-200">
+                <Text className="w-32 px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</Text>
+                <Text className="w-40 px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Item</Text>
+                <Text className="w-24 px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Full In</Text>
+                <Text className="w-24 px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Empty Out</Text>
+                <Text className="w-32 px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost/Paid</Text>
+              </View>
+              {providerPurchases.length === 0 ? (
+                <View className="p-8 items-center justify-center w-full min-w-[500px]">
+                  <Text className="text-slate-400 text-sm">No purchases recorded yet.</Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={providerPurchases}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={renderPurchaseRow}
+                  scrollEnabled={false}
+                />
+              )}
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    );
+  };
+
+  if (selectedProvider) {
+    return (
+      <View className="flex-1 bg-gray-50 p-4 pt-12">
+        {renderProviderCRM()}
+        
+        {/* Record Purchase Modal (Scoped to Provider) */}
+        <Modal animationType="fade" transparent={true} visible={isPurchaseModalOpen} onRequestClose={() => setIsPurchaseModalOpen(false)}>
+          <View className="flex-1 items-center justify-center p-4 bg-slate-900/50">
+            <View className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+              <View className="flex flex-row items-center justify-between px-6 py-4 border-b border-gray-200 bg-indigo-50">
+                <View>
+                  <Text className="text-lg font-semibold text-slate-900">Record Purchase</Text>
+                  <Text className="text-xs font-medium text-indigo-700 mt-0.5">{selectedProvider.name}</Text>
+                </View>
+                <Pressable onPress={() => setIsPurchaseModalOpen(false)} className="p-1 rounded-full bg-white border border-indigo-100">
+                  <X size={20} color="#4f46e5" />
+                </Pressable>
+              </View>
+              
+              <View className="p-6 flex flex-col gap-4">
+                <View>
+                  <Text className="text-sm font-medium text-slate-700 mb-1">Select Item</Text>
+                  {/* Custom Picker Alternative for styling (using a simple mapping or default RN picker if not using a library) */}
+                  {/* Since RN doesn't have a native styled picker, we will create a mini scroll list or simple buttons for items */}
+                  <View className="flex flex-row flex-wrap gap-2">
+                    {items.map(item => (
+                      <Pressable 
+                        key={item.id} 
+                        onPress={() => setItemId(item.id)}
+                        className={`px-3 py-2 rounded-lg border ${itemId === item.id ? 'bg-indigo-50 border-indigo-600' : 'bg-white border-gray-300'}`}
+                      >
+                        <Text className={`text-xs font-medium ${itemId === item.id ? 'text-indigo-700' : 'text-slate-700'}`}>
+                          {item.name}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+
+                <View className="flex flex-row gap-3">
+                  <View className="flex-1">
+                    <Text className="text-sm font-medium text-slate-700 mb-1">Full Bought</Text>
+                    <TextInput 
+                      placeholder="0"
+                      keyboardType="numeric"
+                      value={fullBought}
+                      onChangeText={setFullBought}
+                      className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm text-slate-900 font-mono"
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-medium text-slate-700 mb-1">Empty Returned</Text>
+                    <TextInput 
+                      placeholder="0"
+                      keyboardType="numeric"
+                      value={emptyReturned}
+                      onChangeText={setEmptyReturned}
+                      className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm text-slate-900 font-mono"
+                    />
+                  </View>
+                </View>
+
+                <View className="flex flex-row gap-3">
+                  <View className="flex-1">
+                    <Text className="text-sm font-medium text-slate-700 mb-1">Total Cost (₹)</Text>
+                    <TextInput 
+                      placeholder="0.00"
+                      keyboardType="numeric"
+                      value={totalCost}
+                      onChangeText={setTotalCost}
+                      className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm text-slate-900 font-mono"
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-medium text-slate-700 mb-1">Amount Paid (₹)</Text>
+                    <TextInput 
+                      placeholder="0.00"
+                      keyboardType="numeric"
+                      value={amountPaid}
+                      onChangeText={setAmountPaid}
+                      className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm text-slate-900 font-mono"
+                    />
+                  </View>
+                </View>
+
+                <Pressable 
+                  onPress={handleSavePurchase}
+                  disabled={createPurchase.isPending || !itemId}
+                  className={`w-full rounded-lg py-3 items-center justify-center mt-2 ${(createPurchase.isPending || !itemId) ? 'bg-indigo-300' : 'bg-indigo-600'}`}
+                >
+                  <Text className="text-white font-medium text-sm">
+                    {createPurchase.isPending ? 'Saving...' : 'Save Purchase'}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    );
+  }
+
+  // --- Main Provider List View ---
   return (
     <View className="flex-1 bg-gray-50 p-4 pt-12">
       <View className="flex flex-col sm:flex-row mb-6">
         <View className="flex-1 mb-4 sm:mb-0">
-          <Text className="text-2xl font-semibold text-slate-900">Inbound Purchases</Text>
-          <Text className="text-slate-500 text-sm mt-1">Track inventory acquisitions and vendor balances.</Text>
-        </View>
-        <Pressable 
-          onPress={() => setIsModalOpen(true)}
-          className="flex flex-row items-center justify-center gap-2 px-4 py-2 bg-indigo-600 rounded-lg shadow-sm"
-        >
-          <Plus size={16} color="#ffffff" />
-          <Text className="text-white text-sm font-medium">Record Purchase</Text>
-        </Pressable>
-      </View>
-
-      <View className="flex flex-row gap-4 mb-6">
-        <View className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm p-4 relative overflow-hidden">
-          <View className="flex flex-row items-center gap-2 mb-3">
-            <Truck size={18} color="#4f46e5" />
-            <Text className="text-slate-500 font-medium text-xs tracking-wide uppercase">Total Purchased</Text>
-          </View>
-          <Text className="text-2xl font-bold text-slate-900 font-mono tracking-tight">₹{totalPurchased.toLocaleString()}</Text>
-        </View>
-
-        <View className="flex-1 bg-white rounded-xl border border-rose-200 shadow-sm p-4 relative overflow-hidden">
-          <View className="flex flex-row items-center gap-2 mb-3">
-            <ShoppingCart size={18} color="#e11d48" />
-            <Text className="text-slate-500 font-medium text-xs tracking-wide uppercase">Balance Owed</Text>
-          </View>
-          <Text className="text-2xl font-bold text-rose-600 font-mono tracking-tight">₹{balanceOwed.toLocaleString()}</Text>
-          <Text className="mt-1 text-xs font-medium text-rose-600">Across {providersOwedCount} vendors</Text>
+          <Text className="text-2xl font-semibold text-slate-900">Providers</Text>
+          <Text className="text-slate-500 text-sm mt-1">Manage suppliers, purchases, and outstanding balances.</Text>
         </View>
       </View>
 
-      <View className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-20">
-        <ScrollView horizontal={true} showsHorizontalScrollIndicator={true}>
-          <View className="flex flex-col">
-            <View className="flex flex-row bg-gray-50 border-b border-gray-200">
-              <Text className="w-28 px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</Text>
-              <Text className="w-40 px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Provider</Text>
-              <Text className="w-40 px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Item</Text>
-              <Text className="w-24 px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Full In</Text>
-              <Text className="w-28 px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Empty Out</Text>
-              <Text className="w-28 px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Total</Text>
-              <Text className="w-28 px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Paid</Text>
-              <Text className="w-28 px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Balance</Text>
-            </View>
-            
-            {isPurchasesLoading ? (
-              <ActivityIndicator size="large" color="#4f46e5" className="m-8" />
-            ) : (
-              <FlatList
-                data={purchases}
-                renderItem={renderTableRow}
-                keyExtractor={item => item.id.toString()}
-                showsVerticalScrollIndicator={true}
-              />
+      <View className="flex flex-row items-center justify-between mb-4">
+        <View className="flex-1 bg-white border border-gray-300 rounded-lg flex flex-row items-center px-3 h-10">
+          <Search size={16} color="#94a3b8" />
+          <TextInput 
+            placeholder="Search providers..." 
+            className="flex-1 ml-2 text-sm text-slate-900"
+          />
+        </View>
+      </View>
+
+      <View className="border border-gray-200 rounded-2xl bg-white overflow-hidden shadow-sm flex-1">
+        {isProvidersLoading ? (
+          <View className="p-8 items-center justify-center">
+            <ActivityIndicator size="large" color="#4f46e5" />
+          </View>
+        ) : (
+          <FlatList
+            data={providers}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => (
+              <Pressable 
+                onPress={() => setSelectedProvider(item)}
+                className="flex flex-row items-center border-b border-gray-100 p-4 active:bg-slate-50"
+              >
+                <View className="w-12 h-12 bg-indigo-50 rounded-full items-center justify-center mr-4">
+                  <Truck size={24} color="#4f46e5" />
+                </View>
+                <View className="flex-1 flex flex-col justify-center gap-1">
+                  <Text className="text-base font-bold text-slate-900 tracking-tight">{item.name}</Text>
+                  <View className="flex flex-row items-center gap-2">
+                    <Text className={`text-xs font-bold ${item.balance_pending > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      {item.balance_pending > 0 ? `₹${item.balance_pending.toLocaleString()} Due` : `₹${Math.abs(item.balance_pending).toLocaleString()} Adv`}
+                    </Text>
+                    <View className="w-1 h-1 rounded-full bg-slate-300" />
+                    <Text className="text-xs font-bold text-amber-600">
+                      {item.cylinders_pending} Empties Pending
+                    </Text>
+                  </View>
+                </View>
+              </Pressable>
             )}
-          </View>
-        </ScrollView>
+            ListEmptyComponent={() => (
+              <View className="p-8 items-center justify-center">
+                <Store size={32} color="#cbd5e1" className="mb-2" />
+                <Text className="text-slate-500 font-medium">No providers found</Text>
+              </View>
+            )}
+          />
+        )}
       </View>
 
-      <Modal animationType="fade" transparent={true} visible={isModalOpen} onRequestClose={() => setIsModalOpen(false)}>
+      {/* Floating Action Button */}
+      <Pressable 
+        onPress={() => setIsProviderModalOpen(true)}
+        className="absolute bottom-6 right-6 w-14 h-14 bg-indigo-600 rounded-full items-center justify-center shadow-lg active:bg-indigo-700"
+      >
+        <Plus size={24} color="#ffffff" />
+      </Pressable>
+
+      {/* Add Provider Modal */}
+      <Modal animationType="fade" transparent={true} visible={isProviderModalOpen} onRequestClose={() => setIsProviderModalOpen(false)}>
         <View className="flex-1 items-center justify-center p-4 bg-slate-900/50">
-          <View className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+          <View className="bg-white rounded-[24px] shadow-xl w-full max-w-sm overflow-hidden">
             <View className="flex flex-row items-center justify-between px-6 py-4 border-b border-gray-200">
-              <Text className="text-lg font-semibold text-slate-900">Record Purchase</Text>
-              <Pressable onPress={() => setIsModalOpen(false)} className="p-1 rounded-full">
-                <X size={20} color="#94a3b8" />
+              <Text className="text-lg font-bold text-slate-900">Add Provider</Text>
+              <Pressable onPress={() => setIsProviderModalOpen(false)} className="p-1.5 rounded-full bg-slate-100">
+                <X size={18} color="#64748b" />
               </Pressable>
             </View>
             
-            <View className="p-6 flex flex-col gap-3">
+            <View className="p-6 flex flex-col gap-4">
               <View>
-                <Text className="text-sm font-medium text-slate-700 mb-1">Provider ID</Text>
+                <Text className="text-sm font-bold text-slate-700 mb-1">Provider Name</Text>
                 <TextInput 
-                  placeholder="UUID of Provider"
-                  value={providerId}
-                  onChangeText={setProviderId}
-                  className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm text-slate-900"
+                  placeholder="e.g. ABC Gas Agency"
+                  value={newProviderName}
+                  onChangeText={setNewProviderName}
+                  className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50"
                 />
               </View>
               <View>
-                <Text className="text-sm font-medium text-slate-700 mb-1">Item ID</Text>
+                <Text className="text-sm font-bold text-slate-700 mb-1">Phone Number</Text>
                 <TextInput 
-                  placeholder="UUID of Item"
-                  value={itemId}
-                  onChangeText={setItemId}
-                  className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm text-slate-900"
+                  placeholder="e.g. 9876543210"
+                  keyboardType="phone-pad"
+                  value={newProviderPhone}
+                  onChangeText={setNewProviderPhone}
+                  className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50"
                 />
-              </View>
-
-              <View className="flex flex-row gap-3">
-                <View className="flex-1">
-                  <Text className="text-sm font-medium text-slate-700 mb-1">Full Bought</Text>
-                  <TextInput 
-                    placeholder="0"
-                    keyboardType="numeric"
-                    value={fullBought}
-                    onChangeText={setFullBought}
-                    className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm text-slate-900 font-mono"
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-sm font-medium text-slate-700 mb-1">Empty Out</Text>
-                  <TextInput 
-                    placeholder="0"
-                    keyboardType="numeric"
-                    value={emptyReturned}
-                    onChangeText={setEmptyReturned}
-                    className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm text-slate-900 font-mono"
-                  />
-                </View>
-              </View>
-
-              <View className="flex flex-row gap-3">
-                <View className="flex-1">
-                  <Text className="text-sm font-medium text-slate-700 mb-1">Total Cost (₹)</Text>
-                  <TextInput 
-                    placeholder="0.00"
-                    keyboardType="numeric"
-                    value={totalCost}
-                    onChangeText={setTotalCost}
-                    className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm text-slate-900 font-mono"
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-sm font-medium text-slate-700 mb-1">Amount Paid (₹)</Text>
-                  <TextInput 
-                    placeholder="0.00"
-                    keyboardType="numeric"
-                    value={amountPaid}
-                    onChangeText={setAmountPaid}
-                    className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm text-slate-900 font-mono"
-                  />
-                </View>
               </View>
 
               <Pressable 
-                onPress={handleSave}
-                disabled={createPurchase.isPending}
-                className={`w-full rounded-lg py-2.5 items-center justify-center mt-3 ${createPurchase.isPending ? 'bg-indigo-400' : 'bg-indigo-600'}`}
+                onPress={handleSaveProvider}
+                disabled={createProvider.isPending || !newProviderName.trim()}
+                className={`w-full rounded-xl py-3.5 items-center justify-center mt-2 ${(createProvider.isPending || !newProviderName.trim()) ? 'bg-indigo-300' : 'bg-indigo-600'}`}
               >
-                <Text className="text-white font-medium text-sm">
-                  {createPurchase.isPending ? 'Saving...' : 'Save Purchase'}
+                <Text className="text-white font-bold text-sm">
+                  {createProvider.isPending ? 'Saving...' : 'Save Provider'}
                 </Text>
               </Pressable>
             </View>

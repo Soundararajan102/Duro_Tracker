@@ -17,6 +17,7 @@ class Item(Base, BaseModelMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[ItemCategory] = mapped_column(Enum(ItemCategory), nullable=False)
     price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    capacity_kg: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     
     # Base snapshot
     initial_full: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

@@ -62,8 +62,8 @@ async def create_purchase(
     item.current_empty -= purchase_in.empty_returned
     
     # Update Provider ledger
-    provider.balance_pending += (purchase_in.total_cost - purchase_in.amount_paid)
-    provider.cylinders_pending += (purchase_in.full_received - purchase_in.empty_returned)
+    provider.balance_pending = float(provider.balance_pending) + (purchase_in.total_cost - purchase_in.amount_paid)
+    provider.cylinders_pending = int(provider.cylinders_pending) + (purchase_in.full_received - purchase_in.empty_returned)
 
     await db.commit()
     await db.refresh(entry)

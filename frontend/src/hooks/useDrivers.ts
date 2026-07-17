@@ -17,7 +17,21 @@ export function useToggleDriver() {
   
   return useMutation({
     mutationFn: async ({ id, isActive }: { id: string, isActive: boolean }) => {
-      const response = await api.patch<Driver>(`/admin/drivers/${id}`, { is_active: isActive });
+      const response = await api.put<Driver>(`/admin/drivers/${id}`, { is_active: isActive });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drivers'] });
+    }
+  });
+}
+
+export function useCreateDriver() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const response = await api.post<Driver>('/admin/drivers', { ...data, role: 'driver' });
       return response.data;
     },
     onSuccess: () => {

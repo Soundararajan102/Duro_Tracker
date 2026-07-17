@@ -2,13 +2,13 @@ from pydantic import BaseModel, Field
 
 
 class APIErrorDetail(BaseModel):
-    loc: list[str] | None = None
-    msg: str
-    type: str
+    code: str
+    message: str
+    details: dict | list | str | None = None
 
 
 class APIErrorResponse(BaseModel):
-    detail: str | list[APIErrorDetail] = Field(
+    error: APIErrorDetail = Field(
         ...,
-        description="Either a single string error message or a list of validation errors.",
+        description="Structured error response payload",
     )

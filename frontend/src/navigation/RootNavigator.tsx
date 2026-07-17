@@ -3,6 +3,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import AdminTabNavigator from './AdminTabNavigator';
 import DriverTabNavigator from './DriverTabNavigator';
+import SuperAdminTabNavigator from './SuperAdminTabNavigator';
 import LoginScreen from '../screens/auth/LoginScreen';
 
 export default function RootNavigator() {
@@ -24,6 +25,9 @@ export default function RootNavigator() {
     return <DriverTabNavigator />;
   }
 
-  // Fallback to Admin for superadmin or admin
+  if (userRole === 'super_admin') {
+    return <SuperAdminTabNavigator />;
+  }
+
   return <AdminTabNavigator />;
 }

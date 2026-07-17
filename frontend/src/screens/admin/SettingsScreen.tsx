@@ -1,12 +1,30 @@
 import React from 'react';
-import { View, Text, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, FlatList, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { LogOut, Plus, FileSpreadsheet, Info, CheckCircle, PauseCircle, Edit } from 'lucide-react-native';
-import { useDrivers, useToggleDriver } from '../../hooks/useDrivers';
+import { useDrivers, useToggleDriver, useCreateDriver } from '../../hooks/useDrivers';
 import type { Driver } from '../../types/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function SettingsScreen() {
   const { data: drivers = [], isLoading } = useDrivers();
   const toggleMutation = useToggleDriver();
+  const createMutation = useCreateDriver();
+  const { logout } = useAuth();
+  
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [newUsername, setNewUsername] = React.useState('');
+  const [newPassword, setNewPassword] = React.useState('');
+
+  const handleCreate = () => {
+    if (!newUsername.trim() || !newPassword.trim()) return;
+    createMutation.mutate({ username: newUsername.trim(), password: newPassword.trim(), is_active: true }, {
+      onSuccess: () => {
+        setIsModalOpen(false);
+        setNewUsername('');
+        setNewPassword('');
+      }
+    });
+  };
 
   const toggleDriver = (driver: Driver) => {
     toggleMutation.mutate({ id: driver.id, isActive: !driver.is_active });
@@ -90,7 +108,7 @@ export default function SettingsScreen() {
               <View className="flex-1 pr-4">
                 <Text className="text-[22px] font-extrabold text-slate-900">Driver Access & Settings</Text>
               </View>
-              <Pressable className="w-[72px] h-[72px] bg-rose-50 rounded-xl items-center justify-center active:bg-rose-100">
+              <Pressable onPress={logout} className="w-[72px] h-[72px] bg-rose-50 rounded-xl items-center justify-center active:bg-rose-100">
                 <LogOut size={24} color="#e11d48" style={{ marginBottom: 4 }} />
                 <Text className="text-rose-600 text-[13px] font-semibold">Logout</Text>
               </Pressable>
@@ -110,7 +128,7 @@ export default function SettingsScreen() {
             </Text>
 
             {/* Primary Action Buttons */}
-            <Pressable className="w-full bg-indigo-600 rounded-[16px] py-4 items-center justify-center flex flex-row gap-2 active:bg-indigo-700 mb-3">
+            <Pressable onPress={() => setIsModalOpen(true)} className="w-full bg-indigo-600 rounded-[16px] py-4 items-center justify-center flex flex-row gap-2 active:bg-indigo-700 mb-3">
               <Plus size={20} color="#ffffff" />
               <Text className="text-white font-bold text-[15px]">+ Create New Driver</Text>
             </Pressable>
@@ -123,6 +141,60 @@ export default function SettingsScreen() {
         }
       />
       )}
+
+      {/* Create Driver Modal */}
+      <Modal visible={isModalOpen} animationType="slide" transparent={true}>
+        <View className="flex-1 justify-end bg-black/50">
+          <View className="bg-white rounded-t-3xl p-6 h-[80%]">
+            <View className="flex flex-row justify-between items-center mb-6">
+              <Text className="text-xl font-bold text-slate-900">Create New Driver</Text>
+              <Pressable onPress={() => setIsModalOpen(false)} className="p-2 bg-slate-100 rounded-full">
+                <Text className="text-slate-600 font-bold">✕</Text>
+              </Pressable>
+            </View>
+
+            <View className="flex flex-col gap-4">
+              <View>
+                <Text className="text-sm font-bold text-slate-700 mb-1.5 ml-1">Username</Text>
+                <TextInput
+                  value={newUsername}
+                  onChangeText={setNewUsername}
+                  placeholder="e.g. driver_john"
+                  autoCapitalize="none"
+                  className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-slate-900 text-base"
+                />
+              </View>
+
+              <View>
+                <Text className="text-sm font-bold text-slate-700 mb-1.5 ml-1">Password</Text>
+                <TextInput
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  placeholder="Enter a secure password"
+                  secureTextEntry
+                  className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-slate-900 text-base"
+                />
+              </View>
+
+              <Pressable
+                onPress={handleCreate}
+                disabled={createMutation.isPending || !newUsername.trim() || !newPassword.trim()}
+                className={`w-full rounded-2xl py-4 items-center mt-4 shadow-sm ${
+                  (!newUsername.trim() || !newPassword.trim()) ? 'bg-slate-200' : 'bg-indigo-600 active:bg-indigo-700'
+                }`}
+              >
+                {createMutation.isPending ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <Text className={`font-bold text-base ${(!newUsername.trim() || !newPassword.trim()) ? 'text-slate-400' : 'text-white'}`}>
+                    Create Driver Account
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

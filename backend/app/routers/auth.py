@@ -47,14 +47,11 @@ async def login_for_access_token(
 
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     
-    payload = {
-        "sub": str(valid_user.id),
-        "role": valid_user.role.value,
-        "org_id": str(valid_user.organization_id) if valid_user.organization_id else None
-    }
-    
     access_token = create_access_token(
-        data=payload, expires_delta=access_token_expires
+        subject=valid_user.id,
+        role=valid_user.role,
+        org_id=valid_user.organization_id,
+        expires_delta=access_token_expires
     )
     
     return Token(access_token=access_token, token_type="bearer")

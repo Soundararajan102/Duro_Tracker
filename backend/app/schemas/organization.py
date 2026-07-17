@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 class OrganizationBase(BaseModel):
     name: str
+    max_users: int = 10
 
 
 class OrganizationCreate(OrganizationBase):

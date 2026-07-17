@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
-import axios from 'axios';
+import { api } from '../../services/api';
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -22,7 +22,7 @@ export default function LoginScreen() {
       params.append('username', username);
       params.append('password', password);
 
-      const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/auth/login`, params.toString(), {
+      const response = await api.post(`/auth/login`, params.toString(), {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }

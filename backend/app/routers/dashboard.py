@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_tenant_admin, get_tenant_db
 from app.db.session import get_platform_db
-from app.models import DeliveryEntry, Item, User
+from app.models import DeliveryEntry, Item, User, Buyer
 
 router = APIRouter(dependencies=[Depends(require_tenant_admin())])
 
@@ -16,6 +16,8 @@ class DashboardMetrics(BaseModel):
     total_empty_received: int
     total_cash_collected: float
     total_upi_collected: float
+    outstanding_balance: float
+    todays_sales: float
 
 @router.get("/metrics", response_model=DashboardMetrics)
 async def get_dashboard_metrics(
@@ -38,9 +40,17 @@ async def get_dashboard_metrics(
     )
     row = result.fetchone()
     
+    # Sum of all buyers' pending balances
+    buyers_result = await db.execute(
+        select(func.coalesce(func.sum(Buyer.balance_pending), 0))
+    )
+    outstanding_balance = buyers_result.scalar()
+
     return DashboardMetrics(
         total_dispatched=row[0],
         total_empty_received=row[1],
         total_cash_collected=row[2],
         total_upi_collected=row[3],
+        outstanding_balance=outstanding_balance,
+        todays_sales=0.0, # Placeholder for today's total sales
     )

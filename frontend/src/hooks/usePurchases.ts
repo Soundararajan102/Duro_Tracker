@@ -37,3 +37,17 @@ export function useCreatePurchase() {
     }
   });
 }
+
+export function useCreateProvider() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (data: { name: string; phone?: string; is_active?: boolean }) => {
+      const response = await api.post<Provider>('/purchase/providers', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['providers'] });
+    }
+  });
+}

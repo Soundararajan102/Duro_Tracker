@@ -15,26 +15,26 @@
 - **Status:** Planning
 - **Flow & Options:**
   - [ ] Top Metrics: Outstanding Balance, Today's Sales, Today's Collection
-  - [ ] Charts: Revenue vs Collection
   - [ ] Recent Activity Feed
 
 ## 2. Items Management
-- **Status:** Planning (Active)
+- **Status:** Completed
 - **Purpose:** To configure the product catalog (e.g., 5kg, 14.2kg Domestic, 19kg Commercial cylinders). These items are required to generate sales bills and track inventory.
 - **Flow & Options:**
-  - [ ] **Item List Table:** Display all added items with columns for SKU Name, Category, Default Price, and **Total Owned Cylinders** (Physical count).
-  - [ ] **Add Item Button/Modal:** Inputs for `Item Name`, `Category`, `Default Unit Price`, **`Initial Full Cylinders`**, and **`Initial Empty Cylinders`** (e.g., "We start with 20 Full and 30 Empty").
-  - [ ] **Edit Item Feature:** Ability to update the name or price of an existing item.
-  - [ ] **Toggle Status:** Activate or Deactivate an item so it no longer shows up in new deliveries.
+  - [x] **Item List Table:** Display all added items with columns for SKU Name, Category, and **Total Owned Cylinders** (Physical count).
+  - [x] **Add Item Button/Modal:** Inputs for `Item Name`, `Category`, **`Initial Full Cylinders`**, and **`Initial Empty Cylinders`** (e.g., "We start with 20 Full and 30 Empty").
+  - [x] **Edit Item Feature:** Ability to update the name of an existing item.
+  - [x] **Toggle Status:** Activate or Deactivate an item so it no longer shows up in new deliveries.
 
 ## 3. Purchases (Inbound)
-- **Status:** Planning (Active)
+- **Status:** Completed
 - **Purpose:** To log incoming stock from different providers/suppliers and manage the financial balance owed to them.
 - **Flow & Options:**
-  - [ ] **Purchase Record Table:** Display all past purchases with columns for Date, Provider Name, Item Bought, Rate/Cost, Total Amount, Paid Amount, Payment Method, and Outstanding Balance.
-  - [ ] **Record Purchase Button/Modal:** 
-    - Select Provider/Supplier (Dropdown).
-    - Select Item (Dropdown populated strictly from the "Items Management" page).
+  - [x] **Provider List View:** Replaced flat purchase list with a scannable list of Providers.
+  - [x] **Provider CRM & Ledger:** Drill down into a provider to see their specific purchase history and balances.
+  - [x] **Record Purchase Button/Modal:** 
+    - Auto-assigned Provider based on active CRM view.
+    - Select Item via visual picker from Items catalog.
     - Input `Quantity of Full Cylinders Purchased`.
     - Input `Quantity of Empty Cylinders Returned` (given back to provider).
     - Input `Purchase Rate` (Cost per item).
@@ -52,7 +52,7 @@
   - [ ] **Automated Calculation Rule:** 
     - *Selling/Billing* requires the driver to input both `Full Given` and `Empty Collected`. It reduces Full stock by `Full Given` and increases Empty stock by `Empty Collected`.
     - *Purchasing (Refilling)* reduces Empty stock and increases Full stock.
-  - [ ] **Adjust Stock Button (Defective/Lost):** A modal to manually deduct a lost or broken cylinder from the system to keep physical counts accurate.
+  - [x] **Adjust Stock Button/Modal:** A dynamic modal allowing the admin to manually Add or Deduct stock. Admin selects the Item, Action (Add/Deduct), Type (Full/Empty), and Quantity to instantly reconcile physical physical counts.
 
 ## 5. Buyers (Retailers & Sales)
 - **Status:** Planning (Active)

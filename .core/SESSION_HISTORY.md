@@ -137,14 +137,27 @@
 - **User Request:** Detailed the Purchases flow (record table, adding purchases from providers, selecting items created on the Items page, entering purchase rate, paid amount, and payment mode [cash/upi]).
 - **Action Taken:** Updated `ADMIN_PLAN.md` to reflect these exact steps in the "Purchases (Inbound)" section. Added specific options for dropdown selections and financial calculations.
 
+- **2026-07-15 11:35:** Updated Dashboard, Inventory grids, and Buyers list with mock engine for Phase 2 UI execution.
+- **2026-07-15 11:42:** Fixed item creation bug caused by a mock route mismatch (`/items` vs `/admin/items`).
+- **2026-07-15 11:45:** Cleaned up UI by removing the "Active" chip from the top of the Item card.
+- **2026-07-15 11:55:** Redesigned `PurchasesScreen.tsx` into a Provider CRM structure based on user approval. Added Provider List view, detail Ledger view, and scoped Record Purchase modal with visual Item selector.
+- **2026-07-16 04:27:** Fixed "Add Buyer" form in `BuyersScreen.tsx` (it was previously just closing the modal without saving). Hooked up React state, `useCreateBuyer` mutation, and form inputs.
+- **2026-07-16 10:30:** Removed unit price section entirely from the Items Management screen per user request.
+- **2026-07-16 10:35:** Added "Delete Item" functionality in the Items Management screen. Placed a red delete button inside the Edit Item modal, wired to the `mockApi` DELETE endpoint via `useDeleteItem` hook.
+- **2026-07-16 10:40:** Moved the "Add Provider" button back to the bottom right corner as a floating action button on the Purchases screen for consistency.
+- **2026-07-16 11:15:** Hooked up the "Adjust Stock" modal on the Inventory screen. Expanded it to allow both Adding and Deducting stock, with segment controls for Full vs Empty cylinders, updating live mock state via React Query.
+- **2026-07-16 11:45:** Moved the "Adjust Stock" button on the Inventory screen to be a floating action button in the bottom right corner for UI consistency.
+- **2026-07-16 11:55:** Removed the "Category" option from the Items Management section completely (UI cards, Add modal, and Edit modal).
+- **2026-07-16 12:05:** Added an "Edit" icon inside the Buyer CRM details header. Clicking it opens an "Edit Buyer Profile" modal to update shop details, balances, or delete the buyer.
+- **2026-07-16 12:25:** Added a "Capacity (kg)" numeric text input to the "Add Cylinder Variant" and "Edit Cylinder Variant" modals in Items Management. It renders cleanly side-by-side with the Item Name input.
+- **2026-07-16 12:35:** Added a "Custom Pricing Tier" card to the Buyer CRM view, just below the balance cards. It includes an "Update Price" button and modal allowing the admin to set a custom price per kg for that specific buyer.
+
 ### [2026-07-14 10:05:00] Detailed Inventory Flow
 - **User Request:** Requested that the Inventory page explicitly show the remaining stock and the stock sold to buyers through deliveries.
 - **Action Taken:** Updated `ADMIN_PLAN.md` in the "Inventory (Live Stock)" section. Added specific views for Remaining Stock, Sold Stock (Outbound), Purchased Stock (Inbound), and the exact calculation rule (`Remaining Stock = Total Purchased - Total Sold`).
 
 ### [2026-07-14 10:25:00] Shifted Sales to Buyers Flow (CRM)
 - **User Request:** Suggested replacing the generic "Sales" page with a "Buyers" (Retailers) page. The logic is to create the buyer first, and then click into their profile to view their specific ledger, bills, and remaining balances (with daily/weekly/monthly filters).
-- **Action Taken:** Validated the CRM-focused approach. Updated `ADMIN_PLAN.md` to replace "5. Sales" with "5. Buyers (Retailers)". Added detailed options for the Buyer List, Add Buyer Modal, and the Buyer Ledger (Detail View).
-
 ### [2026-07-14 10:29:00] Refined Buyers Flow to include Global Sales
 - **User Request:** "Buyers why dont we add the View list of daily bills to so i can view the bills"
 - **Action Taken:** Updated the "5. Buyers (Retailers & Sales)" section in `ADMIN_PLAN.md` to include a "Global Daily Bills View (All Sales)" option. This ensures the admin can see all daily sales activity globally without having to click into individual buyer ledgers.
@@ -300,3 +313,101 @@
 - **GitHub Actions Fix**: Addressed missing `.env` on CI by hardcoding `EXPO_PUBLIC_API_BASE_URL` in the workflow environment, and added `--no-interactive` to prevent Expo prebuild prompts from hanging.
 - **Network Architecture**: Clarified Expo Go networking requirements (Phone and PC must be on the exact same WiFi, unless using `--tunnel` and an ngrok backend).
 - **GitHub Actions Fix 2**: Using the user's PAT, downloaded the GitHub Actions logs and identified that `npx expo prebuild` threw `unknown or unexpected option: --no-interactive`. Removed the invalid flag as Expo automatically disables prompts in CI environments.
+- **GitHub Actions Fix 3**: Handled an Android resource linking error (`drawable/splashscreen_logo not found`) during `processDebugResources`. This was caused because I had previously removed `Logo.png` and the `image` config from `app.config.js`, causing the `expo-splash-screen` plugin to inject references to a non-existent asset. Generated a dummy `Logo.png` and restored the config to fix the Gradle build.
+
+### [2026-07-15 09:30:00] Startup & APK Resolution
+- **Server Restart**: Restarted both the FastAPI backend and Expo frontend after the development machine was rebooted.
+- **GitHub Secrets Protection**: Added `.agents/.env` (which contains the user's PAT) to `.gitignore` to resolve a GitHub push rejection caused by secret scanning.
+- **Documentation Cleanup**: Noticed `CHAT_LOG.md` was being updated out of order and fixed it so all future entries append strictly to the bottom of the file.
+- **Workspace Cleanup**: Deleted temporary debugging scripts and log files (`generate-dummy-logo.py`, `job_log_latest.txt`) to keep the project root clean.
+
+### [2026-07-15 10:45:00] Live Device Testing & Troubleshooting
+- **Network Resolution**: User's physical device failed to connect to `localhost`. Migrated `frontend/.env` to point `EXPO_PUBLIC_API_URL` to the laptop's LAN IP (`192.168.1.8`) to allow physical device testing over WiFi.
+- **Zombie Process Cleanup**: Expo failed to restart due to a zombie Node process holding port 8081. Resolved via `taskkill`.
+- **Login Bug Fix**: Diagnosed a 500 error on `/api/v1/auth/login`. Refactored `auth.py`'s `create_access_token` call to pass kwargs instead of a dictionary to correctly conform to `security.py`'s signature.
+- **Logout Bug Fix**: The `SettingsScreen.tsx` Logout button was a dummy component with no `onPress` handler. Wired it up using `useAuth().logout()`.
+- **Test Credentials Tracking**: Generated `.core/TEST_CREDENTIALS.md` with the `superadmin`, `admin`, and `driver1` credentials generated by `seed.py`.
+- **SuperAdmin Setup**: The frontend was incorrectly routing `super_admin` to the Tenant Admin navigator (which crashed since SuperAdmin has no `organization_id`). Built `SuperAdminTabNavigator.tsx` and `SuperAdminDashboard.tsx` with a modern UI to route super admins properly.
+- **SuperAdmin Planning**: Authored an implementation plan detailing how to wire up the frontend to the existing `POST /api/v1/super-admin/organizations` endpoints. Per user feedback, updated the plan to include a backend architectural change: adding a `max_users` limit to Organizations and enforcing it when Tenant Admins create drivers.
+- **SuperAdmin Execution (Limits)**: Modified `organization.py` to add `max_users` (Integer). Generated and ran an Alembic migration. Modified `admin.py`'s `create_driver` route to query the organization's user limit and enforce it by raising a `403 USER_LIMIT_REACHED` if exceeded.
+- **SuperAdmin Execution (UI)**: Expanded `types/api.ts` and `services/api.ts`. Built custom `useSuperAdmin` React Query hooks. Built a Stack Navigator to allow drill-down navigation. Updated the Dashboard to list real organizations, added a "New Organization" modal that accepts a user limit, and built `ManageOrganizationScreen` for provisioning Tenant Admins.
+- **Purchases UI Redesign**: Refactored the `PurchasesScreen.tsx` (Tenant Admin) from a clunky horizontal scrolling data table into a sleek, vertical stack of rounded cards, mirroring the design language established in `ItemsScreen.tsx`. Added a floating action button (FAB) at the bottom right to let admins create new Providers (vendors) seamlessly.
+- **Items Management UI**: Completed the "Items Management" spec from `ADMIN_PLAN.md`. Wired up the Add Item modal to `useCreateItem` and implemented a horizontally scrolling pill-based Category selector. Added a functional Edit Item modal backed by a new `useUpdateItem` hook. Displayed a calculated "Total" owned cylinders chip on each item card.
+- **Project Backup**: Executed a `robocopy` command to clone the entire project to `D:\Duro_Backup`, explicitly ignoring heavy dependency folders to save space and time.
+
+### [2026-07-15 12:00:00] Review Project State
+- **User Request:** "check this project"
+- **Action Taken:** Reviewed .core/ADMIN_PLAN.md, SESSION_HISTORY.md, DATA_MODELS.md, and RULES.md. Summarized the current development state (Items & Purchases completed, Inventory & Buyers next) to the user and asked for the next step.
+
+### [2026-07-15 12:03:00] AI for React Native UI Discussion
+- **User Request:** "ok any ai to crete the React Native (Expo) frontend like the google stitch"
+- **Action Taken:** Advised the user on tools like a0.dev, Create.xyz, and Galileo AI for React Native generation, while explaining that standard browser-based AI (like Google Stitch or v0) defaults to React/Web because it's easier to preview in an iframe.
+
+### [2026-07-15 12:19:00] Generated UI Prompt for Inventory & Buyers
+- **User Request:** "ok i want you to give an detialed fronter admin ui creating prompt detialed one ok"
+- **Action Taken:** Extracted the core business logic from ADMIN_PLAN.md for both the Inventory (Live Stock) and Buyers (CRM) sections. Created a detailed Google Stitch prompt artifact designed to generate polished React/Tailwind Web UI which we will later translate into React Native NativeWind components.
+
+### [2026-07-15 12:23:00] Generated Full Admin UI Prompt
+- **User Request:** "for the admin page only ui only page by page detialed prompt ok"
+- **Action Taken:** Created a master Google Stitch UI prompt artifact (stitch_prompt_full_admin_ui.md) that covers all 6 admin pages (Dashboard, Items, Purchases, Inventory, Buyers, Settings) based entirely on the ADMIN_PLAN.md specifications.
+
+### [2026-07-15 12:53:00] Updated UI Prompt Aesthetics
+- **User Request:** "i want white background"
+- **Action Taken:** Modified stitch_prompt_full_admin_ui.md to instruct the AI to use g-white globally instead of g-gray-50, relying on soft borders and shadows for visual hierarchy.
+
+### [2026-07-16 13:05:00] Mock API Removed and Real Backend Integration
+- **User Request:** remove the entire mockapi in the frontend, delete all the file related to mockapi, intregration
+- **Action Taken:** Developed an implementation plan to remove the mock API and port mock data models (capacity_kg for items, price_per_kg for buyers) to the SQLAlchemy models. Added proper endpoints to admin.py for PUT/DELETE items and buyers. Generated Alembic migrations to update the db schema. Removed mockApi.ts and reconfigured React Query hooks to call the real FastAPI backend. Verified operation by running backend tests.
+
+### [2026-07-16 14:48:00] Fixed Missing tenant_context Module
+- **User Request:** "Explain what this problem is and help me fix it: Cannot find module `app.auth.tenant_context`"
+- **Action Taken:** Created the missing `tenant_context.py` inside `app/auth` to define the `TenantContext` dataclass and the `get_tenant_context` dependency. Updated `app/auth/__init__.py` to export these symbols so `app/core/deps.py` and `app/db/tenant_session.py` can import them successfully.
+
+### [2026-07-16 14:55:00] Complete Documentation Update
+- **User Request:** "update the .agent and the .core folder fully"
+- **Action Taken:** Fully updated the historical documentation inside `.core`. Updated `ARCHITECTURE.md` to reflect the multi-tenant PostgreSQL structure, React Native frontend, and GitHub Actions CI. Updated `DATA_MODELS.md` with all current models broken down by schema (`public` vs `tenant_XXX`). Updated `RULES.md` to include critical business rules for multi-tenant data boundaries and `TenantContext` injection.
+
+### [2026-07-16 14:58:00] Refactored Rate Limiter to Pydantic Settings
+- **User Request:** "use pydantic setting for handling the credentials better"
+- **Action Taken:** Refactored `app/core/login_rate_limit.py` to stop using hardcoded configuration constants (`_WINDOW_SECONDS`, `_IP_LIMIT`, `_USERNAME_LIMIT`). Added `login_rate_limit_window_seconds`, `login_rate_limit_ip`, and `login_rate_limit_username` to the `Settings` class in `app/core/config.py`. Updated `enforce_login_rate_limit` and its helper functions to retrieve and use these new settings dynamically.
+
+### [2026-07-16 15:10:00] Migrated Rate Limiting to Caddy
+- **User Request:** "Remove the rate limiting in python -redis, we will rate limiting in proxy, we like to use caddy as a reverse proxy to the backend with rate limiting to the specifix endpoints."
+- **Action Taken:** Drafted an implementation plan using `/planning-and-task-breakdown` which was approved. Deleted `d:\Duro_Tracker\backend\app\core\login_rate_limit.py`. Removed the Pydantic rate limiting configuration fields from `Settings` in `app/core/config.py`. Created a `Caddyfile` at the root of the project configured to reverse proxy traffic to FastAPI (`localhost:8000`) and apply the `mholt/caddy-ratelimit` directives specifically to the `/api/v1/auth/login*` path. Verified the backend starts up successfully and pytest passes.
+
+### [2026-07-16 15:23:00] Migrated Caddy Configuration from Duro_POS
+- **User Request:** "from Duro_POS , implement same caddy cofigration to the current project, expect load balancing with current project configuation. optimize it to the our project ok"
+- **Action Taken:** Copied the Caddy configuration template from `Duro_POS` and adapted it for `Duro_Tracker`. Created `d:\Duro_Tracker\caddy\Caddyfile.template` with an upstream block (`tracker_api_upstream`) pointing to `backend-1:8000` and `backend-2:8000` with `round_robin` load balancing and health checks. Transferred over all rate limiting zones, security headers, and the `rustfs` upstream handler, mapping them to the `Duro_Tracker` API paths. Created a placeholder `d:\Duro_Tracker\caddy\Caddyfile` for runtime generation via docker entrypoint.
+
+### [2026-07-16 16:03:00] Driver Delivery Flow UI Overhaul
+- Action Taken: Rewrote DeliveryScreen.tsx to implement full dropdowns (native Modals) for selecting Buyers and Items. Added UI state and dynamic payload support for Ad-hoc cash sales. Added live Total Bill calculations (Price x Quantity).
+- Outcome: Driver interface is now scalable, supports walk-in customers, and reduces driver mental load.
+
+
+### [2026-07-16 16:30:00] Admin Buyer Save Bugfix
+- Action Taken: Fixed BuyerCreate schema in backend to accept balance_pending and cylinders_pending. Updated frontend BuyersScreen.tsx to send balance_pending and cylinders_pending instead of opening_balance and opening_cylinders.
+- Outcome: Fixed the 500 error that prevented admins from saving new buyers.
+
+
+### [2026-07-16 16:37:00] Admin Dashboard Web Crash Bugfix
+- Action Taken: Added missing outstanding_balance and todays_sales fields to backend DashboardMetrics response. Added undefined fallback checks (|| 0) to frontend DashboardScreen.tsx.
+- Outcome: Fixed the white screen crash on Web caused by calling .toLocaleString() on undefined variables in the admin dashboard.
+
+
+### [2026-07-16 16:42:00] Admin API CORS and 500 Bugfix
+- Action Taken: Removed organization_id from BuyerOut and ItemOut schemas because those tenant-specific models do not contain that field (they use PostgreSQL schemas instead).
+- Outcome: Fixed the 500 Internal Server Error during serialization, which consequently fixed the false-positive CORS error on the Web frontend.
+
+### [] End-to-End API Audit & Settings Config
+User requested to check and configure all admin and user functions.
+- Fixed Decimal/Float type mismatches in driver and purchase APIs (fixing hidden 500 errors).
+- Removed organization_id from ProviderOut and PurchaseEntryOut schemas to fix serialization crashes.
+- Wired up the 'Create New Driver' button in SettingsScreen to a new Modal and useCreateDriver hook.
+- Validated all endpoints with an e2e python script.
+
+### [2026-07-16 16:54:01] End-to-End API Audit & Settings Config
+User requested to check and configure all admin and user functions.
+- Fixed Decimal/Float type mismatches in driver and purchase APIs (fixing hidden 500 errors).
+- Removed organization_id from ProviderOut and PurchaseEntryOut schemas to fix serialization crashes.
+- Wired up the Create New Driver button in SettingsScreen to a new Modal and useCreateDriver hook.
+- Validated all endpoints with an e2e python script.

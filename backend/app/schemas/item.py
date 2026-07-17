@@ -8,6 +8,7 @@ class ItemBase(BaseModel):
     name: str
     category: ItemCategory
     price: float
+    capacity_kg: float | None = None
     initial_full: int = 0
     initial_empty: int = 0
     is_active: bool = True
@@ -21,12 +22,14 @@ class ItemUpdate(BaseModel):
     name: str | None = None
     category: ItemCategory | None = None
     price: float | None = None
+    capacity_kg: float | None = None
+    current_full: int | None = None
+    current_empty: int | None = None
     is_active: bool | None = None
 
 
 class ItemOut(ItemBase):
     id: UUID
-    organization_id: UUID
     current_full: int
     current_empty: int
 

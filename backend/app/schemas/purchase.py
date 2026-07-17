@@ -14,6 +14,5 @@ class PurchaseEntryCreate(PurchaseEntryBase):
 
 class PurchaseEntryOut(PurchaseEntryBase):
     id: UUID
-    organization_id: UUID
 
     model_config = ConfigDict(from_attributes=True)

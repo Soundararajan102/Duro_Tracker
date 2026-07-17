@@ -18,6 +18,7 @@ class Buyer(Base, BaseModelMixin):
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     type: Mapped[BuyerType] = mapped_column(Enum(BuyerType), nullable=False)
     address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    price_per_kg: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     
     # Financial debt
     balance_pending: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)

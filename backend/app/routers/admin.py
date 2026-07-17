@@ -2,16 +2,16 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_tenant_admin, get_tenant_db, get_platform_db
 from app.core.security import get_password_hash
-from app.models import Buyer, Item, User
+from app.models import Buyer, Item, User, Organization
 from app.models.enums import UserRole
 from app.schemas.buyer import BuyerCreate, BuyerOut, BuyerUpdate
 from app.schemas.item import ItemCreate, ItemOut, ItemUpdate
-from app.schemas.user import UserCreate, UserOut
+from app.schemas.user import UserCreate, UserOut, UserUpdate
 
 router = APIRouter(dependencies=[Depends(require_tenant_admin())])
 
@@ -25,6 +25,7 @@ async def create_item(
         name=item_in.name,
         category=item_in.category,
         price=item_in.price,
+        capacity_kg=item_in.capacity_kg,
         initial_full=item_in.initial_full,
         initial_empty=item_in.initial_empty,
         current_full=item_in.initial_full,
@@ -61,12 +62,30 @@ async def update_item(
         item.category = item_in.category
     if item_in.price is not None:
         item.price = item_in.price
+    if item_in.capacity_kg is not None:
+        item.capacity_kg = item_in.capacity_kg
+    if item_in.current_full is not None:
+        item.current_full = item_in.current_full
+    if item_in.current_empty is not None:
+        item.current_empty = item_in.current_empty
     if item_in.is_active is not None:
         item.is_active = item_in.is_active
 
     await db.commit()
     await db.refresh(item)
     return item
+
+
+@router.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_item(
+    item_id: uuid.UUID,
+    db: AsyncSession = Depends(get_tenant_db),
+):
+    item = await db.get(Item, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    await db.delete(item)
+    await db.commit()
 
 
 # --- BUYERS ---
@@ -80,6 +99,7 @@ async def create_buyer(
         phone=buyer_in.phone,
         type=buyer_in.type,
         address=buyer_in.address,
+        price_per_kg=buyer_in.price_per_kg,
         balance_pending=buyer_in.balance_pending,
         cylinders_pending=buyer_in.cylinders_pending,
     )
@@ -97,6 +117,50 @@ async def list_buyers(
     return result.all()
 
 
+@router.put("/buyers/{buyer_id}", response_model=BuyerOut)
+async def update_buyer(
+    buyer_id: uuid.UUID,
+    buyer_in: BuyerUpdate,
+    db: AsyncSession = Depends(get_tenant_db),
+):
+    buyer = await db.get(Buyer, buyer_id)
+    if not buyer:
+        raise HTTPException(status_code=404, detail="Buyer not found")
+
+    if buyer_in.name is not None:
+        buyer.name = buyer_in.name
+    if buyer_in.phone is not None:
+        buyer.phone = buyer_in.phone
+    if buyer_in.type is not None:
+        buyer.type = buyer_in.type
+    if buyer_in.address is not None:
+        buyer.address = buyer_in.address
+    if buyer_in.is_active is not None:
+        buyer.is_active = buyer_in.is_active
+    if buyer_in.price_per_kg is not None:
+        buyer.price_per_kg = buyer_in.price_per_kg
+    if buyer_in.balance_pending is not None:
+        buyer.balance_pending = buyer_in.balance_pending
+    if buyer_in.cylinders_pending is not None:
+        buyer.cylinders_pending = buyer_in.cylinders_pending
+
+    await db.commit()
+    await db.refresh(buyer)
+    return buyer
+
+
+@router.delete("/buyers/{buyer_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_buyer(
+    buyer_id: uuid.UUID,
+    db: AsyncSession = Depends(get_tenant_db),
+):
+    buyer = await db.get(Buyer, buyer_id)
+    if not buyer:
+        raise HTTPException(status_code=404, detail="Buyer not found")
+    await db.delete(buyer)
+    await db.commit()
+
+
 # --- DRIVERS ---
 @router.post("/drivers", response_model=UserOut)
 async def create_driver(
@@ -105,6 +169,15 @@ async def create_driver(
     db: AsyncSession = Depends(get_platform_db),
 ):
     org_id = current_user.organization_id
+    
+    org = await db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    # Check user limit
+    user_count = await db.scalar(select(func.count(User.id)).where(User.organization_id == org_id))
+    if user_count and user_count >= org.max_users:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="USER_LIMIT_REACHED")
     
     existing = await db.scalar(
         select(User).where(User.username == user_in.username, User.organization_id == org_id)
@@ -135,3 +208,42 @@ async def list_drivers(
         select(User).where(User.organization_id == org_id, User.role == UserRole.DRIVER)
     )
     return result.all()
+
+
+@router.put("/drivers/{driver_id}", response_model=UserOut)
+async def update_driver(
+    driver_id: uuid.UUID,
+    user_in: UserUpdate,
+    current_user: User = Depends(require_tenant_admin()),
+    db: AsyncSession = Depends(get_platform_db),
+):
+    org_id = current_user.organization_id
+    driver = await db.get(User, driver_id)
+    if not driver or driver.organization_id != org_id or driver.role != UserRole.DRIVER:
+        raise HTTPException(status_code=404, detail="Driver not found")
+
+    if user_in.is_active is not None:
+        driver.is_active = user_in.is_active
+    
+    if user_in.password is not None:
+        driver.password_hash = get_password_hash(user_in.password)
+
+    await db.commit()
+    await db.refresh(driver)
+    return driver
+
+
+@router.delete("/drivers/{driver_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_driver(
+    driver_id: uuid.UUID,
+    current_user: User = Depends(require_tenant_admin()),
+    db: AsyncSession = Depends(get_platform_db),
+):
+    org_id = current_user.organization_id
+    driver = await db.get(User, driver_id)
+    if not driver or driver.organization_id != org_id or driver.role != UserRole.DRIVER:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    await db.delete(driver)
+    await db.commit()
+

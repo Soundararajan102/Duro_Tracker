@@ -21,7 +21,7 @@ async def create_organization(
     org_in: OrganizationCreate,
     db: AsyncSession = Depends(get_platform_db),
 ):
-    org = Organization(name=org_in.name)
+    org = Organization(name=org_in.name, max_users=org_in.max_users)
     db.add(org)
     await db.commit()
     await db.refresh(org)

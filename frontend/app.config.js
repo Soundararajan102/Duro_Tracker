@@ -28,11 +28,11 @@ const androidIconBackground = "./assets/images/android-icon-background.png";
 const androidIconMonochrome = "./assets/images/android-icon-monochrome.png";
 
 const config = {
-  name: "Brolier 360",
-  slug: "brolier-360",
+  name: "Duro Tracker",
+  slug: "duro-tracker",
   version: "1.0.0",
   orientation: "portrait",
-  scheme: "brolier360",
+  scheme: "durotracker",
   userInterfaceStyle: "light",
   splash: {
     image: "./assets/Logo.png",
@@ -41,7 +41,7 @@ const config = {
   },
   ios: {
     supportsTablet: true,
-    bundleIdentifier: "com.anonymous.brolier360",
+    bundleIdentifier: "com.anonymous.durotracker",
   },
   android: {
     splash: {
@@ -59,7 +59,7 @@ const config = {
       "android.permission.ACCESS_FINE_LOCATION",
       "android.permission.READ_MEDIA_IMAGES",
     ],
-    package: "com.anonymous.brolier360",
+    package: "com.anonymous.durotracker",
   },
   web: {},
   plugins: [
@@ -74,7 +74,7 @@ const config = {
     [
       "expo-image-picker",
       {
-        photosPermission: "Allow Brolier 360 to choose item images for catalogue and shop items.",
+        photosPermission: "Allow Duro Tracker to choose item images for catalogue and shop items.",
       },
     ],
   ],

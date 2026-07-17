@@ -6,7 +6,7 @@ export function useDashboardMetrics() {
   return useQuery({
     queryKey: ['dashboard', 'metrics'],
     queryFn: async () => {
-      const response = await api.get<DashboardMetrics>('/admin/dashboard/metrics');
+      const response = await api.get<DashboardMetrics>('/dashboard/metrics');
       return response.data;
     }
   });

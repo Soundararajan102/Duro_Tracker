@@ -19,3 +19,9 @@
 1. **No Transit Inventory:** Do not implement "Truck vs Warehouse" tracking. The agency only cares about the absolute total physical Full/Empty cylinders.
 2. **No Driver Cash Settlements:** Do not track cash held by drivers. The financial flow is strictly macro: Total Paid to Providers vs Total Collected from Buyers.
 3. **Unified Pricing:** New connections and refills have the exact same price. Do not build separate pricing structures for them.
+
+## Multi-Tenancy & Tenant Context
+**CRITICAL RULE: RESPECT TENANT BOUNDARIES.**
+1. **Tenant Router:** Multi-tenancy is handled via PostgreSQL `search_path` routing using a schema-per-tenant architecture (`tenant_XXX`).
+2. **Global vs Tenant Models:** Models like `User` and `Organization` live in the `public` schema. All domain-specific models (Items, Buyers, Deliveries, Providers) live in the tenant schemas.
+3. **TenantContext Dependency:** API endpoints accessing tenant data must inject `TenantContext` via `Depends(get_tenant_context)`. Do not access tenant data without verifying the `organization_id` using `ctx.require_organization_id()`.

@@ -16,7 +16,6 @@ class ProviderUpdate(BaseModel):
 
 class ProviderOut(ProviderBase):
     id: UUID
-    organization_id: UUID
     balance_pending: float
     cylinders_pending: int
 
