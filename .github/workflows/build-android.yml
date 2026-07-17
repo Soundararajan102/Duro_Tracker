@@ -51,6 +51,7 @@ jobs:
       - name: Build Debug APK with Gradle
         working-directory: ./frontend/android
         run: |
+          echo "reactNativeArchitectures=arm64-v8a" >> gradle.properties
           chmod +x gradlew
           ./gradlew :app:assembleDebug --no-daemon
 
