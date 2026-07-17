@@ -420,3 +420,8 @@ User requested to check and configure all admin and user functions.
 - Integrated the printer modal into \DeliveryScreen.tsx\.
 - Implemented automatic receipt printing upon successful delivery mutation.
 
+
+### [2026-07-17] Reverted APK Optimization for Universal Compatibility
+- Modified \uild-android.yml\ to remove \eactNativeArchitectures=arm64-v8a\ to ensure the app is built as a universal APK for all device architectures.
+- Pushed changes to GitHub to trigger the action.
+

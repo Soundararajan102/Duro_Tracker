@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../../services/api';
+import { api } from '../../services/api';
 import PrinterSettingsModal from '../../components/PrinterSettingsModal';
 import { usePrinterStore } from '../../store/printer-store';
 import { printDeliveryReceipt, DeliveryReceiptData } from '../../utils/printer';

@@ -1602,3 +1602,7 @@ Copied the Caddy configuration template from `Duro_POS` and adapted it for `Duro
 User requested to use the exact same Bluetooth connection method from the Duro_POS project.
 Copied the \printer/index.ts\ engine from Duro_POS, adapted it to Duro_Tracker's \DeliveryEntry\ format, and built a \PrinterSettingsModal\ UI using NativeWind to match the app's styling. The \DeliveryScreen\ now auto-prints a receipt when a delivery is successful.
 
+
+### [2026-07-17] Reverted APK Optimization for Universal Compatibility
+User requested to trigger a build so the app is compatible with all mobiles. I removed the architecture restrictions from \uild-android.yml\ so React Native generates a Universal APK containing all ABIs (armeabi-v7a, arm64-v8a, x86, x86_64). Pushed the code, which successfully triggered the GitHub Actions build.
+
