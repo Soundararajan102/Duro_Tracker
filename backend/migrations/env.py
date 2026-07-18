@@ -22,66 +22,93 @@ from app.db.database import Base
 import app.models
 target_metadata = Base.metadata
 
-def include_object(object, name, type_, reflected, compare_to):
+def include_object_public(object, name, type_, reflected, compare_to):
     if type_ == "table" and name == "spatial_ref_sys":
+        return False
+    # Only include objects that are NOT in the 'tenant' schema
+    if getattr(object, "schema", None) == "tenant":
         return False
     return True
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+def include_object_tenant(object, name, type_, reflected, compare_to):
+    # Only include objects that ARE in the 'tenant' schema
+    if getattr(object, "schema", None) != "tenant":
+        return False
+    return True
 
+def do_run_migrations(connection: Connection, tenant_schemas: list[str]) -> None:
+    import os
+    alembic_mode = os.environ.get("ALEMBIC_MODE", "upgrade")
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    public_version_loc = os.path.join(base_dir, "migrations", "versions", "public")
+    tenant_version_loc = os.path.join(base_dir, "migrations", "versions", "tenant")
+    
+    if alembic_mode == "public":
+        context.configure(
+            connection=connection, 
+            target_metadata=target_metadata,
+            compare_type=True,
+            include_schemas=False,
+            include_object=include_object_public,
+            version_locations=[public_version_loc],
+        )
+        with context.begin_transaction():
+            context.run_migrations()
+    elif alembic_mode == "tenant":
+        tenant_conn = connection.execution_options(schema_translate_map={"tenant": "public"})
+        context.configure(
+            connection=tenant_conn, 
+            target_metadata=target_metadata,
+            compare_type=True,
+            include_schemas=False,
+            include_object=include_object_tenant,
+            schema_translate_map={"tenant": "public"},
+            version_locations=[tenant_version_loc],
+        )
+        with context.begin_transaction():
+            context.run_migrations()
+    else:
+        # 1. Run migrations for the public schema
+        os.environ["ALEMBIC_MODE"] = "public"
+        context.configure(
+            connection=connection, 
+            target_metadata=target_metadata,
+            compare_type=True,
+            include_schemas=False,
+            include_object=include_object_public,
+            version_table_schema="public",
+            version_locations=[public_version_loc, tenant_version_loc],
+        )
+        with context.begin_transaction():
+            context.run_migrations()
 
-def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
-    """
-    from app.core.config import Settings
-    settings = Settings()
-    url = settings.database_url
-    context.configure(
-        url=url,
-        target_metadata=target_metadata,
-        literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
-        compare_type=True,
-        include_schemas=True,
-        include_object=include_object,
-    )
-
-    with context.begin_transaction():
-        context.run_migrations()
-
-
-def do_run_migrations(connection: Connection) -> None:
-    context.configure(
-        connection=connection, 
-        target_metadata=target_metadata,
-        compare_type=True,
-        include_schemas=True,
-        include_object=include_object,
-    )
-
-    with context.begin_transaction():
-        context.run_migrations()
+        # 2. Run migrations for each active tenant schema
+        os.environ["ALEMBIC_MODE"] = "tenant"
+        for schema_name in tenant_schemas:
+            print(f"Migrating tenant schema: {schema_name}")
+            tenant_conn = connection.execution_options(schema_translate_map={"tenant": schema_name})
+            from sqlalchemy import text
+            tenant_conn.execute(text(f'SET search_path TO "{schema_name}"'))
+            
+            context.configure(
+                connection=tenant_conn, 
+                target_metadata=target_metadata,
+                compare_type=True,
+                include_schemas=False,
+                include_object=include_object_tenant,
+                version_table_schema=schema_name,
+                schema_translate_map={"tenant": schema_name},
+                version_locations=[public_version_loc, tenant_version_loc],
+            )
+            with context.begin_transaction():
+                context.run_migrations()
 
 
 async def run_async_migrations() -> None:
-    """In this scenario we need to create an Engine
-    and associate a connection with the context.
-
-    """
-
     from app.core.config import Settings
+    from app.db.tenant_schema import build_schema_name
+    from sqlalchemy import text
+    
     settings = Settings()
     
     configuration = config.get_section(config.config_ini_section, {})
@@ -94,16 +121,26 @@ async def run_async_migrations() -> None:
     )
 
     async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
+        # Query active tenants (check if table exists to avoid aborting the transaction)
+        tenant_schemas = []
+        if await connection.run_sync(lambda sync_conn: sync_conn.dialect.has_table(sync_conn, "organizations")):
+            result = await connection.execute(text("SELECT id FROM organizations"))
+            tenant_schemas = [build_schema_name(row[0]) for row in result.fetchall()]
+        
+        await connection.run_sync(do_run_migrations, tenant_schemas)
+        await connection.commit()
 
     await connectable.dispose()
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
-
     asyncio.run(run_async_migrations())
 
+
+def run_migrations_offline() -> None:
+    print("Offline migrations are not supported for multi-tenant configurations.")
+    import sys
+    sys.exit(1)
 
 if context.is_offline_mode():
     run_migrations_offline()

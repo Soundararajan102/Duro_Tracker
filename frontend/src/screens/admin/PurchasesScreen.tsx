@@ -11,6 +11,7 @@ export default function PurchasesScreen() {
   const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
   const [newProviderName, setNewProviderName] = useState('');
   const [newProviderPhone, setNewProviderPhone] = useState('');
+  const [newProviderGstin, setNewProviderGstin] = useState('');
 
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [itemId, setItemId] = useState('');
@@ -28,12 +29,17 @@ export default function PurchasesScreen() {
   const handleSaveProvider = () => {
     if (!newProviderName.trim()) return;
     createProvider.mutate(
-      { name: newProviderName.trim(), phone: newProviderPhone.trim() },
+      { 
+        name: newProviderName.trim(), 
+        phone: newProviderPhone.trim(),
+        gstin: newProviderGstin.trim()
+      },
       {
         onSuccess: () => {
           setIsProviderModalOpen(false);
           setNewProviderName('');
           setNewProviderPhone('');
+          setNewProviderGstin('');
         }
       }
     );
@@ -360,6 +366,16 @@ export default function PurchasesScreen() {
                   value={newProviderName}
                   onChangeText={setNewProviderName}
                   className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50"
+                />
+              </View>
+              <View>
+                <Text className="text-sm font-bold text-slate-700 mb-1">GSTIN</Text>
+                <TextInput 
+                  placeholder="e.g. 27AAAAA0000A1Z5"
+                  autoCapitalize="characters"
+                  value={newProviderGstin}
+                  onChangeText={setNewProviderGstin}
+                  className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50 uppercase"
                 />
               </View>
               <View>

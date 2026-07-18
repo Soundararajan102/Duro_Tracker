@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.buyer import BuyerOut
 
 
@@ -9,15 +9,15 @@ class DeliveryEntryCreate(BaseModel):
     buyer_id: UUID | None = None
     adhoc_buyer_name: str | None = None
     item_id: UUID
-    full_delivered: int = 0
-    empty_received: int = 0
-    cash_collected: float = 0
-    upi_collected: float = 0
+    full_delivered: int = Field(default=0, ge=0)
+    empty_received: int = Field(default=0, ge=0)
+    cash_collected: float = Field(default=0.0, ge=0.0)
+    upi_collected: float = Field(default=0.0, ge=0.0)
 
 
 class DeliveryEntryOut(BaseModel):
     id: UUID
-    driver_id: UUID
+    driver_id: UUID | None
     buyer_id: UUID | None
     adhoc_buyer_name: str | None = None
     item_id: UUID

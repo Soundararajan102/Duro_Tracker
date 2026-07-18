@@ -40,10 +40,14 @@ def _reuse_public_pg_enums(connection: Connection) -> Iterator[None]:
                     column.type.create_type = True
 
 
-def create_tenant_schema_and_tables(connection: Connection, schema_name: str) -> None:
-    from app.db.database import Base
+from sqlalchemy.orm import Session
 
-    safe = schema_name.replace('"', "")
+def create_tenant_schema_and_tables(session: Session, schema_name: str) -> None:
+    connection = session.connection()
+    from app.db.database import Base
+    from app.db.tenant_schema import assert_safe_schema_name
+
+    safe = assert_safe_schema_name(schema_name)
     connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{safe}"'))
     
     # We must explicitly set search_path so Enum types and tables resolve properly
@@ -51,9 +55,16 @@ def create_tenant_schema_and_tables(connection: Connection, schema_name: str) ->
 
     with _reuse_public_pg_enums(connection):
         tables = [t for t in Base.metadata.tables.values() if t.schema == "tenant"]
-        Base.metadata.create_all(connection, tables=tables)
+        connection_with_opts = connection.execution_options(schema_translate_map={"tenant": safe})
+        Base.metadata.create_all(connection_with_opts, tables=tables)
+
+    # Stamp alembic version for the tenant
+    connection.execute(text(f'CREATE TABLE IF NOT EXISTS "{safe}".alembic_version (version_num VARCHAR(32) NOT NULL, CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))'))
+    connection.execute(text(f'INSERT INTO "{safe}".alembic_version (version_num) VALUES (\'fcf867a39753\') ON CONFLICT DO NOTHING'))
 
 
-def drop_tenant_schema(connection: Connection, schema_name: str) -> None:
-    safe = schema_name.replace('"', "")
+def drop_tenant_schema(session: Session, schema_name: str) -> None:
+    connection = session.connection()
+    from app.db.tenant_schema import assert_safe_schema_name
+    safe = assert_safe_schema_name(schema_name)
     connection.execute(text(f'DROP SCHEMA IF EXISTS "{safe}" CASCADE'))

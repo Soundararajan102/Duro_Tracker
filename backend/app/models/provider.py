@@ -13,6 +13,7 @@ class Provider(Base, BaseModelMixin):
     id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, primary_key=True, default=uuid7, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[Optional[str]] = mapped_column(String(50))
+    gstin: Mapped[Optional[str]] = mapped_column(String(50))
     balance_pending: Mapped[float] = mapped_column(Numeric(12, 2), default=0.0)
     cylinders_pending: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

@@ -11,7 +11,7 @@ from app.core.security import get_password_hash
 from app.db.session import get_platform_db
 from app.models import Organization, User
 from app.models.enums import UserRole
-from app.db.tenant_metadata import drop_tenant_schema
+from app.db.tenant_metadata import drop_tenant_schema, create_tenant_schema_and_tables
 from app.db.tenant_schema import build_schema_name
 from sqlalchemy.exc import IntegrityError
 from app.schemas.organization import OrganizationCreate, OrganizationOut, OrganizationUpdate
@@ -45,6 +45,11 @@ async def create_organization(
     db.add(org)
     await db.commit()
     await db.refresh(org)
+    
+    # Provision the physical schema for this tenant
+    schema_name = build_schema_name(org.id)
+    await db.run_sync(create_tenant_schema_and_tables, schema_name)
+    
     return org
 
 

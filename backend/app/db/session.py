@@ -22,19 +22,25 @@ async def get_platform_db() -> AsyncGenerator[AsyncSession, None]:
             reset_active_tenant_schema(token)
 
 
+from app.db.database import get_engine, get_session_local
+
 async def get_db_for_org(organization_id: UUID) -> AsyncGenerator[AsyncSession, None]:
     """Open a session scoped to a tenant schema."""
-    async with get_session_local()() as db:
-        schema_name = await tenant_router.resolve_schema(db, organization_id)
-        if schema_name is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Organization has no tenant schema",
-            )
-        token = set_active_tenant_schema(schema_name)
+    async with get_session_local()() as temp_db:
+        schema_name = await tenant_router.resolve_schema(temp_db, organization_id)
+        
+    if schema_name is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization has no tenant schema",
+        )
+        
+    engine = get_engine().execution_options(schema_translate_map={"tenant": schema_name})
+    SessionMaker = get_session_local()
+    
+    token = set_active_tenant_schema(schema_name)
+    async with SessionMaker(bind=engine) as db:
         try:
-            if db.bind:
-                db.bind = db.bind.execution_options(schema_translate_map={"tenant": schema_name})
             await set_search_path(db, schema_name)
             yield db
         except Exception:

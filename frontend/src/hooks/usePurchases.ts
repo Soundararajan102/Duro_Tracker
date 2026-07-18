@@ -42,7 +42,7 @@ export function useCreateProvider() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (data: { name: string; phone?: string; is_active?: boolean }) => {
+    mutationFn: async (data: { name: string; phone?: string; gstin?: string; is_active?: boolean }) => {
       const response = await api.post<Provider>('/purchase/providers', data);
       return response.data;
     },

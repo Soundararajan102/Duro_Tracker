@@ -14,15 +14,15 @@ class DeliveryEntry(Base, BaseModelMixin):
     __table_args__ = {"schema": "tenant"}
 
     id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, primary_key=True, index=True, default=uuid7)
-    driver_id: Mapped[UUID] = mapped_column(
-        UUID_SQL_TYPE, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    driver_id: Mapped[UUID | None] = mapped_column(
+        UUID_SQL_TYPE, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True
     )
     buyer_id: Mapped[UUID | None] = mapped_column(
         UUID_SQL_TYPE, ForeignKey("tenant.buyers.id", ondelete="SET NULL"), index=True, nullable=True
     )
     adhoc_buyer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     item_id: Mapped[UUID] = mapped_column(
-        UUID_SQL_TYPE, ForeignKey("tenant.items.id", ondelete="CASCADE"), index=True, nullable=False
+        UUID_SQL_TYPE, ForeignKey("tenant.items.id"), index=True, nullable=False
     )
     idempotency_key: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
     

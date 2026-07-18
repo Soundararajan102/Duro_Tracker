@@ -19,13 +19,13 @@ logger = logging.getLogger(__name__)
 
 _SCHEMA_PREFIX = "tenant_"
 _MAX_SCHEMA_LEN = 63
-_SAFE_SCHEMA_RE = re.compile(r"^[a-z_][a-z0-9_]*$")
+_SAFE_SCHEMA_RE = re.compile(r"^tenant_[a-f0-9]{32}$")
 
 def assert_safe_schema_name(schema_name: str) -> str:
     if not schema_name or len(schema_name) > _MAX_SCHEMA_LEN:
         raise ValueError(f"Schema name must be 1-{_MAX_SCHEMA_LEN} chars.")
     if not _SAFE_SCHEMA_RE.match(schema_name):
-        raise ValueError("Schema name must match ^[a-z_][a-z0-9_]*$")
+        raise ValueError("Schema name must match ^tenant_[a-f0-9]{32}$")
     return schema_name
 
 

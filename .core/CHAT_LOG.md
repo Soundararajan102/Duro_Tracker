@@ -1693,3 +1693,46 @@ I fixed this by stripping the dynamic `shadow-sm` class name string and instead 
 **Agent:** Explained that Git History (git diff, git log) and the .core summaries allow the AI to seamlessly catch up on external changes.
 **User:** ok update .core and we push the code
 **Agent:** Updating .core and executing final git push.
+
+
+### [2026-07-18] Database Provisioning & Multi-Tenant Migrations Fixed
+- Fixed an issue where Alembic attempted to run tenant migrations against the public schema by separating `public` and `tenant` migrations into two separate directories (`migrations/versions/public` and `migrations/versions/tenant`).
+- Configured `alembic.ini` and `env.py` to use dynamic `version_locations` allowing Alembic to discover both sets of migrations while resolving dependencies.
+- Re-wrote `create_tenant_schema_and_tables` to stamp the new schema with the tenant head (`fcf867a39753`) so Alembic `upgrade heads` can safely resume from it on deployment.
+- Re-ran seed.py successfully and verified `alembic upgrade heads` does not throw duplicate schema/table errors.
+
+
+### [2026-07-18] Fixed Zombie Accounts Database Pitfall
+- Investigated the database using the Postgres MCP server to identify missing constraints or connection leaks.
+- Discovered that `User.organization_id` was configured with `ondelete='SET NULL'`. This meant that deleting an Organization would drop its schema but leave orphaned Tenant Admins and Drivers floating in the database indefinitely.
+- Updated the SQLAlchemy model to use `ondelete='CASCADE'` and issued an Alembic migration for the `public` schema.
+- Now, deleting an organization correctly purges all of its users, freeing up usernames and resources.
+
+
+### [2026-07-18] Fixed Backend Login Pitfalls
+- Investigated the authentication layer (`auth.py`) and discovered two subtle but impactful bugs.
+- **Bug 1:** The login system was not stripping trailing spaces from usernames. If a driver accidentally typed 'driver1 ' instead of 'driver1', the login would crash. Fixed by enforcing `.strip().lower()` processing before database lookup.
+- **Bug 2:** The `last_login_at` timestamp on the User model was never being populated anywhere in the codebase. Fixed the login route to update this field on successful JWT issuance so Admins can actually track active sessions.
+
+
+### [2026-07-18] Investigated Logic Pitfalls
+- **Action:** Investigated database constraints via Postgres MCP Server.
+- **Discovery:** Found that numeric fields in the database lack `CHECK (value >= 0)` constraints, and the Pydantic API schemas do not enforce `Field(ge=0)`. This leaves the system extremely vulnerable to 'Negative Value' exploits where a driver could submit `-10` for `full_delivered`, tricking the backend into adding inventory and erasing buyer debt.
+- **Next Steps:** Recommend enforcing `Field(ge=0)` across all Pydantic creation schemas.
+
+
+### [2026-07-18 12:52:48] User provided error screenshot
+- **User:** Uploaded screenshot of TypeError: Cannot read property 'EventEmitter' of undefined in Expo.
+- **Agent Actions:** Investigated dependencies (`react-native-ble-plx`, `react-native-reanimated`, `expo-modules-core`). Found that `globalThis.expo.EventEmitter` is failing because the running native Dev Client is outdated compared to the JS bundle (Expo SDK 54).
+- **Commands Run:** `npm list`, searched node_modules.
+- **Next Steps:** Recommend rebuilding the Android APK.
+
+### [2026-07-18 13:27:27] Added GSTIN Field to Provider
+- **User Request:** Add a new text box for GSTIN below the name field when creating a new provider in Purchases screen.
+- **Agent Actions:** 
+  - Updated backend SQLAlchemy Provider model to include gstin string column.
+  - Updated Pydantic schemas (ProviderBase, ProviderCreate, ProviderUpdate).
+  - Generated Alembic migration and successfully upgraded tenant schemas using seed.py.
+  - Updated frontend Provider API type and useCreateProvider hook.
+  - Added 
+ewProviderGstin state and text input UI in PurchasesScreen.tsx.

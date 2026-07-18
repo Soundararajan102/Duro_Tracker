@@ -90,6 +90,7 @@ export interface Provider {
   id: string;
   name: string;
   phone?: string;
+  gstin?: string;
   balance_pending: number;
   cylinders_pending: number;
   is_active: boolean;

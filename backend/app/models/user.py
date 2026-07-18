@@ -43,7 +43,7 @@ class User(Base, BaseModelMixin):
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), nullable=False)
     organization_id: Mapped[UUID | None] = mapped_column(
         UUID_SQL_TYPE,
-        ForeignKey("organizations.id", ondelete="SET NULL"),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
         index=True,
         nullable=True,
     )

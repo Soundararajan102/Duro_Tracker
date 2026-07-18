@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict
 class ProviderBase(BaseModel):
     name: str
     phone: str | None = None
+    gstin: str | None = None
     is_active: bool = True
 
 class ProviderCreate(ProviderBase):
@@ -12,6 +13,7 @@ class ProviderCreate(ProviderBase):
 class ProviderUpdate(BaseModel):
     name: str | None = None
     phone: str | None = None
+    gstin: str | None = None
     is_active: bool | None = None
 
 class ProviderOut(ProviderBase):

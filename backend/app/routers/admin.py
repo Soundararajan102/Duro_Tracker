@@ -117,7 +117,14 @@ async def delete_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     await db.delete(item)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=400, 
+            detail="Cannot delete item because it has associated ledger history. Please deactivate it instead."
+        )
 
 
 # --- BUYERS ---

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from app.models.enums import BuyerType
 
 
@@ -9,7 +9,7 @@ class BuyerBase(BaseModel):
     phone: str | None = None
     type: BuyerType
     address: str | None = None
-    price_per_kg: float | None = None
+    price_per_kg: float | None = Field(default=None, ge=0.0)
     is_active: bool = True
 
 
@@ -23,7 +23,7 @@ class BuyerUpdate(BaseModel):
     phone: str | None = None
     type: BuyerType | None = None
     address: str | None = None
-    price_per_kg: float | None = None
+    price_per_kg: float | None = Field(default=None, ge=0.0)
     balance_pending: float | None = None
     cylinders_pending: int | None = None
     is_active: bool | None = None

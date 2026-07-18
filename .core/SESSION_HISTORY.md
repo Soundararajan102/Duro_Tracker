@@ -75,7 +75,8 @@
 
 ### [2026-07-13 21:55:00] Planning Data Models & Multi-Tenancy
 - **User Request:** "in this project to like the Duro_POS the user are like muliteneant same as in the Duro_POS... superadmin -our full control, admin - the clients, users or delevires - to enter the data bill"
-- **Action Taken:** Queried the Duro_POS database via the postgres MCP server. Found that Duro_POS only had a ole column in the users table without true tenant-level foreign keys. Proposed a true multi-tenant architecture with an gencies table in implementation_plan.md and appended this concept to IDEA.md.
+- **Action Taken:** Queried the Duro_POS database via the postgres MCP server. Found that Duro_POS only had a 
+ole column in the users table without true tenant-level foreign keys. Proposed a true multi-tenant architecture with an gencies table in implementation_plan.md and appended this concept to IDEA.md.
 
 ### [2026-07-13 22:04:00] Schema Enhancements and Hierarchy Check
 - **User Request:** Supplied schema enhancements (products table, split deliveries, refactored inventory) and asked to confirm if the organization tenant hierarchy is Admin -> User, similar to Duro_POS. Instructed to not proceed yet.
@@ -422,7 +423,8 @@ User requested to check and configure all admin and user functions.
 
 
 ### [2026-07-17] Reverted APK Optimization for Universal Compatibility
-- Modified \uild-android.yml\ to remove \eactNativeArchitectures=arm64-v8a\ to ensure the app is built as a universal APK for all device architectures.
+- Modified \uild-android.yml\ to remove \
+eactNativeArchitectures=arm64-v8a\ to ensure the app is built as a universal APK for all device architectures.
 - Pushed changes to GitHub to trigger the action.
 
 
@@ -466,7 +468,8 @@ User requested to check and configure all admin and user functions.
 ### [2026-07-17] Comprehensive NativeWind Context Crash Fix
 - Further investigated the NativeWind 'Couldn\\'t find a navigation context' error which still occurred.
 - Determined that ANY dynamic class names (e.g., using \className={\...\}\ with ternary operators), as well as color-opacity shorthands (e.g., \g-slate-900/50\) and static shadow utilities (\shadow-sm\), can trigger the NativeWind v4 CSS-interop race condition.
-- Executed a comprehensive cleanup of BuyersScreen.tsx: removed all \shadow-\ utilities, replaced all dynamic template literal classNames with static strings + inline \style\ overrides, and replaced color opacities with \gba()\ inline styles.
+- Executed a comprehensive cleanup of BuyersScreen.tsx: removed all \shadow-\ utilities, replaced all dynamic template literal classNames with static strings + inline \style\ overrides, and replaced color opacities with \
+gba()\ inline styles.
 
 
 ### [2026-07-17 06:40:00] Fixed NativeWind crash globally
@@ -528,3 +531,70 @@ User requested to check and configure all admin and user functions.
 - **Action:** Fixed markdown formatting (corrupted backticks) in CHAT_LOG.md.
 - **Action:** Deleted unused scratch script 	est_admin_login.py.
 - **Action:** Set guidelines for handing the project off to a friend to implement PDF generation, ensuring they utilize .core documentation and git history.
+
+
+### [2026-07-18 04:47:00] Fixed Alembic Multi-Tenant Migrations
+- **Action:** Split Alembic histories into \migrations/versions/public\ and \migrations/versions/tenant\ to separate the heads.
+- **Action:** Updated \lembic.ini\ and \env.py\ to use dynamic \ersion_locations\ targeting based on the schema loop.
+- **Action:** Fixed create_tenant_schema_and_tables to take the \Session\ instead of \Connection\ and added manual \lembic_version\ stamping inside tenant provision so Alembic knows the current tenant version.
+- **Impact:** Alembic upgrade heads now successfully dynamically looks up both active tenants and the public structure and applies migrations safely without colliding or throwing \InvalidSchemaNameError\.
+
+
+### [2026-07-18 10:40:00] Fixed Zombie User Accounts Pitfall
+- **Request:** Investigate backend for pitfalls using postgres MCP server.
+- **Action:** Found that \User.organization_id\ was using \ondelete='SET NULL'\. This would leave zombie users in the database when an organization is deleted by the Super Admin.
+- **Action:** Updated \User.organization_id\ to use \ondelete='CASCADE'\ in \user.py\.
+- **Action:** Generated and applied alembic migration to drop the old foreign key and create the new cascading foreign key on the \public.users\ table.
+- **Impact:** Deleting an organization now perfectly cascades and destroys all tenant admins and drivers associated with it, preventing orphaned logins, resource leaks, and globally locked usernames.
+
+
+### [2026-07-18 10:45:00] Fixed Backend Login Pitfalls
+- **Action:** Inspected \uth.py\ for logic flaws during authentication.
+- **Action:** Fixed username matching to strictly use \.strip().lower()\ to prevent accidental trailing spaces from failing logins.
+- **Action:** Implemented the missing \last_login_at\ update logic by tracking \unc.now()\ upon successful token generation so Super Admins can monitor active driver sessions.
+- **Impact:** Authentication is now far more robust against human input errors, and analytics tracking is actively populated for the first time.
+
+
+### [2026-07-18 10:55:00] Fixed Negative Value Pitfalls in Schemas
+- **Action:** Secured the API layer against negative value exploits.
+- **Details:** Imported \Field\ from Pydantic and applied \ge=0\ (greater than or equal to zero) constraints to all prices, capacities, and transaction quantities (delivered, received, collected) across \delivery.py\, \purchase.py\, \item.py\, and \uyer.py\.
+- **Impact:** Eradicated the massive logic pitfall where drivers could submit negative quantities to artificially inflate inventory or erase buyer debt.
+
+
+### [2026-07-18 11:05:00] Fixed Delivery History Ledger Deletion Pitfall
+- **Action:** Investigated multi-tenant isolation and user management.
+- **Discovery:** Found that \driver_id\ on the \DeliveryEntry\ model was set to \ondelete='CASCADE'\. This meant that if a Tenant Admin fired/deleted a driver, their entire history of deliveries (thousands of records) would be permanently wiped from the ledger, completely breaking the financial accounting.
+- **Action:** Updated \DeliveryEntry.driver_id\ to be \
+ullable=True\ with \ondelete='SET NULL'\.
+- **Action:** Updated Alembic's \env.py\ to dynamically inject \SET search_path TO <tenant_schema>\ during tenant migrations so that raw DDL operations (like dropping constraints) work seamlessly across dynamic schemas.
+- **Impact:** Now, deleting a driver perfectly preserves all of their past deliveries, keeping the organization's financial ledger intact.
+
+
+### [2026-07-18 11:20:00] Fixed Item Deletion Ledger Wipe Pitfall
+- **Action:** Inspected backend isolation using the postgres MCP server and performed a deep audit of cascading deletes.
+- **Discovery:** Found that deleting an \Item\ also wiped all historical \DeliveryEntry\ records because \item_id\ had \ondelete='CASCADE'\.
+- **Action:** Removed \ondelete='CASCADE'\ from \DeliveryEntry.item_id\ via a new Alembic migration to enforce Postgres's default \RESTRICT\ behavior.
+- **Action:** Updated \delete_item\ in \dmin.py\ to catch the resulting \IntegrityError\ and return a user-friendly 400 error prompting the admin to deactivate the item instead of deleting it if it has ledger history.
+- **Impact:** Eradicated another catastrophic vector for silently destroying the organization's financial ledger.
+
+
+### [2026-07-18 12:15:00] Fixed AsyncSession execution_options bug
+- **Issue:** The backend crashed with `AttributeError: 'AsyncSession' object has no attribute 'execution_options'` when attempting to POST to `/api/v1/admin/items`.
+- **Cause:** In an earlier session, I refactored `db.bind.execution_options()` to `db.execution_options()` inside `session.py` (`get_db_for_org`), which is not supported by the version of SQLAlchemy `AsyncSession` being used.
+- **Fix:** Reverted the syntax back to `db.bind = db.bind.execution_options(schema_translate_map=...)`.
+
+
+### [2026-07-18 12:30:00] Fixed schema_translate_map execution_options
+- **Issue:** The backend crashed with `UndefinedTableError: relation 'tenant.items' does not exist` because the previous fix for the AsyncSession execution_options failed to apply the schema_translate_map properly.
+- **Cause:** In SQLAlchemy 2.0 with Asyncio, you cannot assign execution_options directly to db.bind if it evaluates to None, which resulted in queries attempting to execute on the non-existent literal 'tenant' schema instead of dynamically mapping it.
+- **Fix:** Rewrote get_db_for_org in session.py to instantiate a brand new Session using get_session_local()(bind=get_engine().execution_options(schema_translate_map=...)). This explicitly passes the options to the session maker during instantiation.
+
+
+### [2026-07-18 12:52:33] Investigated EventEmitter Crash
+- **Issue:** Frontend crashed on startup with TypeError: Cannot read property 'EventEmitter' of undefined.
+- **Root Cause:** The JS bundle expects `globalThis.expo` (injected by the native Expo runtime) to be present, but it's missing or outdated in the currently running Dev Client. This happens when native packages are added/updated (like Expo SDK 54 or `react-native-ble-plx`) without rebuilding the native Android app.
+- **Action:** Instructed user to rebuild the development client using `npm run build:apk`.
+
+### [2026-07-18 13:27:27] Feature: Provider GSTIN Field
+- **User Request:** Add GSTIN text input when creating a new provider.
+- **Action Taken:** Added gstin to Provider SQLAlchemy model, ran Alembic migration, and seeded tenant DBs. Updated frontend PurchasesScreen.tsx modal to include GSTIN text box below Provider Name.

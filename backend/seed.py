@@ -41,6 +41,11 @@ async def main():
             session.add(org)
             await session.commit()
             
+            from app.db.tenant_metadata import create_tenant_schema_and_tables
+            from app.db.tenant_schema import build_schema_name
+            schema_name = build_schema_name(org.id)
+            await session.run_sync(create_tenant_schema_and_tables, schema_name)
+            
             print("Creating tenant admin...")
             tenant_admin = User(
                 username="admin",
