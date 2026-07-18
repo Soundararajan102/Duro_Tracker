@@ -67,6 +67,23 @@ def do_run_migrations(connection: Connection, tenant_schemas: list[str]) -> None
         )
         with context.begin_transaction():
             context.run_migrations()
+    elif alembic_mode == "tenant_upgrade":
+        schema_name = os.environ.get("CURRENT_TENANT")
+        tenant_conn = connection.execution_options(schema_translate_map={"tenant": schema_name})
+        from sqlalchemy import text
+        tenant_conn.execute(text(f'SET search_path TO "{schema_name}"'))
+        context.configure(
+            connection=tenant_conn, 
+            target_metadata=target_metadata,
+            compare_type=True,
+            include_schemas=False,
+            include_object=include_object_tenant,
+            version_table_schema=schema_name,
+            schema_translate_map={"tenant": schema_name},
+            version_locations=[tenant_version_loc],
+        )
+        with context.begin_transaction():
+            context.run_migrations()
     else:
         # 1. Run migrations for the public schema
         os.environ["ALEMBIC_MODE"] = "public"

@@ -19,7 +19,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column('providers', sa.Column('gstin', sa.String(length=50), nullable=True), schema='tenant')
+    op.add_column('providers', sa.Column('gstin', sa.String(length=50), nullable=True))
 
 def downgrade() -> None:
-    op.drop_column('providers', 'gstin', schema='tenant')
+    op.drop_column('providers', 'gstin')
