@@ -25,3 +25,8 @@
 1. **Tenant Router:** Multi-tenancy is handled via PostgreSQL `search_path` routing using a schema-per-tenant architecture (`tenant_XXX`).
 2. **Global vs Tenant Models:** Models like `User` and `Organization` live in the `public` schema. All domain-specific models (Items, Buyers, Deliveries, Providers) live in the tenant schemas.
 3. **TenantContext Dependency:** API endpoints accessing tenant data must inject `TenantContext` via `Depends(get_tenant_context)`. Do not access tenant data without verifying the `organization_id` using `ctx.require_organization_id()`.
+
+
+## 🚨 MANDATORY ACTION: GIT PUSHES & GITHUB ACTIONS
+**CRITICAL RULE: NEVER push to git or trigger GitHub Actions unless the user EXPLICITLY asks you to.**
+The GitHub action should only be triggered manually (workflow_dispatch) to avoid wasting CI minutes.

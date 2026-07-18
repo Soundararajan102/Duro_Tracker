@@ -1736,3 +1736,37 @@ I fixed this by stripping the dynamic `shadow-sm` class name string and instead 
   - Updated frontend Provider API type and useCreateProvider hook.
   - Added 
 ewProviderGstin state and text input UI in PurchasesScreen.tsx.
+
+### [2026-07-18 13:45:08] Pushed Changes and Triggered Debug APK Build
+- **User Request:** Initiate a push to git and trigger a debug development APK build in Actions.
+- **Agent Actions:** 
+  - Modified .github/workflows/build-android.yml to run ./gradlew :app:assembleDebug instead of ssembleRelease.
+  - Renamed the workflow and artifact outputs to reflect 'Debug APK'.
+  - Committed all changes (including the GSTIN feature and multi-tenant DB migrations) to git.
+  - Pushed to main, which automatically triggered the GitHub Actions workflow in the cloud.
+
+### [2026-07-18 13:49:28] Fixed Alembic Tenant Migrations
+- **User Request:** Addressed UndefinedColumnError for gstin on providers when testing the API.
+- **Agent Actions:** 
+  - Identified that multi-tenant schemas were not being automatically upgraded by seed.py.
+  - Modified env.py and the migration script to correctly support dynamic tenant upgrades via search_path.
+  - Created 
+un_migrations.py to programmatically discover and upgrade all existing tenant schemas.
+  - Successfully ran 
+un_migrations.py locally to apply the missing gstin column to the existing tenant DB.
+  - Committed and pushed these multi-tenant migration fixes to main.
+
+### [2026-07-18 13:54:17] Rule Update: Git Pushes and Actions
+- **User Request:** Stop pushing automatically and only trigger builds when explicitly requested.
+- **Agent Actions:** 
+  - Modified .github/workflows/build-android.yml to remove the on: push trigger. It now ONLY runs on workflow_dispatch (manual trigger).
+  - Added a strict rule to .core/RULES.md prohibiting automatic git pushes without explicit user command.
+
+### [2026-07-18 14:23:11] Foundation Setup: PDF Generation
+- **User Request:** Port the PDF generation capabilities from Duro_POS to Duro_Tracker for future reporting needs.
+- **Agent Actions:** 
+  - Verified that all required libraries (
+eportlab, pdf2, pypdf, uharfbuzz) were already in pyproject.toml.
+  - Copied ackend/app/services/reports/ and ackend/app/assets/fonts/ from Duro_POS into the Duro_Tracker project.
+  - Refactored pdf.py and queries.py to safely stub out Duro_POS specific models (Retailer, Bill, etc.) to prevent ImportError crashes in the Duro_Tracker backend.
+  - Successfully verified that the FastAPI server loads without crashing with the new modules intact.

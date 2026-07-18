@@ -598,3 +598,16 @@ ullable=True\ with \ondelete='SET NULL'\.
 ### [2026-07-18 13:27:27] Feature: Provider GSTIN Field
 - **User Request:** Add GSTIN text input when creating a new provider.
 - **Action Taken:** Added gstin to Provider SQLAlchemy model, ran Alembic migration, and seeded tenant DBs. Updated frontend PurchasesScreen.tsx modal to include GSTIN text box below Provider Name.
+
+### [2026-07-18 13:45:08] Deployment: Triggered Debug APK Build via GitHub Actions
+- **Action Taken:** Updated the GitHub Actions workflow (uild-android.yml) to compile a Debug Development Client (ssembleDebug). Committed all local backend/frontend changes and pushed to origin/main, successfully triggering the CI pipeline.
+
+### [2026-07-18 13:49:28] Bugfix: Multi-tenant Migrations
+- **Action Taken:** Fixed an issue where Alembic migrations were not applying to dynamically mapped tenant schemas. Created 
+un_migrations.py and modified env.py to upgrade all tenant schemas. Successfully added the missing gstin column to the existing tenant DB.
+
+### [2026-07-18 13:54:17] System Update: Disabled Auto-CI
+- **Action Taken:** Removed push trigger from uild-android.yml to save CI minutes. Added rule to RULES.md strictly prohibiting git pushes unless requested.
+
+### [2026-07-18 14:23:11] Feature Foundation: PDF Generation Ported
+- **Action Taken:** Transplanted PDF generation tools, logic, and fonts from the Duro_POS repository into Duro_Tracker. Stripped domain-specific logic to keep the generic PDF builders usable for when specific reports are decided.
