@@ -8,6 +8,7 @@ from app.db.database import Base
 
 if TYPE_CHECKING:
     from .purchase_entry import PurchaseEntry
+    from .provider import Provider
 
 class PurchaseBill(Base, BaseModelMixin):
     __tablename__ = "purchase_bills"
@@ -24,3 +25,4 @@ class PurchaseBill(Base, BaseModelMixin):
     
     # Relationship to entries
     entries: Mapped[list["PurchaseEntry"]] = relationship("PurchaseEntry", back_populates="bill", cascade="all, delete-orphan", lazy="selectin")
+    provider: Mapped["Provider"] = relationship("Provider")

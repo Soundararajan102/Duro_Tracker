@@ -21,6 +21,7 @@ def main():
     print("Upgrading public schema...")
     os.environ["ALEMBIC_MODE"] = "public"
     alembic_cfg = Config("alembic.ini")
+    alembic_cfg.set_main_option("version_locations", "migrations/versions/public")
     command.upgrade(alembic_cfg, "head")
     
     # Upgrade tenant schemas
@@ -29,6 +30,7 @@ def main():
         os.environ["ALEMBIC_MODE"] = "tenant_upgrade"
         os.environ["CURRENT_TENANT"] = schema
         alembic_cfg = Config("alembic.ini")
+        alembic_cfg.set_main_option("version_locations", "migrations/versions/tenant")
         command.upgrade(alembic_cfg, "head")
 
 if __name__ == "__main__":

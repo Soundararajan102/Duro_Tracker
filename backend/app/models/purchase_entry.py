@@ -4,6 +4,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import BaseModelMixin
 from ..core.ids import UUID_SQL_TYPE, uuid7
 from app.db.database import Base
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .purchase_bill import PurchaseBill
+    from .item import Item
 
 class PurchaseEntry(Base, BaseModelMixin):
     __tablename__ = "purchase_entries"
@@ -19,3 +24,4 @@ class PurchaseEntry(Base, BaseModelMixin):
     total_cost: Mapped[float] = mapped_column(Numeric(12, 2), default=0.0)
     
     bill: Mapped["PurchaseBill"] = relationship("PurchaseBill", back_populates="entries")
+    item: Mapped["Item"] = relationship("Item")

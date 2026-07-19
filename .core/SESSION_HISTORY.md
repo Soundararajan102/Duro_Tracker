@@ -673,3 +673,43 @@ un_migrations.py and modified env.py to upgrade all tenant schemas. Successfully
 
 ### [2026-07-19 15:11:43] Added requirements.txt
 - Generated backend/requirements.txt using uv to allow seamless local setup on other machines.
+
+### [2026-07-19 17:57:00] Add HSN Code and GST % to Items
+- Updated Item model and schema with hsn_code and gst_percent.
+- Created Alembic migration (tenant/e123456789ab_add_hsn_and_gst_to_items.py) and stamped/upgraded DB.
+- Updated frontend api.ts and ItemsScreen.tsx to support the new fields.
+
+### [2026-07-19 18:03:00] Bugfix: HSN Code and GST % saving issue
+- Updated app/routers/admin.py to include hsn_code and gst_percent in the create_item and update_item endpoints so the data is actually saved to the database.
+
+### [2026-07-19 19:10:00] Added Purchase PDF Report
+- Implemented PurchasePdfReport using ReportLab in backend.
+- Created GET /api/v1/admin/reports/purchases/pdf endpoint.
+- Updated SettingsScreen to include a Generate Reports modal with checkboxes, date filters, and provider selection.
+
+### [2026-07-19 19:15:00] Bugfix: PDF Download 401 and Date Picker
+- Replaced WebBrowser.openBrowserAsync with authenticated axios blob download and FileSystem/Sharing for native to fix 401 Unauthorized errors on PDF generation.
+- Replaced standard TextInput with HTML5 <input type='date'> for date selection on Web.
+
+### [2026-07-19 19:16:00] Bugfix: expo-file-system deprecation
+- Fixed 'downloadAsync' deprecation warning in Expo SDK 54 by changing the import from 'expo-file-system' to 'expo-file-system/legacy'.
+
+### [2026-07-19 19:22:00] Bugfix: 500 Internal Server Error
+- Added missing SQLAlchemy relationships (provider in PurchaseBill and item in PurchaseEntry) to fix selectinload errors in the generate_purchase_pdf_endpoint.
+
+### [2026-07-19 19:26:00] Native Date Picker
+- Installed @react-native-community/datetimepicker and configured app.config.js.
+- Updated SettingsScreen to use DateTimePicker natively while preserving the HTML date input for Web clients.
+
+### [2026-07-19 19:35:00] Bugfix: Removed Native Date Picker
+- Uninstalled @react-native-community/datetimepicker to fix native binary build issues.
+- Created a pure Javascript CustomDatePickerModal in SettingsScreen using date-fns to ensure cross-platform compatibility without rebuilding the dev client.
+
+### [2026-07-19 19:43:00] Bugfix: 500 Internal Server Error in PDF Report
+- Added missing selectinload, PurchaseBill, PurchaseEntry, and Provider imports to app/routers/admin.py to fix NameError during PDF generation endpoint execution.
+
+### [2026-07-19 19:48:00] Bugfix: 500 Internal Server Error in PDF Report
+- Added missing and_ import to app/routers/admin.py.
+
+### [2026-07-19 20:03:00] Bugfix: PDF Report Header Spacing
+- Adjusted ParagraphStyle leading and spaceAfter for title_style and header_style in purchase_pdf.py to fix overlapping text in the company details section.

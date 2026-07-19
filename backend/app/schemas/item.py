@@ -9,6 +9,8 @@ class ItemBase(BaseModel):
     category: ItemCategory
     price: float = Field(ge=0.0)
     capacity_kg: float | None = Field(default=None, ge=0.0)
+    hsn_code: str | None = Field(default=None, pattern=r'^\d+$', description="HSN Code containing only digits")
+    gst_percent: float | None = Field(default=None, ge=0.0, description="GST Percentage")
     initial_full: int = Field(default=0, ge=0)
     initial_empty: int = Field(default=0, ge=0)
     is_active: bool = True
@@ -23,6 +25,8 @@ class ItemUpdate(BaseModel):
     category: ItemCategory | None = None
     price: float | None = Field(default=None, ge=0.0)
     capacity_kg: float | None = Field(default=None, ge=0.0)
+    hsn_code: str | None = Field(default=None, pattern=r'^\d+$')
+    gst_percent: float | None = Field(default=None, ge=0.0)
     current_full: int | None = Field(default=None, ge=0)
     current_empty: int | None = Field(default=None, ge=0)
     is_active: bool | None = None

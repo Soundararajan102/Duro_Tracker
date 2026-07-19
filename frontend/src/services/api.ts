@@ -95,3 +95,14 @@ export const superAdminApi = {
     return response.data;
   }
 };
+
+export const adminReportsApi = {
+  getPurchasePdfUrl: (dateMode: string, startDate?: string, endDate?: string, providerIds?: string) => {
+    const params = new URLSearchParams();
+    params.append('date_mode', dateMode);
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    if (providerIds) params.append('provider_ids', providerIds);
+    return `${API_BASE_URL}/admin/reports/purchases/pdf?${params.toString()}`;
+  }
+};
