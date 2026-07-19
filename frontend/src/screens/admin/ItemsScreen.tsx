@@ -17,12 +17,16 @@ export default function ItemsScreen() {
   const [newCapacity, setNewCapacity] = useState('');
   const [newFull, setNewFull] = useState('');
   const [newEmpty, setNewEmpty] = useState('');
+  const [newHsnCode, setNewHsnCode] = useState('');
+  const [newGstPercent, setNewGstPercent] = useState('');
 
   // Edit State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editCapacity, setEditCapacity] = useState('');
+  const [editHsnCode, setEditHsnCode] = useState('');
+  const [editGstPercent, setEditGstPercent] = useState('');
 
   const handleCreate = () => {
     if (!newName.trim()) return;
@@ -31,6 +35,8 @@ export default function ItemsScreen() {
       category: 'commercial',
       price: 0,
       capacity_kg: parseFloat(newCapacity) || 0,
+      hsn_code: newHsnCode.trim() || undefined,
+      gst_percent: newGstPercent ? parseFloat(newGstPercent) : undefined,
       initial_full: parseInt(newFull) || 0,
       initial_empty: parseInt(newEmpty) || 0,
       is_active: true
@@ -41,6 +47,8 @@ export default function ItemsScreen() {
         setNewCapacity('');
         setNewFull('');
         setNewEmpty('');
+        setNewHsnCode('');
+        setNewGstPercent('');
       }
     });
   };
@@ -49,6 +57,8 @@ export default function ItemsScreen() {
     setEditId(item.id);
     setEditName(item.name);
     setEditCapacity(item.capacity_kg ? item.capacity_kg.toString() : '');
+    setEditHsnCode(item.hsn_code || '');
+    setEditGstPercent(item.gst_percent ? item.gst_percent.toString() : '');
     setIsEditModalOpen(true);
   };
 
@@ -61,6 +71,8 @@ export default function ItemsScreen() {
         category: 'commercial',
         price: 0,
         capacity_kg: parseFloat(editCapacity) || 0,
+        hsn_code: editHsnCode.trim() || undefined,
+        gst_percent: editGstPercent ? parseFloat(editGstPercent) : undefined,
       }
     }, {
       onSuccess: () => {
@@ -97,7 +109,11 @@ export default function ItemsScreen() {
             <View className="flex flex-row items-start justify-between gap-2">
               <View className="flex-1 flex flex-col gap-0.5">
                 <Text className="text-slate-900 font-bold text-sm" numberOfLines={1}>{item.name}</Text>
-                {item.capacity_kg ? <Text className="text-slate-500 text-[11px] font-medium">{item.capacity_kg} kg</Text> : null}
+                <View className="flex flex-row gap-2 items-center mt-1">
+                  {item.capacity_kg ? <Text className="text-slate-500 text-[11px] font-medium">{item.capacity_kg} kg</Text> : null}
+                  {item.hsn_code ? <Text className="text-slate-400 text-[10px] bg-slate-100 px-1.5 py-0.5 rounded-md">HSN: {item.hsn_code}</Text> : null}
+                  {item.gst_percent ? <Text className="text-slate-400 text-[10px] bg-slate-100 px-1.5 py-0.5 rounded-md">GST: {item.gst_percent}%</Text> : null}
+                </View>
               </View>
             </View>
 
@@ -215,6 +231,29 @@ export default function ItemsScreen() {
                 </View>
               </View>
 
+              <View className="flex flex-row gap-3 mt-2">
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-slate-700 mb-1">HSN Code</Text>
+                  <TextInput 
+                    placeholder="271119"
+                    keyboardType="numeric"
+                    value={newHsnCode}
+                    onChangeText={setNewHsnCode}
+                    className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50 font-mono"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-slate-700 mb-1">GST (%)</Text>
+                  <TextInput 
+                    placeholder="18"
+                    keyboardType="numeric"
+                    value={newGstPercent}
+                    onChangeText={setNewGstPercent}
+                    className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50 font-mono"
+                  />
+                </View>
+              </View>
+
               <View className="bg-amber-50 p-4 rounded-xl border border-amber-100 mt-2">
                 <Text className="text-sm font-bold text-amber-900 mb-3">Initial Stock Entry</Text>
                 <View className="flex flex-row gap-3">
@@ -285,6 +324,29 @@ export default function ItemsScreen() {
                     keyboardType="numeric"
                     value={editCapacity}
                     onChangeText={setEditCapacity}
+                    className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50 font-mono"
+                  />
+                </View>
+              </View>
+
+              <View className="flex flex-row gap-3 mt-2">
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-slate-700 mb-1">HSN Code</Text>
+                  <TextInput 
+                    placeholder="271119"
+                    keyboardType="numeric"
+                    value={editHsnCode}
+                    onChangeText={setEditHsnCode}
+                    className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50 font-mono"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-slate-700 mb-1">GST (%)</Text>
+                  <TextInput 
+                    placeholder="18"
+                    keyboardType="numeric"
+                    value={editGstPercent}
+                    onChangeText={setEditGstPercent}
                     className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50 font-mono"
                   />
                 </View>

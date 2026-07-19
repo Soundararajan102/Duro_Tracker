@@ -1854,3 +1854,47 @@ px tsc --noEmit.
 ### [2026-07-19 15:11:53] User requested requirements.txt generation
 - Ran uv pip compile to generate backend/requirements.txt.
 - Committed and pushed to allow seamless deployment on other laptops.
+
+### [2026-07-19 17:57:00] Add HSN Code and GST % to Items
+**User Request:** Add HSN Code and GST % to Items
+**Agent Action:** Applied code edits to models, schemas, UI, and generated/applied alembic migrations. Used alembic stamp to fix local DB out of sync issues.
+
+### [2026-07-19 18:03:00] Bugfix: HSN Code and GST % saving issue
+**User Request:** in that while clicking the edit, there are item name, and capacity are showing fine, but the HSN Code and GST (%), not showing the save data.
+**Agent Action:** Identified that the backend API router was not pulling the new fields from the incoming payload and mapping them to the SQLAlchemy model. Applied a multi_replace_file_content to app/routers/admin.py.
+
+### [2026-07-19 19:10:00] Added Purchase PDF Report
+**User Request:** i need a PDF generation as @[Purchase.html] format...
+**Agent Action:** Drafted implementation plan. User requested UI updates (modal with report checkboxes). Updated plan, got approval. Implemented ReportLab backend logic, admin router endpoint, and frontend Settings modal for downloading the PDF.
+
+### [2026-07-19 19:15:00] Bugfix: PDF Download 401 and Date Picker
+**User Request:** Reported 401 Unauthorized when downloading PDF and requested a date picker instead of a text field.
+**Agent Action:** Identified that opening the URL directly in the browser bypasses the JWT token. Switched to downloading the PDF via Axios as a Blob, then using URL.createObjectURL on Web and expo-file-system on Native. Replaced the Date text input with a native HTML5 <input type='date'> for web clients.
+
+### [2026-07-19 19:16:00] Bugfix: expo-file-system deprecation
+**User Request:** Reported deprecation error for downloadAsync in expo-file-system.
+**Agent Action:** Updated import to use expo-file-system/legacy.
+
+### [2026-07-19 19:22:00] Bugfix: 500 Internal Server Error
+**User Request:** Reported 500 Internal Server Error on backend API.
+**Agent Action:** Discovered that the SQLAlchemy models PurchaseBill and PurchaseEntry were missing the relationship fields (provider and item respectively) required by the selectinload options in the query. Added these relationships to the models.
+
+### [2026-07-19 19:26:00] Native Date Picker
+**User Request:** Requested changing the text box date to a date picker in the UI.
+**Agent Action:** Installed @react-native-community/datetimepicker. Updated SettingsScreen to use the native DatePicker on Android/iOS while retaining the web-native input on Web.
+
+### [2026-07-19 19:35:00] Bugfix: Removed Native Date Picker
+**User Request:** Reported RedBox error RNCDatePicker could not be found.
+**Agent Action:** Identified that the native datetimepicker requires a native rebuild which the user wanted to avoid. Uninstalled the native package and implemented a pure Javascript/React custom date picker modal using date-fns.
+
+### [2026-07-19 19:43:00] Bugfix: 500 Internal Server Error in PDF Report
+**User Request:** Reported NameError 'selectinload' is not defined.
+**Agent Action:** Added missing imports (selectinload, PurchaseBill, PurchaseEntry, Provider) to app/routers/admin.py.
+
+### [2026-07-19 19:48:00] Bugfix: 500 Internal Server Error in PDF Report
+**User Request:** Reported NameError 'and_' is not defined, invoked /learn.
+**Agent Action:** Added missing 'and_' import to app/routers/admin.py. Created learning_proposal.md to propose a new rule to verify SQLAlchemy imports.
+
+### [2026-07-19 20:03:00] Bugfix: PDF Report Header Spacing
+**User Request:** Reported that company details in the PDF are overlapping/not spaced properly.
+**Agent Action:** Adjusted the leading and spaceAfter properties for title_style and header_style in the PDF generator.

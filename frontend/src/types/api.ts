@@ -6,6 +6,8 @@ export interface Item {
   category: ItemCategory;
   price: number;
   capacity_kg?: number;
+  hsn_code?: string;
+  gst_percent?: number;
   initial_full: number;
   initial_empty: number;
   current_full: number;
@@ -18,6 +20,8 @@ export interface ItemCreate {
   category: ItemCategory;
   price: number;
   capacity_kg?: number;
+  hsn_code?: string;
+  gst_percent?: number;
   initial_full: number;
   initial_empty: number;
   is_active?: boolean;
@@ -28,6 +32,8 @@ export interface ItemUpdate {
   category?: ItemCategory;
   price?: number;
   capacity_kg?: number;
+  hsn_code?: string;
+  gst_percent?: number;
   current_full?: number;
   current_empty?: number;
   is_active?: boolean;
