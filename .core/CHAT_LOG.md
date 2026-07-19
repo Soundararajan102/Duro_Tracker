@@ -1820,3 +1820,12 @@ px tsc --noEmit.
 
 ### [2026-07-19 07:31:13] Delivery Batching UI Refactor
 - **Context:** Updated backend API types and frontend React Native UI to support DeliveryBill schema. Replaced DeliveryScreen flat fields with an interactive shopping cart. Display nested items in BillsScreen and print loops on thermal printers.
+
+### [2026-07-19 13:49:06] Explicit Git Push
+- **Context:** The user explicitly overrode the rule to not push to git and commanded a push to https://github.com/Soundararajan102/Duro_Tracker.git. The changes have been committed and pushed to origin/main successfully.
+
+### [2026-07-19 13:49:58] Hotfix: Schemas Init
+- **Context:** Uvicorn failed to reload because \pp/schemas/__init__.py\ was still importing the old \DeliveryEntryCreate\. Replaced with \DeliveryBillCreate\ and \DeliveryBillOut\.
+
+### [2026-07-19 13:52:04] Update Frontend API IP
+- **Context:** Updated EXPO_PUBLIC_API_URL in frontend/.env to the machine's current local IP address (10.21.207.208).
