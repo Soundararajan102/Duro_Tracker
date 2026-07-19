@@ -3,7 +3,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.models import DeliveryEntry, Item
+from app.models import DeliveryBill, Item
 
 @pytest.mark.asyncio
 async def test_idempotent_delivery_entry(
@@ -28,11 +28,15 @@ async def test_idempotent_delivery_entry(
     await db.commit()
     await db.refresh(item)
 
-    # 2. Make delivery entry with idempotency key
+    # 2. Make delivery bill with idempotency key
     payload = {
-        "item_id": str(item.id),
-        "full_delivered": 5,
-        "empty_received": 5,
+        "items": [
+            {
+                "item_id": str(item.id),
+                "full_delivered": 5,
+                "empty_received": 5
+            }
+        ],
         "cash_collected": 10000.0,
         "upi_collected": 0.0,
         "adhoc_buyer_name": "Walk-in John",
