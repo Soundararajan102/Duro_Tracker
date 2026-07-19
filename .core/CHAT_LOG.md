@@ -1854,3 +1854,7 @@ px tsc --noEmit.
 ### [2026-07-19 15:11:53] User requested requirements.txt generation
 - Ran uv pip compile to generate backend/requirements.txt.
 - Committed and pushed to allow seamless deployment on other laptops.
+
+### [2026-07-19 20:15:21] User paused operations for teammate review
+- User stated a teammate completed PDF generation.
+- Explicit instruction received to WAIT and NOT initiate a git pull until given the green light.
