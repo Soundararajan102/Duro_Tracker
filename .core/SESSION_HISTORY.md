@@ -670,3 +670,6 @@ un_migrations.py and modified env.py to upgrade all tenant schemas. Successfully
 ### [2026-07-19 14:50:44] Pushed updates to git
 - User commanded to push changes to git.
 - Staged and pushed the final log updates.
+
+### [2026-07-19 15:11:43] Added requirements.txt
+- Generated backend/requirements.txt using uv to allow seamless local setup on other machines.

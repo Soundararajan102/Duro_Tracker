@@ -1842,3 +1842,15 @@ px tsc --noEmit.
 
 ### [2026-07-19 14:51:05] User requested git push
 - Re-running git push per explicit user instruction.
+
+### [2026-07-19 14:52:45] User shared IDE current_problems
+- Analyzed the IDE problems and determined they are stale 'inmemory' diagnostics from the language server.
+- Confirmed no actual references to deprecated code exist on disk.
+
+### [2026-07-19 15:09:30] User asked if all README files are present
+- Checked README.md and the repository structure.
+- Identified that requirements.txt and docker-compose.yml are missing.
+
+### [2026-07-19 15:11:53] User requested requirements.txt generation
+- Ran uv pip compile to generate backend/requirements.txt.
+- Committed and pushed to allow seamless deployment on other laptops.
