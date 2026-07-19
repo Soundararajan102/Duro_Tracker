@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, Pressable, ScrollView, FlatList, Modal, TextInput } from 'react-native';
-import { Plus, X, Search, Store, ArrowLeft, Download, FileText, Receipt, Edit2, Trash2 } from 'lucide-react-native';
+import { Plus, X, Search, Store, ArrowLeft, Download, FileText, Receipt, Edit2, Trash2, RefreshCw } from 'lucide-react-native';
 
 import { useBuyers, useCreateBuyer, useUpdateBuyer, useDeleteBuyer, useGlobalBills, useBuyerLedger } from '../../hooks/useBuyers';
 import type { Buyer } from '../../types/api';
@@ -8,13 +9,20 @@ import { format } from 'date-fns';
 
 
 export default function BuyersScreen() {
-  const { data: buyers = [], isLoading } = useBuyers();
-  const { data: globalBillsData = [], isLoading: isGlobalBillsLoading } = useGlobalBills();
+  const { data: buyers = [], isLoading, refetch: refetchBuyers, isRefetching: isBuyersRefetching } = useBuyers();
+  const { data: globalBillsData = [], isLoading: isGlobalBillsLoading, refetch: refetchGlobalBills, isRefetching: isGlobalBillsRefetching } = useGlobalBills();
   const [activeTab, setActiveTab] = useState<'crm' | 'bills'>('crm');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBuyer, setSelectedBuyer] = useState<Buyer | null>(null);
   
-  const { data: buyerLedgerData = [], isLoading: isLedgerLoading } = useBuyerLedger(selectedBuyer?.id);
+  const { data: buyerLedgerData = [], isLoading: isLedgerLoading, refetch: refetchLedger, isRefetching: isLedgerRefetching } = useBuyerLedger(selectedBuyer?.id);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchBuyers();
+      refetchGlobalBills();
+    }, [refetchBuyers, refetchGlobalBills])
+  );
 
   const createBuyer = useCreateBuyer();
   const updateBuyer = useUpdateBuyer();
@@ -384,9 +392,23 @@ export default function BuyersScreen() {
     <View className="flex-1 bg-gray-50 p-4 pt-12">
       {/* Header & Tabs */}
         <View className="flex flex-col mb-4">
-          <View className="mb-4">
-            <Text className="text-2xl font-semibold text-slate-900">Buyers & Sales</Text>
-            <Text className="text-slate-500 text-sm mt-1">Manage retailer accounts and daily sales records.</Text>
+          <View className="flex flex-row justify-between items-start mb-4">
+            <View className="flex-1 mr-4">
+              <Text className="text-2xl font-semibold text-slate-900">Buyers & Sales</Text>
+              <Text className="text-slate-500 text-sm mt-1">Manage retailer accounts and daily sales records.</Text>
+            </View>
+            <Pressable 
+              onPress={() => {
+                refetchBuyers();
+                refetchGlobalBills();
+                if (selectedBuyer) refetchLedger();
+              }}
+              disabled={isBuyersRefetching || isGlobalBillsRefetching || isLedgerRefetching}
+              className="p-2.5 bg-white border border-gray-200 rounded-xl active:bg-slate-50 shadow-sm"
+              style={{ opacity: (isBuyersRefetching || isGlobalBillsRefetching || isLedgerRefetching) ? 0.5 : 1 }}
+            >
+              <RefreshCw size={20} color="#475569" />
+            </Pressable>
           </View>
           
           <View className="flex flex-row p-1 bg-gray-200 rounded-xl">

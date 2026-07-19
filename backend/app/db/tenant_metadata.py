@@ -58,9 +58,9 @@ def create_tenant_schema_and_tables(session: Session, schema_name: str) -> None:
         connection_with_opts = connection.execution_options(schema_translate_map={"tenant": safe})
         Base.metadata.create_all(connection_with_opts, tables=tables)
 
-    # Stamp alembic version for the tenant
+    # Stamp alembic version for the tenant to HEAD
     connection.execute(text(f'CREATE TABLE IF NOT EXISTS "{safe}".alembic_version (version_num VARCHAR(32) NOT NULL, CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))'))
-    connection.execute(text(f'INSERT INTO "{safe}".alembic_version (version_num) VALUES (\'fcf867a39753\') ON CONFLICT DO NOTHING'))
+    connection.execute(text(f'INSERT INTO "{safe}".alembic_version (version_num) VALUES (\'e123456789ab\') ON CONFLICT DO NOTHING'))
 
 
 def drop_tenant_schema(session: Session, schema_name: str) -> None:

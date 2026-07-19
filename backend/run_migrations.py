@@ -11,18 +11,18 @@ def main():
     db_url = settings.database_url.replace("+asyncpg", "")
     engine = create_engine(db_url)
     
-    # Get active tenants
-    tenant_schemas = []
-    with engine.connect() as conn:
-        result = conn.execute(text("SELECT id FROM public.organizations"))
-        tenant_schemas = [build_schema_name(row[0]) for row in result.fetchall()]
-
-    # Upgrade public schema
+    # Upgrade public schema FIRST to ensure tables exist
     print("Upgrading public schema...")
     os.environ["ALEMBIC_MODE"] = "public"
     alembic_cfg = Config("alembic.ini")
     alembic_cfg.set_main_option("version_locations", "migrations/versions/public")
     command.upgrade(alembic_cfg, "head")
+    
+    # Get active tenants AFTER public schema is upgraded
+    tenant_schemas = []
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT id FROM public.organizations"))
+        tenant_schemas = [build_schema_name(row[0]) for row in result.fetchall()]
     
     # Upgrade tenant schemas
     for schema in tenant_schemas:

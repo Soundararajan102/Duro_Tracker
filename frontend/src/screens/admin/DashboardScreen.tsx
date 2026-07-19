@@ -1,16 +1,36 @@
-import React from 'react';
+import React, { useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
-import { Wallet, ArrowDown, TrendingUp, ArrowUp, Truck, CheckCircle2, AlertTriangle } from 'lucide-react-native';
+import { Wallet, ArrowDown, TrendingUp, ArrowUp, Truck, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react-native';
 import { useDashboardMetrics, useRecentActivity } from '../../hooks/useDashboard';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function DashboardScreen() {
-  const { data: metrics, isLoading: isMetricsLoading } = useDashboardMetrics();
-  const { data: activityData = [], isLoading: isActivityLoading } = useRecentActivity();
+  const { data: metrics, isLoading: isMetricsLoading, refetch: refetchMetrics, isRefetching: isMetricsRefetching } = useDashboardMetrics();
+  const { data: activityData = [], isLoading: isActivityLoading, refetch: refetchActivity, isRefetching: isActivityRefetching } = useRecentActivity();
+  
+  useFocusEffect(
+    useCallback(() => {
+      refetchMetrics();
+      refetchActivity();
+    }, [refetchMetrics, refetchActivity])
+  );
+  
   return (
     <ScrollView className="flex-1 bg-gray-50 p-4 pt-12">
       <View className="mb-6 flex flex-row items-center justify-between">
         <Text className="text-2xl font-bold text-slate-900">Dashboard</Text>
+        <Pressable 
+          onPress={() => {
+            refetchMetrics();
+            refetchActivity();
+          }}
+          disabled={isMetricsRefetching || isActivityRefetching}
+          className="p-2.5 bg-white border border-gray-200 rounded-xl active:bg-slate-50 shadow-sm"
+          style={{ opacity: (isMetricsRefetching || isActivityRefetching) ? 0.5 : 1 }}
+        >
+          <RefreshCw size={20} color="#475569" />
+        </Pressable>
       </View>
 
       {/* Hero Metrics */}

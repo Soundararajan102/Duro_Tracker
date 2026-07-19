@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, Pressable, FlatList, Modal, TextInput, ActivityIndicator, ScrollView, Alert } from 'react-native';
-import { Plus, Edit2, X, PackageOpen, CheckCircle, PauseCircle, Trash2 } from 'lucide-react-native';
+import { Plus, Edit2, X, PackageOpen, CheckCircle, PauseCircle, Trash2, RefreshCw } from 'lucide-react-native';
 import { useItems, useToggleItem, useCreateItem, useUpdateItem, useDeleteItem } from '../../hooks/useItems';
 import type { Item, ItemCategory } from '../../types/api';
 
 export default function ItemsScreen() {
-  const { data: items = [], isLoading } = useItems();
+  const { data: items = [], isLoading, refetch: refetchItems, isRefetching: isItemsRefetching } = useItems();
+  
+  useFocusEffect(
+    useCallback(() => {
+      refetchItems();
+    }, [refetchItems])
+  );
+
   const toggleMutation = useToggleItem();
   const createItem = useCreateItem();
   const updateItem = useUpdateItem();
@@ -159,9 +167,19 @@ export default function ItemsScreen() {
   return (
     <View className="flex-1 bg-gray-50 p-4 pt-12">
       {/* Header */}
-      <View className="flex flex-col mb-6">
-        <Text className="text-2xl font-semibold text-slate-900">Manage Cylinder Variants</Text>
-        <Text className="text-slate-500 text-sm mt-1">Configure your product catalog and initial inventory counts.</Text>
+      <View className="flex flex-row justify-between items-start mb-6">
+        <View className="flex-1 mr-4">
+          <Text className="text-2xl font-semibold text-slate-900">Manage Cylinder Variants</Text>
+          <Text className="text-slate-500 text-sm mt-1">Configure your product catalog and initial inventory counts.</Text>
+        </View>
+        <Pressable 
+          onPress={() => refetchItems()}
+          disabled={isItemsRefetching}
+          className="p-2.5 bg-white border border-gray-200 rounded-xl active:bg-slate-50 shadow-sm"
+          style={{ opacity: isItemsRefetching ? 0.5 : 1 }}
+        >
+          <RefreshCw size={20} color="#475569" />
+        </Pressable>
       </View>
 
       {/* Main List */}

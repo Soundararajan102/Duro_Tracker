@@ -34,6 +34,7 @@ export function useCreatePurchase() {
       queryClient.invalidateQueries({ queryKey: ['purchases'] });
       queryClient.invalidateQueries({ queryKey: ['providers'] });
       queryClient.invalidateQueries({ queryKey: ['items'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     }
   });
 }

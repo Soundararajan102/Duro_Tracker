@@ -3,6 +3,9 @@ import os
 import uuid
 from collections.abc import AsyncGenerator
 
+# Override database URL for tests BEFORE importing any app modules
+os.environ["DATABASE_URL"] = "postgresql+asyncpg://postgres:root@localhost:5432/Duro_Tracker_Test"
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -15,9 +18,6 @@ from app.db.database import Base
 from app.main import app
 from app.models import Organization, User
 from app.models.enums import UserRole
-
-# Override database URL for tests
-os.environ["DATABASE_URL"] = "postgresql://postgres:postgres@localhost:5432/Duro_Tracker_Test"
 
 @pytest_asyncio.fixture
 async def db_engine():

@@ -1,11 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, ScrollView, Pressable, Modal, TextInput } from 'react-native';
-import { Settings2, X, ChevronDown } from 'lucide-react-native';
+import { Settings2, X, ChevronDown, RefreshCw } from 'lucide-react-native';
 import { useItems, useUpdateItem } from '../../hooks/useItems';
 
 export default function InventoryScreen() {
-  const { data: inventoryData = [] } = useItems();
+  const { data: inventoryData = [], refetch: refetchInventory, isRefetching: isInventoryRefetching } = useItems();
   const updateItem = useUpdateItem();
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchInventory();
+    }, [refetchInventory])
+  );
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isItemDropdownOpen, setIsItemDropdownOpen] = useState(false);
@@ -51,12 +58,20 @@ export default function InventoryScreen() {
     <View className="flex-1 bg-gray-50">
       <ScrollView className="flex-1 p-4 pt-12">
         {/* Header */}
-        <View className="flex flex-col sm:flex-row mb-6 mt-2">
-          <View className="flex-1 mb-4 sm:mb-0">
+        <View className="flex flex-row justify-between items-start mb-6 mt-2">
+          <View className="flex-1 mr-4">
             <Text className="text-2xl font-semibold text-slate-900">Live Stock Snapshot</Text>
             <Text className="text-slate-500 text-sm mt-1">Real-time inventory levels</Text>
           </View>
-          </View>
+          <Pressable 
+            onPress={() => refetchInventory()}
+            disabled={isInventoryRefetching}
+            className="p-2.5 bg-white border border-gray-200 rounded-xl active:bg-slate-50 shadow-sm"
+            style={{ opacity: isInventoryRefetching ? 0.5 : 1 }}
+          >
+            <RefreshCw size={20} color="#475569" />
+          </Pressable>
+        </View>
 
         {/* Grid Layout */}
         <View className="flex flex-col gap-6 pb-20">

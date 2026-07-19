@@ -44,12 +44,15 @@ def do_run_migrations(connection: Connection, tenant_schemas: list[str]) -> None
     tenant_version_loc = os.path.join(base_dir, "migrations", "versions", "tenant")
     
     if alembic_mode == "public":
+        from sqlalchemy import text
+        connection.execute(text('SET search_path TO "public"'))
         context.configure(
             connection=connection, 
             target_metadata=target_metadata,
             compare_type=True,
             include_schemas=False,
             include_object=include_object_public,
+            version_table_schema="public",
             version_locations=[public_version_loc],
         )
         with context.begin_transaction():

@@ -24,6 +24,8 @@ async def create_provider(
         phone=provider_in.phone,
         gstin=provider_in.gstin,
         price_per_kg=provider_in.price_per_kg,
+        balance_pending=provider_in.balance_pending,
+        cylinders_pending=provider_in.cylinders_pending,
         is_active=provider_in.is_active,
     )
     db.add(provider)
@@ -49,6 +51,10 @@ async def update_provider(
         provider.gstin = provider_in.gstin
     if provider_in.price_per_kg is not None:
         provider.price_per_kg = provider_in.price_per_kg
+    if provider_in.balance_pending is not None:
+        provider.balance_pending = provider_in.balance_pending
+    if provider_in.cylinders_pending is not None:
+        provider.cylinders_pending = provider_in.cylinders_pending
     if provider_in.is_active is not None:
         provider.is_active = provider_in.is_active
 

@@ -713,3 +713,40 @@ un_migrations.py and modified env.py to upgrade all tenant schemas. Successfully
 
 ### [2026-07-19 20:03:00] Bugfix: PDF Report Header Spacing
 - Adjusted ParagraphStyle leading and spaceAfter for title_style and header_style in purchase_pdf.py to fix overlapping text in the company details section.
+
+### [2026-07-19 20:41:33] Pulled and patched teammate's PDF branch
+- Safely merged incoming feature branch.
+- Discovered and deleted invalid Alembic migration (merge_heads) pushed by teammate.
+- Manually executed patch_hsn_gst.py to correctly append hsn_code and gst_percent to all tenant schemas.
+- Verified test suite passes successfully.
+
+### [2026-07-19 20:51:04] Code Audit and Mistake Cleanup
+- Audited teammate's code for additional mistakes.
+- Fixed hardcoded GSTIN issue in the PDF generator where teammate ignored the provider.gstin field.
+- Cleaned up git repository by removing 10 extraneous scratch/test files committed by teammate.
+
+### [2026-07-19 21:14:02] MCP Final Deep Dive: Found and Fixed Critical Migration Bug
+- Found a massive hidden bug where creating a NEW organization/tenant would cause 'run_migrations.py' to crash on all future deployments. This happened because the tenant creator ('create_tenant_schema_and_tables') hardcoded Alembic to stamp the very first version ('fcf867a39753') instead of HEAD, causing Alembic to try and execute legacy migrations on brand-new tables that didn't match the old schema history.
+- Fixed 'tenant_metadata.py' to correctly stamp the 'e123456789ab' HEAD revision for all new tenants.
+- Wiped and rebuilt the local testing database to confirm that 'seed.py' and 'run_migrations.py' now work perfectly together.
+# # #   [ 2 0 2 6 - 0 7 - 1 9 ]   S e s s i o n   H i s t o r y   U p d a t e 
+ -   F i x e d   i n v i s i b l e   t e x t   i n p u t s   i n   P u r c h a s e s S c r e e n   m o d a l .  
+ # # #   [ 2 0 2 6 - 0 7 - 1 9 ]   S e s s i o n   H i s t o r y   U p d a t e 
+ -   F i x e d   A n d r o i d   T e x t I n p u t   c l i p p i n g   i s s u e   i n   P u r c h a s e s S c r e e n .  
+ # # #   [ 2 0 2 6 - 0 7 - 1 9 ]   S e s s i o n   H i s t o r y   U p d a t e 
+ -   F i x e d   R e a c t   Q u e r y   c a c h i n g   a n d   s t a t e   s t a l e n e s s   b u g s   f o r   a u t o m a t i c   U I   u p d a t e s .  
+ # # #   [ 2 0 2 6 - 0 7 - 1 9 ]   S e s s i o n   H i s t o r y   U p d a t e 
+ -   A d d e d   m a n u a l   r e f r e s h   b u t t o n   t o   P u r c h a s e s S c r e e n .  
+ # # #   [ 2 0 2 6 - 0 7 - 1 9 ]   S e s s i o n   H i s t o r y   U p d a t e 
+ -   A d d e d   m a n u a l   r e f r e s h   b u t t o n s   t o   D a s h b o a r d ,   B u y e r s ,   I n v e n t o r y ,   a n d   I t e m s   s c r e e n s .  
+ # # #   [ 2 0 2 6 - 0 7 - 1 9 ]   S e s s i o n   H i s t o r y   U p d a t e 
+ -   A d d e d   u s e F o c u s E f f e c t   t o   a l l   m a i n   s c r e e n s   t o   e n s u r e   d y n a m i c   d a t a   f e t c h i n g   o n   t a b   s w i t c h .  
+ # # #   [ 2 0 2 6 - 0 7 - 1 9 ]   S e s s i o n   H i s t o r y   U p d a t e 
+ -   F i x e d   d u p l i c a t e   b a c k e n d   t e r m i n a l   A P I   l o g s   i n   m i d d l e w a r e . p y .  
+ # # #   [ 2 0 2 6 - 0 7 - 1 9 ]   S e s s i o n   H i s t o r y   U p d a t e 
+ -   R e s t o r e d   m a n u a l   d e v e l o p m e n t   l o g g i n g   i n   m i d d l e w a r e . p y   p e r   u s e r   r e q u e s t .  
+ # # #   [ 2 0 2 6 - 0 7 - 1 9 ]   S e s s i o n   H i s t o r y   U p d a t e 
+ -   I m p l e m e n t e d   f i n a n c i a l   a n d   c y l i n d e r   b a l a n c e s   s e t u p   d u r i n g   P r o v i d e r   c r e a t i o n .  
+ # # #   [ 2 0 2 6 - 0 7 - 1 9 ]   S e s s i o n   H i s t o r y   U p d a t e 
+ -   A d d e d   i n i t i a l   f i n a n c i a l   a n d   c y l i n d e r   b a l a n c e s   t o   P r o v i d e r   c r e a t i o n   f l o w .  
+ 

@@ -476,8 +476,7 @@ async def generate_purchase_pdf_endpoint(
                 if provider:
                     provider_name = provider.name
                     provider_phone = getattr(provider, "phone", "") or ""
-                    # gstin is not in Provider model based on previous snippets, maybe no GSTIN? Let's assume empty
-                    provider_gstin = ""
+                    provider_gstin = getattr(provider, "gstin", "") or ""
         except:
             pass
 

@@ -1,18 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, Pressable, ScrollView, FlatList, Modal, TextInput, ActivityIndicator } from 'react-native';
-import { Plus, X, Search, Store, ArrowLeft, Download, FileText, Receipt, PackageOpen, Truck } from 'lucide-react-native';
+import { Plus, X, Search, Store, ArrowLeft, Download, FileText, Receipt, PackageOpen, Truck, RefreshCw } from 'lucide-react-native';
 import { usePurchases, useProviders, useCreatePurchase, useCreateProvider, useUpdateProvider } from '../../hooks/usePurchases';
 import { useItems } from '../../hooks/useItems';
 import type { Provider } from '../../types/api';
 
 export default function PurchasesScreen() {
-  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
+  const { data: purchases = [], isLoading: isPurchasesLoading, refetch: refetchPurchases, isRefetching: isPurchasesRefetching } = usePurchases();
+  const { data: providers = [], isLoading: isProvidersLoading, refetch: refetchProviders, isRefetching: isProvidersRefetching } = useProviders();
+  const selectedProvider = providers.find(p => p.id === selectedProviderId) || null;
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchPurchases();
+      refetchProviders();
+    }, [refetchPurchases, refetchProviders])
+  );
 
   const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
   const [newProviderName, setNewProviderName] = useState('');
   const [newProviderPhone, setNewProviderPhone] = useState('');
   const [newProviderGstin, setNewProviderGstin] = useState('');
   const [newProviderPricePerKg, setNewProviderPricePerKg] = useState('');
+  const [newProviderFinBal, setNewProviderFinBal] = useState('');
+  const [newProviderCylBal, setNewProviderCylBal] = useState('');
 
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [billNumber, setBillNumber] = useState('');
@@ -21,8 +34,6 @@ export default function PurchasesScreen() {
   const [isEditPriceModalOpen, setIsEditPriceModalOpen] = useState(false);
   const [editPricePerKg, setEditPricePerKg] = useState('');
 
-  const { data: purchases = [], isLoading: isPurchasesLoading } = usePurchases();
-  const { data: providers = [], isLoading: isProvidersLoading } = useProviders();
   const { data: items = [] } = useItems();
   const createPurchase = useCreatePurchase();
   const createProvider = useCreateProvider();
@@ -35,7 +46,9 @@ export default function PurchasesScreen() {
         name: newProviderName.trim(), 
         phone: newProviderPhone.trim(),
         gstin: newProviderGstin.trim(),
-        price_per_kg: newProviderPricePerKg ? parseFloat(newProviderPricePerKg) : undefined
+        price_per_kg: newProviderPricePerKg ? parseFloat(newProviderPricePerKg) : undefined,
+        balance_pending: parseFloat(newProviderFinBal) || 0,
+        cylinders_pending: parseInt(newProviderCylBal) || 0
       },
       {
         onSuccess: () => {
@@ -44,6 +57,8 @@ export default function PurchasesScreen() {
           setNewProviderPhone('');
           setNewProviderGstin('');
           setNewProviderPricePerKg('');
+          setNewProviderFinBal('');
+          setNewProviderCylBal('');
         }
       }
     );
@@ -62,7 +77,7 @@ export default function PurchasesScreen() {
       {
         onSuccess: (updated) => {
           setIsEditPriceModalOpen(false);
-          setSelectedProvider(updated);
+          // Provider refetch will update selectedProvider automatically
         }
       }
     );
@@ -157,7 +172,7 @@ export default function PurchasesScreen() {
         <View className="flex flex-row items-center justify-between mb-6 mt-2">
           <View className="flex flex-row items-center gap-4">
             <Pressable 
-              onPress={() => setSelectedProvider(null)}
+              onPress={() => setSelectedProviderId(null)}
               className="p-2 bg-white border border-gray-200 rounded-lg"
             >
               <ArrowLeft size={20} color="#475569" />
@@ -297,17 +312,19 @@ export default function PurchasesScreen() {
                           <Text className="flex-1 text-sm font-medium text-slate-700">{item.name}</Text>
                           <TextInput 
                             placeholder="0"
+                            placeholderTextColor="#94a3b8"
                             keyboardType="numeric"
                             value={state.fullBought}
                             onChangeText={(val) => setItemStates(prev => ({ ...prev, [item.id]: { ...state, fullBought: val } }))}
-                            className="w-16 h-8 bg-white border border-gray-300 rounded text-center text-xs font-mono mx-2"
+                            className="w-16 h-10 p-1 bg-white border border-gray-300 rounded text-center text-sm font-mono mx-2 text-slate-900"
                           />
                           <TextInput 
                             placeholder="0"
+                            placeholderTextColor="#94a3b8"
                             keyboardType="numeric"
                             value={state.emptyReturned}
                             onChangeText={(val) => setItemStates(prev => ({ ...prev, [item.id]: { ...state, emptyReturned: val } }))}
-                            className="w-16 h-8 bg-white border border-gray-300 rounded text-center text-xs font-mono"
+                            className="w-16 h-10 p-1 bg-white border border-gray-300 rounded text-center text-sm font-mono text-slate-900"
                           />
                         </View>
                       );
@@ -396,11 +413,22 @@ export default function PurchasesScreen() {
   // --- Main Provider List View ---
   return (
     <View className="flex-1 bg-gray-50 p-4 pt-12">
-      <View className="flex flex-col sm:flex-row mb-6">
-        <View className="flex-1 mb-4 sm:mb-0">
+      <View className="flex flex-row justify-between items-start mb-6">
+        <View className="flex-1 mr-4">
           <Text className="text-2xl font-semibold text-slate-900">Providers</Text>
           <Text className="text-slate-500 text-sm mt-1">Manage suppliers, purchases, and outstanding balances.</Text>
         </View>
+        <Pressable 
+          onPress={() => {
+            refetchProviders();
+            refetchPurchases();
+          }}
+          disabled={isProvidersRefetching || isPurchasesRefetching}
+          className="p-2.5 bg-white border border-gray-200 rounded-xl active:bg-slate-50 shadow-sm"
+          style={{ opacity: (isProvidersRefetching || isPurchasesRefetching) ? 0.5 : 1 }}
+        >
+          <RefreshCw size={20} color="#475569" />
+        </Pressable>
       </View>
 
       <View className="flex flex-row items-center justify-between mb-4">
@@ -424,7 +452,7 @@ export default function PurchasesScreen() {
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
               <Pressable 
-                onPress={() => setSelectedProvider(item)}
+                onPress={() => setSelectedProviderId(item.id)}
                 className="flex flex-row items-center border-b border-gray-100 p-4 active:bg-slate-50"
               >
                 <View className="w-12 h-12 bg-indigo-50 rounded-full items-center justify-center mr-4">
@@ -512,6 +540,28 @@ export default function PurchasesScreen() {
                   onChangeText={setNewProviderPricePerKg}
                   className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50"
                 />
+              </View>
+              <View className="flex flex-row gap-3">
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-slate-700 mb-1">Initial Fin Bal</Text>
+                  <TextInput 
+                    placeholder="e.g. 5000"
+                    keyboardType="numeric"
+                    value={newProviderFinBal}
+                    onChangeText={setNewProviderFinBal}
+                    className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-slate-700 mb-1">Initial Cyl Bal</Text>
+                  <TextInput 
+                    placeholder="e.g. 50"
+                    keyboardType="numeric"
+                    value={newProviderCylBal}
+                    onChangeText={setNewProviderCylBal}
+                    className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50"
+                  />
+                </View>
               </View>
 
               <Pressable 
