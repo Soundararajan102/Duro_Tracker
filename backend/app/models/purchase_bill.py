@@ -17,6 +17,7 @@ class PurchaseBill(Base, BaseModelMixin):
     provider_id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, ForeignKey("tenant.providers.id"), nullable=False, index=True)
     
     bill_number: Mapped[str | None] = mapped_column(String, nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
     
     total_cost: Mapped[float] = mapped_column(Numeric(12, 2), default=0.0)
     amount_paid: Mapped[float] = mapped_column(Numeric(12, 2), default=0.0)

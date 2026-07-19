@@ -1829,3 +1829,9 @@ px tsc --noEmit.
 
 ### [2026-07-19 13:52:04] Update Frontend API IP
 - **Context:** Updated EXPO_PUBLIC_API_URL in frontend/.env to the machine's current local IP address (10.21.207.208).
+
+### [2026-07-19 14:03:35] Hotfix: Model Relationships
+- **Context:** Uvicorn failed on startup because the User model still referenced DeliveryEntry. Fixed User and Admin routers to correctly reference DeliveryBill and DeliveryItem. Changes committed locally.
+
+### [2026-07-19 14:27:20] Final Deprecation Sweep
+- **Context:** Searched the codebase for any remaining references to 'DeliveryEntry'. Found and fixed a test file failing due to the old model, and added a missing 'selectinload' import in the driver router. Ran Pytest which passed with 100%. Pushed final fixes to GitHub.

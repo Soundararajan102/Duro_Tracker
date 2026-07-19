@@ -660,3 +660,9 @@ un_migrations.py and modified env.py to upgrade all tenant schemas. Successfully
 
 ### [2026-07-19 13:48:48] Explicit Git Push
 - **Action Taken:** The user requested an explicit git push to their repository. Staged all modified files, committed as 'Refactor delivery batching and add purchase flow updates', and successfully pushed to origin/main.
+
+### [2026-07-19 14:44:10] Added Purchase Idempotency
+- Added idempotency_key column to PurchaseBill database model.
+- Implemented X-Idempotency-Key header check in /purchase API endpoint to prevent duplicate network retries.
+- Handled Alembic multi-tenant upgrade issues by manually injecting the idempotency column to existing tenant schemas.
+- Verified system stability via pytest.

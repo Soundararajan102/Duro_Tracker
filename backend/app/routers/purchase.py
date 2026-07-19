@@ -9,7 +9,8 @@ from app.auth.dependencies import require_tenant_admin, get_tenant_db
 from app.models import Provider, PurchaseEntry, PurchaseBill, Item
 from app.schemas.provider import ProviderCreate, ProviderOut, ProviderUpdate
 from app.schemas.purchase import PurchaseBillCreate, PurchaseBillOut
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
+from fastapi import Header
 
 router = APIRouter(dependencies=[Depends(require_tenant_admin())], tags=["Purchases"])
 
@@ -65,8 +66,21 @@ async def list_providers(
 @router.post("/", response_model=PurchaseBillOut)
 async def create_purchase_bill(
     bill_in: PurchaseBillCreate,
+    x_idempotency_key: Annotated[str | None, Header()] = None,
     db: AsyncSession = Depends(get_tenant_db),
 ):
+    if x_idempotency_key:
+        existing_bill = await db.scalar(
+            select(PurchaseBill).where(PurchaseBill.idempotency_key == x_idempotency_key)
+        )
+        if existing_bill:
+            final_existing = await db.scalar(
+                select(PurchaseBill)
+                .options(joinedload(PurchaseBill.provider), selectinload(PurchaseBill.entries).joinedload(PurchaseEntry.item))
+                .where(PurchaseBill.id == existing_bill.id)
+            )
+            return final_existing
+
     provider = await db.get(Provider, bill_in.provider_id)
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
@@ -76,6 +90,7 @@ async def create_purchase_bill(
         bill_number=bill_in.bill_number,
         total_cost=bill_in.total_cost,
         amount_paid=bill_in.amount_paid,
+        idempotency_key=x_idempotency_key,
     )
     db.add(bill)
     

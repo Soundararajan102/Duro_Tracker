@@ -14,14 +14,14 @@ def main():
     # Get active tenants
     tenant_schemas = []
     with engine.connect() as conn:
-        result = conn.execute(text("SELECT id FROM organizations"))
+        result = conn.execute(text("SELECT id FROM public.organizations"))
         tenant_schemas = [build_schema_name(row[0]) for row in result.fetchall()]
 
     # Upgrade public schema
     print("Upgrading public schema...")
     os.environ["ALEMBIC_MODE"] = "public"
     alembic_cfg = Config("alembic.ini")
-    command.upgrade(alembic_cfg, "b235c2b39a61")
+    command.upgrade(alembic_cfg, "head")
     
     # Upgrade tenant schemas
     for schema in tenant_schemas:
@@ -29,7 +29,7 @@ def main():
         os.environ["ALEMBIC_MODE"] = "tenant_upgrade"
         os.environ["CURRENT_TENANT"] = schema
         alembic_cfg = Config("alembic.ini")
-        command.upgrade(alembic_cfg, "5e9f1a2b3c4d")
+        command.upgrade(alembic_cfg, "head")
 
 if __name__ == "__main__":
     main()
