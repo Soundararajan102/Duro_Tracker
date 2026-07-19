@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from app.auth.dependencies import require_tenant_admin, get_tenant_db
 from app.db.session import get_platform_db
-from app.models import DeliveryEntry, Item, User, Buyer
+from app.models import DeliveryBill, DeliveryItem, Item, User, Buyer
 
 router = APIRouter(dependencies=[Depends(require_tenant_admin())])
 
@@ -40,17 +40,24 @@ async def get_dashboard_metrics(
     now = datetime.now(timezone.utc)
     start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Aggregate today's collection and sales from DeliveryEntry
-    result = await db.execute(
+    # Aggregate today's collection and sales from DeliveryBill
+    bill_result = await db.execute(
         select(
-            func.coalesce(func.sum(DeliveryEntry.full_delivered), 0),
-            func.coalesce(func.sum(DeliveryEntry.empty_received), 0),
-            func.coalesce(func.sum(DeliveryEntry.cash_collected), 0),
-            func.coalesce(func.sum(DeliveryEntry.upi_collected), 0),
-            func.coalesce(func.sum(DeliveryEntry.total_bill_amount), 0),
-        ).where(DeliveryEntry.timestamp >= start_of_today)
+            func.coalesce(func.sum(DeliveryBill.cash_collected), 0),
+            func.coalesce(func.sum(DeliveryBill.upi_collected), 0),
+            func.coalesce(func.sum(DeliveryBill.total_bill_amount), 0),
+        ).where(DeliveryBill.timestamp >= start_of_today)
     )
-    row = result.fetchone()
+    bill_row = bill_result.fetchone()
+    
+    # Aggregate today's item dispatches from DeliveryItem joined with DeliveryBill
+    item_result = await db.execute(
+        select(
+            func.coalesce(func.sum(DeliveryItem.full_delivered), 0),
+            func.coalesce(func.sum(DeliveryItem.empty_received), 0),
+        ).join(DeliveryBill).where(DeliveryBill.timestamp >= start_of_today)
+    )
+    item_row = item_result.fetchone()
     
     # Sum of all buyers' pending balances (All time)
     buyers_result = await db.execute(
@@ -59,12 +66,12 @@ async def get_dashboard_metrics(
     outstanding_balance = buyers_result.scalar()
 
     return DashboardMetrics(
-        total_dispatched=row[0],
-        total_empty_received=row[1],
-        total_cash_collected=row[2],
-        total_upi_collected=row[3],
+        total_dispatched=item_row[0],
+        total_empty_received=item_row[1],
+        total_cash_collected=bill_row[0],
+        total_upi_collected=bill_row[1],
         outstanding_balance=outstanding_balance,
-        todays_sales=row[4],
+        todays_sales=bill_row[2],
     )
 
 @router.get("/recent-activity", response_model=list[RecentActivityOut])
@@ -75,39 +82,38 @@ async def get_recent_activity(
     if not current_user.organization_id:
         raise HTTPException(status_code=403, detail="No organization")
         
-    from sqlalchemy.orm import joinedload
+    from sqlalchemy.orm import joinedload, selectinload
     
     # Fetch last 20 deliveries
     result = await db.scalars(
-        select(DeliveryEntry)
-        .options(joinedload(DeliveryEntry.driver), joinedload(DeliveryEntry.buyer), joinedload(DeliveryEntry.item))
-        .order_by(DeliveryEntry.timestamp.desc())
+        select(DeliveryBill)
+        .options(joinedload(DeliveryBill.driver), joinedload(DeliveryBill.buyer), selectinload(DeliveryBill.items).joinedload(DeliveryItem.item))
+        .order_by(DeliveryBill.timestamp.desc())
         .limit(20)
     )
-    entries = result.all()
+    entries = result.unique().all()
     
     activities = []
     for entry in entries:
         driver_name = entry.driver.username if entry.driver else "Unknown Driver"
         buyer_name = entry.buyer.name if entry.buyer else entry.adhoc_buyer_name or "Unknown Buyer"
-        item_name = entry.item.name if entry.item else "Item"
+        
+        # Calculate total delivered for the message
+        total_full = sum(item.full_delivered for item in entry.items)
         
         # Determine if it's primarily a delivery or a collection
-        if entry.full_delivered > 0:
+        if total_full > 0:
             act_type = 'delivery'
-            msg = f"Driver {driver_name} delivered {entry.full_delivered}x {item_name} to {buyer_name}"
+            msg = f"Driver {driver_name} delivered {total_full} items to {buyer_name}"
             amt = float(entry.total_bill_amount)
         elif entry.cash_collected > 0 or entry.upi_collected > 0:
             act_type = 'collection'
-            collected = float(entry.cash_collected + entry.upi_collected)
-            msg = f"Payment received from {buyer_name} by {driver_name}"
-            amt = collected
-        elif entry.empty_received > 0:
-            act_type = 'delivery'
-            msg = f"Driver {driver_name} collected {entry.empty_received} empties from {buyer_name}"
-            amt = 0.0
+            msg = f"Driver {driver_name} collected payment from {buyer_name}"
+            amt = float(entry.cash_collected + entry.upi_collected)
         else:
-            continue # skip empty log
+            act_type = 'delivery'
+            msg = f"Driver {driver_name} recorded empty receipt from {buyer_name}"
+            amt = 0.0
             
         activities.append(
             RecentActivityOut(
@@ -115,7 +121,7 @@ async def get_recent_activity(
                 type=act_type,
                 message=msg,
                 timestamp=entry.timestamp.isoformat(),
-                amount=amt
+                amount=amt,
             )
         )
         

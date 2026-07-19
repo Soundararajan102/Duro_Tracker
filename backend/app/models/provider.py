@@ -14,6 +14,7 @@ class Provider(Base, BaseModelMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[Optional[str]] = mapped_column(String(50))
     gstin: Mapped[Optional[str]] = mapped_column(String(50))
+    price_per_kg: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     balance_pending: Mapped[float] = mapped_column(Numeric(12, 2), default=0.0)
     cylinders_pending: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

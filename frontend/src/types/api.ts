@@ -91,20 +91,44 @@ export interface Provider {
   name: string;
   phone?: string;
   gstin?: string;
+  price_per_kg?: number;
   balance_pending: number;
   cylinders_pending: number;
   is_active: boolean;
 }
 
+export interface ProviderCreate {
+  name: string;
+  phone?: string;
+  gstin?: string;
+  price_per_kg?: number;
+}
+
+export interface ProviderUpdate {
+  name?: string;
+  phone?: string;
+  gstin?: string;
+  price_per_kg?: number;
+  is_active?: boolean;
+}
+
 export interface PurchaseEntry {
   id: string;
-  provider_id: string;
+  purchase_bill_id: string;
   item_id: string;
   full_received: number;
   empty_returned: number;
   total_cost: number;
+}
+
+export interface PurchaseBill {
+  id: string;
+  provider_id: string;
+  bill_number?: string;
+  total_cost: number;
   amount_paid: number;
-  created_at?: string;
+  created_at: string;
+  entries: PurchaseEntry[];
 }
 
 export interface Organization {
@@ -138,4 +162,28 @@ export interface User {
 export interface OrganizationUpdate {
   name?: string;
   max_users?: number;
+}
+
+export interface DeliveryItem {
+  id: string;
+  item_id: string;
+  unit_price_at_delivery: number;
+  line_total_amount: number;
+  full_delivered: number;
+  empty_received: number;
+  item?: Item;
+}
+
+export interface DeliveryBill {
+  id: string;
+  driver_id?: string;
+  buyer_id?: string;
+  adhoc_buyer_name?: string;
+  idempotency_key?: string;
+  buyer?: Buyer;
+  total_bill_amount: number;
+  cash_collected: number;
+  upi_collected: number;
+  items: DeliveryItem[];
+  timestamp: string;
 }

@@ -39,6 +39,13 @@ type PrinterRuntime = {
   printImageBase64: (base64: string, options?: NativePrinterImageOptions) => Promise<void>;
 };
 
+export type DeliveryReceiptItem = {
+  name: string;
+  quantity: number;
+  price: number;
+  total: number;
+};
+
 export type DeliveryReceiptData = {
   receipt_number: string;
   date: string;
@@ -52,9 +59,7 @@ export type DeliveryReceiptData = {
   
   opening_balance: number;
   
-  item_capacity_kg: number;
-  full_delivered: number;
-  price_per_kg: number;
+  items: DeliveryReceiptItem[];
   
   total_bill: number;
   cash_collected: number;
@@ -186,14 +191,17 @@ function buildPrintableReceiptLines(data: DeliveryReceiptData): PrintableReceipt
     { text: divider },
     { text: padColumns("Opening Balance:", formatCurrency(data.opening_balance)), align: "center", bold: true },
     { text: divider },
-    { text: padColumns("Kgs        Price/Kg", "Total Amount"), bold: true },
+    { text: padColumns("Item       Qty         Price", "Total"), bold: true },
   ];
   
-  const totalKgs = data.item_capacity_kg * data.full_delivered;
-  
-  // Format the item row nicely to match "Kgs        Price/Kg            Total Amount"
-  const itemRowLeft = `${totalKgs.toString().padEnd(10)} ₹${data.price_per_kg}`;
-  lines.push({ text: padColumns(itemRowLeft, `₹${data.total_bill}`) });
+  for (const item of data.items) {
+    // Format: ItemName (trunc to 10)  Qty (3)  Price (6) -> Total (8)
+    const name = item.name.substring(0, 10).padEnd(10);
+    const qty = item.quantity.toString().padStart(3);
+    const price = `₹${item.price}`.padStart(8);
+    const itemRowLeft = `${name} ${qty}  ${price}`;
+    lines.push({ text: padColumns(itemRowLeft, `₹${item.total}`) });
+  }
   
   lines.push({ text: divider });
   lines.push({ text: padColumns("Total Bill Amount:", `₹${data.total_bill}`), bold: true });

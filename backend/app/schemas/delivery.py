@@ -5,32 +5,53 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.buyer import BuyerOut
 
 
-class DeliveryEntryCreate(BaseModel):
-    buyer_id: UUID | None = None
-    adhoc_buyer_name: str | None = None
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field
+from app.schemas.buyer import BuyerOut
+from app.schemas.item import ItemOut
+
+
+class DeliveryItemCreate(BaseModel):
     item_id: UUID
     full_delivered: int = Field(default=0, ge=0)
     empty_received: int = Field(default=0, ge=0)
+
+
+class DeliveryBillCreate(BaseModel):
+    buyer_id: UUID | None = None
+    adhoc_buyer_name: str | None = None
+    items: list[DeliveryItemCreate]
     cash_collected: float = Field(default=0.0, ge=0.0)
     upi_collected: float = Field(default=0.0, ge=0.0)
 
 
-class DeliveryEntryOut(BaseModel):
+class DeliveryItemOut(BaseModel):
+    id: UUID
+    item_id: UUID
+    unit_price_at_delivery: float
+    line_total_amount: float
+    full_delivered: int
+    empty_received: int
+    item: ItemOut | None = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DeliveryBillOut(BaseModel):
     id: UUID
     driver_id: UUID | None
     buyer_id: UUID | None
     adhoc_buyer_name: str | None = None
-    item_id: UUID
     idempotency_key: str | None = None
     buyer: BuyerOut | None = None
     
-    unit_price_at_delivery: float
     total_bill_amount: float
-    
-    full_delivered: int
-    empty_received: int
     cash_collected: float
     upi_collected: float
+    
+    items: list[DeliveryItemOut] = []
     
     timestamp: datetime
 

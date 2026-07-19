@@ -40,7 +40,11 @@ type ReceiptExportPayload = {
 };
 
 export function buildReceiptExportPayload(data: DeliveryReceiptData): ReceiptExportPayload {
-  const totalKgs = data.item_capacity_kg * data.full_delivered;
+  const items = data.items.map(item => ({
+    itemName: item.name,
+    quantityText: String(item.quantity),
+    lineTotal: formatReceiptCurrency(item.total),
+  }));
 
   return {
     companyName: data.agency_name || "Sree Hari Agencies",
@@ -51,16 +55,10 @@ export function buildReceiptExportPayload(data: DeliveryReceiptData): ReceiptExp
     buyerShopName: data.buyer_address,
     openingBalanceLabel: "Opening Balance",
     openingBalanceValue: formatReceiptCurrency(data.opening_balance),
-    itemHeader: "Kgs",
-    quantityHeader: "Price/Kg",
-    totalHeader: "Total Amount",
-    items: [
-      {
-        itemName: String(totalKgs),
-        quantityText: formatReceiptCurrency(data.price_per_kg),
-        lineTotal: formatReceiptCurrency(data.total_bill),
-      }
-    ],
+    itemHeader: "Item",
+    quantityHeader: "Qty",
+    totalHeader: "Total",
+    items: items,
     totalLabel: "Total Bill Amount:",
     totalValue: formatReceiptCurrency(data.total_bill),
     cashLabel: "Cash Paid:",

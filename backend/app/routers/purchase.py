@@ -6,9 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_tenant_admin, get_tenant_db
-from app.models import Provider, PurchaseEntry, Item
+from app.models import Provider, PurchaseEntry, PurchaseBill, Item
 from app.schemas.provider import ProviderCreate, ProviderOut, ProviderUpdate
-from app.schemas.purchase import PurchaseEntryCreate, PurchaseEntryOut
+from app.schemas.purchase import PurchaseBillCreate, PurchaseBillOut
+from sqlalchemy.orm import selectinload
 
 router = APIRouter(dependencies=[Depends(require_tenant_admin())], tags=["Purchases"])
 
@@ -20,9 +21,36 @@ async def create_provider(
     provider = Provider(
         name=provider_in.name,
         phone=provider_in.phone,
+        gstin=provider_in.gstin,
+        price_per_kg=provider_in.price_per_kg,
         is_active=provider_in.is_active,
     )
     db.add(provider)
+    await db.commit()
+    await db.refresh(provider)
+    return provider
+
+@router.put("/providers/{provider_id}", response_model=ProviderOut)
+async def update_provider(
+    provider_id: uuid.UUID,
+    provider_in: ProviderUpdate,
+    db: AsyncSession = Depends(get_tenant_db),
+):
+    provider = await db.get(Provider, provider_id)
+    if not provider:
+        raise HTTPException(status_code=404, detail="Provider not found")
+
+    if provider_in.name is not None:
+        provider.name = provider_in.name
+    if provider_in.phone is not None:
+        provider.phone = provider_in.phone
+    if provider_in.gstin is not None:
+        provider.gstin = provider_in.gstin
+    if provider_in.price_per_kg is not None:
+        provider.price_per_kg = provider_in.price_per_kg
+    if provider_in.is_active is not None:
+        provider.is_active = provider_in.is_active
+
     await db.commit()
     await db.refresh(provider)
     return provider
@@ -34,44 +62,60 @@ async def list_providers(
     result = await db.scalars(select(Provider))
     return result.all()
 
-@router.post("/", response_model=PurchaseEntryOut)
-async def create_purchase(
-    purchase_in: PurchaseEntryCreate,
+@router.post("/", response_model=PurchaseBillOut)
+async def create_purchase_bill(
+    bill_in: PurchaseBillCreate,
     db: AsyncSession = Depends(get_tenant_db),
 ):
-    provider = await db.get(Provider, purchase_in.provider_id)
+    provider = await db.get(Provider, bill_in.provider_id)
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
         
-    item = await db.get(Item, purchase_in.item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-
-    entry = PurchaseEntry(
+    bill = PurchaseBill(
         provider_id=provider.id,
-        item_id=item.id,
-        full_received=purchase_in.full_received,
-        empty_returned=purchase_in.empty_returned,
-        total_cost=purchase_in.total_cost,
-        amount_paid=purchase_in.amount_paid,
+        bill_number=bill_in.bill_number,
+        total_cost=bill_in.total_cost,
+        amount_paid=bill_in.amount_paid,
     )
-    db.add(entry)
+    db.add(bill)
     
-    # Update Item counts
-    item.current_full += purchase_in.full_received
-    item.current_empty -= purchase_in.empty_returned
+    total_full_received = 0
+    total_empty_returned = 0
     
-    # Update Provider ledger
-    provider.balance_pending = float(provider.balance_pending) + (purchase_in.total_cost - purchase_in.amount_paid)
-    provider.cylinders_pending = int(provider.cylinders_pending) + (purchase_in.full_received - purchase_in.empty_returned)
+    for item_in in bill_in.items:
+        item = await db.get(Item, item_in.item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail=f"Item {item_in.item_id} not found")
+            
+        entry = PurchaseEntry(
+            bill=bill,
+            item_id=item.id,
+            full_received=item_in.full_received,
+            empty_returned=item_in.empty_returned,
+            total_cost=item_in.total_cost,
+        )
+        db.add(entry)
+        
+        # Update Item counts
+        item.current_full += item_in.full_received
+        item.current_empty -= item_in.empty_returned
+        
+        total_full_received += item_in.full_received
+        total_empty_returned += item_in.empty_returned
+        
+    # Update Provider ledger ONCE for the entire bill
+    provider.balance_pending = float(provider.balance_pending) + (bill_in.total_cost - bill_in.amount_paid)
+    provider.cylinders_pending = int(provider.cylinders_pending) + (total_full_received - total_empty_returned)
 
     await db.commit()
-    await db.refresh(entry)
-    return entry
+    
+    # Refresh bill and load entries
+    result = await db.scalars(select(PurchaseBill).options(selectinload(PurchaseBill.entries)).where(PurchaseBill.id == bill.id))
+    return result.one()
 
-@router.get("/", response_model=list[PurchaseEntryOut])
-async def list_purchases(
+@router.get("/", response_model=list[PurchaseBillOut])
+async def list_purchase_bills(
     db: AsyncSession = Depends(get_tenant_db),
 ):
-    result = await db.scalars(select(PurchaseEntry))
+    result = await db.scalars(select(PurchaseBill).options(selectinload(PurchaseBill.entries)).order_by(PurchaseBill.created_at.desc()))
     return result.all()

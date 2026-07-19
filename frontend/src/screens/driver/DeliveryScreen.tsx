@@ -7,21 +7,33 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import PrinterSettingsModal from '../../components/PrinterSettingsModal';
 import { usePrinterStore } from '../../store/printer-store';
-import { DeliveryReceiptData } from '../../utils/printer';
+import { DeliveryReceiptData, DeliveryReceiptItem } from '../../utils/printer';
 import { useReceiptImagePrintJob } from '../../hooks/use-receipt-image-print-job';
 
 
 interface Item { id: string; name: string; price: number; capacity_kg?: number; }
 interface Buyer { id: string; name: string; price_per_kg?: number; balance_pending?: number; address?: string; }
 
+interface CartItem {
+  item: Item;
+  fullDelivered: number;
+  emptyReceived: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
 export default function DeliveryScreen() {
   const navigation = useNavigation();
   const { logout } = useAuth();
   const queryClient = useQueryClient();
   const [buyerId, setBuyerId] = useState('');
+  
+  // Cart state
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [itemId, setItemId] = useState('');
   const [fullDelivered, setFullDelivered] = useState('');
   const [emptyReceived, setEmptyReceived] = useState('');
+  
   const [cashCollected, setCashCollected] = useState('');
   const [upiCollected, setUpiCollected] = useState('');
   
@@ -67,6 +79,54 @@ export default function DeliveryScreen() {
     }
   });
 
+  const selectedBuyer = useMemo(() => buyers?.find(b => b.id === buyerId), [buyers, buyerId]);
+  const selectedItem = useMemo(() => items?.find(i => i.id === itemId), [items, itemId]);
+
+  const getUnitPrice = (item: Item) => {
+    let unitPrice = item.price;
+    if (selectedBuyer && selectedBuyer.price_per_kg && item.capacity_kg) {
+      unitPrice = selectedBuyer.price_per_kg * item.capacity_kg;
+    }
+    return unitPrice;
+  };
+
+  const handleAddToCart = () => {
+    if (!selectedItem) {
+      Alert.alert("Required", "Please select an item.");
+      return;
+    }
+    const full = parseInt(fullDelivered || '0');
+    const empty = parseInt(emptyReceived || '0');
+    if (full === 0 && empty === 0) {
+      Alert.alert("Required", "Please enter either full delivered or empty received.");
+      return;
+    }
+
+    const unitPrice = getUnitPrice(selectedItem);
+    const lineTotal = parseFloat((unitPrice * full).toFixed(2));
+
+    setCartItems(prev => [...prev, {
+      item: selectedItem,
+      fullDelivered: full,
+      emptyReceived: empty,
+      unitPrice,
+      lineTotal
+    }]);
+
+    // Reset item form
+    setItemId('');
+    setFullDelivered('');
+    setEmptyReceived('');
+  };
+
+  const handleRemoveFromCart = (index: number) => {
+    setCartItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const totalBill = useMemo(() => {
+    return cartItems.reduce((sum, current) => sum + current.lineTotal, 0).toFixed(2);
+  }, [cartItems]);
+
   const submitMutation = useMutation({
     mutationFn: async (payload: any) => {
       return api.post('/driver/entries', payload, {
@@ -77,46 +137,42 @@ export default function DeliveryScreen() {
       Alert.alert("Success", "Delivery logged successfully!");
       
       const preferredPrinter = usePrinterStore.getState().preferredPrinter;
-        if (preferredPrinter && selectedBuyer && selectedItem) {
-          let unitPrice = selectedItem.price;
-          if (selectedBuyer.price_per_kg && selectedItem.capacity_kg) {
-            unitPrice = selectedBuyer.price_per_kg * selectedItem.capacity_kg;
-          }
-          const total_bill = parseFloat((unitPrice * parseInt(fullDelivered || '0')).toFixed(2));
+      if (preferredPrinter && selectedBuyer && cartItems.length > 0) {
+        const cash_paid = parseFloat(cashCollected || '0');
+        const upi_paid = parseFloat(upiCollected || '0');
+        const opening_balance = selectedBuyer.balance_pending || 0;
+        const total = parseFloat(totalBill);
+        const closing_balance = opening_balance + total - (cash_paid + upi_paid);
 
-          let receipt_price_per_kg = selectedBuyer.price_per_kg || 0;
-          if (!receipt_price_per_kg && selectedItem.capacity_kg) {
-             receipt_price_per_kg = selectedItem.price / selectedItem.capacity_kg;
-          }
+        const receiptItems: DeliveryReceiptItem[] = cartItems.map(c => ({
+          name: c.item.name,
+          quantity: c.fullDelivered,
+          price: c.unitPrice,
+          total: c.lineTotal
+        }));
 
-          const cash_paid = parseFloat(cashCollected || '0');
-          const upi_paid = parseFloat(upiCollected || '0');
-          const opening_balance = selectedBuyer.balance_pending || 0;
-          const closing_balance = opening_balance + total_bill - (cash_paid + upi_paid);
-
-          const receiptData: DeliveryReceiptData = {
-            receipt_number: data?.data?.id ? data.data.id.split('-')[0].toUpperCase() : Math.random().toString(36).substring(2, 8).toUpperCase(),
-            date: data?.data?.created_at || new Date().toISOString(),
-            agency_name: "Sree Hari Agencies",
-            agency_address: "Namakkal",
-            buyer_name: selectedBuyer.name,
-            buyer_address: selectedBuyer.address || "",
-            opening_balance: opening_balance,
-            item_capacity_kg: selectedItem.capacity_kg || 0,
-            full_delivered: parseInt(fullDelivered || '0'),
-            price_per_kg: receipt_price_per_kg,
-            total_bill: total_bill,
-            cash_collected: cash_paid,
-            upi_collected: upi_paid,
-            closing_balance: closing_balance,
-          };
-          startReceiptImagePrintJob([receiptData], preferredPrinter).catch(err => {
-            Alert.alert("Print Error", err.message || "Failed to print receipt");
-          });
-        }
+        const receiptData: DeliveryReceiptData = {
+          receipt_number: data?.data?.id ? data.data.id.split('-')[0].toUpperCase() : Math.random().toString(36).substring(2, 8).toUpperCase(),
+          date: data?.data?.timestamp || new Date().toISOString(),
+          agency_name: "Sree Hari Agencies",
+          agency_address: "Namakkal",
+          buyer_name: selectedBuyer.name,
+          buyer_address: selectedBuyer.address || "",
+          opening_balance: opening_balance,
+          items: receiptItems,
+          total_bill: total,
+          cash_collected: cash_paid,
+          upi_collected: upi_paid,
+          closing_balance: closing_balance,
+        };
+        startReceiptImagePrintJob([receiptData], preferredPrinter).catch(err => {
+          Alert.alert("Print Error", err.message || "Failed to print receipt");
+        });
+      }
 
       // Reset form
       setBuyerId('');
+      setCartItems([]);
       setItemId('');
       setFullDelivered('');
       setEmptyReceived('');
@@ -129,25 +185,6 @@ export default function DeliveryScreen() {
       Alert.alert("Error", err.response?.data?.detail || "Failed to log delivery.");
     }
   });
-
-  const selectedBuyer = useMemo(() => buyers?.find(b => b.id === buyerId), [buyers, buyerId]);
-  const selectedItem = useMemo(() => items?.find(i => i.id === itemId), [items, itemId]);
-
-  const getUnitPrice = (item: Item) => {
-    let unitPrice = item.price;
-    if (selectedBuyer && selectedBuyer.price_per_kg && item.capacity_kg) {
-      unitPrice = selectedBuyer.price_per_kg * item.capacity_kg;
-    }
-    return unitPrice;
-  };
-
-  const totalBill = useMemo(() => {
-    if (selectedItem && fullDelivered) {
-      const unitPrice = getUnitPrice(selectedItem);
-      return (unitPrice * parseInt(fullDelivered || '0')).toFixed(2);
-    }
-    return '0.00';
-  }, [selectedItem, selectedBuyer, fullDelivered]);
 
   if (itemsLoading || buyersLoading) {
     return (
@@ -175,45 +212,77 @@ export default function DeliveryScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Item Selection */}
-        <View className="bg-white rounded-2xl p-4 mb-4 border border-zinc-100">
-          <Text className="text-zinc-500 font-medium mb-2">Select Item</Text>
-          <TouchableOpacity 
-            className="flex-row items-center justify-between bg-zinc-50 border border-zinc-200 p-4 rounded-xl"
-            onPress={() => setItemModalVisible(true)}
-          >
-            <Text className="text-lg" style={{ color: itemId ? '#27272a' : '#a1a1aa' }}>
-              {selectedItem ? `${selectedItem.name} (₹${getUnitPrice(selectedItem)})` : 'Tap to select item...'}
-            </Text>
-            <Ionicons name="chevron-down" size={24} color="#a1a1aa" />
-          </TouchableOpacity>
-        </View>
+        {/* Add Item Form */}
+        {buyerId && (
+          <View className="bg-white rounded-2xl p-4 mb-4 border border-zinc-100">
+            <Text className="text-zinc-500 font-medium mb-2">Add Item to Bill</Text>
+            
+            <TouchableOpacity 
+              className="flex-row items-center justify-between bg-zinc-50 border border-zinc-200 p-4 rounded-xl mb-4"
+              onPress={() => setItemModalVisible(true)}
+            >
+              <Text className="text-lg" style={{ color: itemId ? '#27272a' : '#a1a1aa' }}>
+                {selectedItem ? `${selectedItem.name} (₹${getUnitPrice(selectedItem)})` : 'Tap to select item...'}
+              </Text>
+              <Ionicons name="chevron-down" size={24} color="#a1a1aa" />
+            </TouchableOpacity>
 
-        {/* Quantities */}
-        <View className="bg-white rounded-2xl p-4 mb-4 border border-zinc-100 space-y-4">
-          <View className="flex-row gap-4">
-            <View className="flex-1">
-              <Text className="text-zinc-500 font-medium mb-1">Full Delivered</Text>
-              <TextInput
-                className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-lg text-center font-bold"
-                keyboardType="numeric"
-                value={fullDelivered}
-                onChangeText={setFullDelivered}
-                placeholder="0"
-              />
+            <View className="flex-row gap-4 mb-4">
+              <View className="flex-1">
+                <Text className="text-zinc-500 font-medium mb-1">Full Delivered</Text>
+                <TextInput
+                  className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-lg text-center font-bold"
+                  keyboardType="numeric"
+                  value={fullDelivered}
+                  onChangeText={setFullDelivered}
+                  placeholder="0"
+                />
+              </View>
+              <View className="flex-1">
+                <Text className="text-zinc-500 font-medium mb-1">Empty Received</Text>
+                <TextInput
+                  className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-lg text-center font-bold"
+                  keyboardType="numeric"
+                  value={emptyReceived}
+                  onChangeText={setEmptyReceived}
+                  placeholder="0"
+                />
+              </View>
             </View>
-            <View className="flex-1">
-              <Text className="text-zinc-500 font-medium mb-1">Empty Received</Text>
-              <TextInput
-                className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-lg text-center font-bold"
-                keyboardType="numeric"
-                value={emptyReceived}
-                onChangeText={setEmptyReceived}
-                placeholder="0"
-              />
-            </View>
+
+            <TouchableOpacity
+              className="bg-zinc-800 py-3 rounded-xl items-center"
+              onPress={handleAddToCart}
+            >
+              <Text className="text-white font-medium text-base flex-row items-center">
+                <Ionicons name="add" size={20} color="white" /> Add to Cart
+              </Text>
+            </TouchableOpacity>
           </View>
-        </View>
+        )}
+
+        {/* Cart Items List */}
+        {cartItems.length > 0 && (
+          <View className="bg-white rounded-2xl p-4 mb-4 border border-zinc-100">
+            <Text className="text-zinc-800 font-semibold text-lg mb-3">Cart Items</Text>
+            {cartItems.map((cartItem, index) => (
+              <View key={index} className="flex-row justify-between items-center py-3 border-b border-zinc-50">
+                <View>
+                  <Text className="text-zinc-800 font-medium text-base">{cartItem.item.name}</Text>
+                  <Text className="text-zinc-500 text-sm">
+                    {cartItem.fullDelivered} Full, {cartItem.emptyReceived} Empty
+                  </Text>
+                </View>
+                <View className="flex-row items-center gap-4">
+                  <Text className="text-zinc-800 font-semibold text-base">₹{cartItem.lineTotal}</Text>
+                  <TouchableOpacity onPress={() => handleRemoveFromCart(index)}>
+                    <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Payments */}
         <View className="bg-white rounded-2xl p-4 mb-6 border border-zinc-100 space-y-4">
@@ -248,27 +317,27 @@ export default function DeliveryScreen() {
 
         <TouchableOpacity
           className="py-4 rounded-xl items-center mb-12"
-          style={{ backgroundColor: submitMutation.isPending ? '#60a5fa' : '#2563eb' }}
+          style={{ backgroundColor: submitMutation.isPending ? '#60a5fa' : '#2563eb', opacity: cartItems.length === 0 ? 0.5 : 1 }}
           onPress={() => {
-            if (!buyerId || !itemId) {
-              Alert.alert("Required", "Please select a buyer and an item.");
-              return;
-            }
-            if (!fullDelivered && !emptyReceived) {
-              Alert.alert("Required", "Please enter either full delivered or empty received.");
+            if (!buyerId || cartItems.length === 0) {
+              Alert.alert("Required", "Please select a buyer and add items to cart.");
               return;
             }
 
+            const payloadItems = cartItems.map(c => ({
+              item_id: c.item.id,
+              full_delivered: c.fullDelivered,
+              empty_received: c.emptyReceived
+            }));
+
             submitMutation.mutate({
               buyer_id: buyerId,
-              item_id: itemId,
-              full_delivered: parseInt(fullDelivered || '0'),
-              empty_received: parseInt(emptyReceived || '0'),
+              items: payloadItems,
               cash_collected: parseFloat(cashCollected || '0'),
               upi_collected: parseFloat(upiCollected || '0')
             });
           }}
-          disabled={submitMutation.isPending}
+          disabled={submitMutation.isPending || cartItems.length === 0}
         >
           {submitMutation.isPending ? (
             <ActivityIndicator color="white" />

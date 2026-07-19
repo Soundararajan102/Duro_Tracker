@@ -1770,3 +1770,53 @@ eportlab, pdf2, pypdf, uharfbuzz) were already in pyproject.toml.
   - Copied ackend/app/services/reports/ and ackend/app/assets/fonts/ from Duro_POS into the Duro_Tracker project.
   - Refactored pdf.py and queries.py to safely stub out Duro_POS specific models (Retailer, Bill, etc.) to prevent ImportError crashes in the Duro_Tracker backend.
   - Successfully verified that the FastAPI server loads without crashing with the new modules intact.
+
+### [2026-07-18 15:26:21] Executed Git Push
+- **User Request:** Explicitly requested to push code to Git.
+- **Agent Actions:** 
+  - Ran git add ., git commit -m 'feat: setup PDF generation foundation from Duro_POS', and git push.
+  - Pushed all recent changes, including the newly added PDF utilities and font files, to the main branch.
+
+### [2026-07-18 15:40:00] Feature Implementation: Provider Custom Pricing
+- **User Request:** Add an update price feature (like buyer page custom pricing as per kg) for every provider in the Purchases screen.
+- **Agent Actions:** 
+  - Added price_per_kg column to Provider model and created an Alembic migration (1b9c76f7eb5e_add_price_per_kg_to_provider.py).
+  - Ran the schema migration across all existing tenant databases via 
+un_migrations.py.
+  - Updated API (ProviderCreate, ProviderUpdate) and endpoints (POST /providers, PUT /providers/{id}) in purchase.py.
+  - Added useUpdateProvider hook and types in rontend/src/types/api.ts.
+  - Updated PurchasesScreen.tsx to include an edit price modal, auto-calculate 	otalCost based on price_per_kg, and fixed a TypeScript error related to conditional rendering.
+  - Verified no compilation errors using 
+px tsc --noEmit.
+
+### [2026-07-18 15:49:41] UI Tweak: Provider Custom Pricing Card
+- **User Request:** Change the UI position of the provider's custom price_per_kg to a card type like the buyer Custom Price Tier.
+- **Agent Actions:** 
+  - Modified PurchasesScreen.tsx to remove the inline price display from the provider's header.
+  - Added a new 'Custom Pricing Tier' card block below the 'Empty Cylinders' card, mirroring the exact visual structure from BuyersScreen.tsx.
+  - Verified no compilation errors using 
+px tsc --noEmit.
+
+### [2026-07-18 16:41:04] Agent Completion
+**Action Taken:** Executed UI changes in frontend for batch item support in the Purchase Modal, verified typescript models using tsc --noEmit, updated the UI Table for Purchase History, and updated DATA_MODELS.md with the new backend schema.
+
+### [2026-07-19 06:31:33] Agent Completion
+**Action Taken:** Fixed IDE type hint error in purchase_bill.py and provided system impact analysis confirming no side effects on dashboard or other UI functions from the recent purchase batch updates.
+
+### [2026-07-19 06:35:45] Agent Completion
+**Action Taken:** Generated a full folder and file tree of the Duro_Tracker project and updated the ARCHITECTURE.md file with the complete repository structure.
+
+### [2026-07-19 06:51:54] Agent Completion
+**Action Taken:** Appended all Python model source code files block-by-block into the DATA_MODELS.md file.
+
+### [2026-07-19 06:55:54] Agent Completion
+**Action Taken:** Completely rewrote RULES.md to include the latest project guidelines, multi-item batch rules, and strict documentation preservation mandates.
+
+### [2026-07-19 06:58:15] Agent Completion
+**Action Taken:** Appended the upcoming pending tasks (Visual DB mapping, dynamic UI categories, and Postgres logic checks) to IDEA.md.
+
+### [2026-07-19 07:06:13] Agent Completion
+**Action Taken:** Ran a Postgres MCP audit against backend code. Discovered critical batch delivery missing models, purchase security flaws, and missing idempotency keys. Created backend_logic_audit.md report.
+
+### [2026-07-19 07:31:13] Delivery Batching UI Refactor
+- **Context:** Updated backend API types and frontend React Native UI to support DeliveryBill schema. Replaced DeliveryScreen flat fields with an interactive shopping cart. Display nested items in BillsScreen and print loops on thermal printers.

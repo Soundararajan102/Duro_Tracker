@@ -162,3 +162,13 @@
   2. **Ad-Hoc Deliveries:** Adding dhoc_buyer_name to DeliveryEntry solves the walk-in customer problem cleanly without polluting the CRM.
   3. **Idempotency & Offline:** X-Idempotency-Key is a highly professional addition for unreliable networks. The backend will need an IdempotencyKey tracking mechanism (or unique constraint) to prevent double-processing.
   4. **State Caching:** Combining Axios with @tanstack/react-query will make the dashboard instantaneous.
+
+### [2026-07-19 06:31:52] Admin UI: Multi-Item Batch Purchases & Custom Pricing
+- **Feature Request:** Add an update price feature for providers (custom pricing per kg), similar to the buyer page.
+- **Feature Request:** Update the Record Purchase modal to allow selecting multiple items in a batch. Each item should accept 'Full' and 'Empty' cylinder quantities. Auto-calculate the total cost based on the provider's custom price tier and the item's capacity.
+- **Feature Request:** Add a 'Purchase Bill Number (Optional)' text input at the top of the Record Purchase modal to track physical invoice numbers.
+
+### [2026-07-19 06:57:39] Upcoming Features & Technical Tasks
+- **Feature Request (UI):** Frontend UI update for dynamic ItemCategory (allowing admins to manage different categories dynamically instead of hardcoded).
+- **Technical Request (Database):** Create a visual view (ERD diagram) of the database tables and their linking/relationships.
+- **Technical Request (Backend QA):** Run a comprehensive logic check and identify potential pitfalls in the backend using the Postgres MCP server to query actual database states and edge cases.

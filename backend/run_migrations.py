@@ -29,7 +29,7 @@ def main():
         os.environ["ALEMBIC_MODE"] = "tenant_upgrade"
         os.environ["CURRENT_TENANT"] = schema
         alembic_cfg = Config("alembic.ini")
-        command.upgrade(alembic_cfg, "4fbca79c1a42")
+        command.upgrade(alembic_cfg, "5e9f1a2b3c4d")
 
 if __name__ == "__main__":
     main()

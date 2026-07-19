@@ -4,8 +4,9 @@ from .organization import Organization
 from .user import User
 from .item import Item
 from .buyer import Buyer
-from .delivery import DeliveryEntry
+from .delivery import DeliveryBill, DeliveryItem
 from .provider import Provider
+from .purchase_bill import PurchaseBill
 from .purchase_entry import PurchaseEntry
 
 __all__ = [
@@ -17,7 +18,9 @@ __all__ = [
     "User",
     "Item",
     "Buyer",
-    "DeliveryEntry",
+    "DeliveryBill",
+    "DeliveryItem",
     "Provider",
+    "PurchaseBill",
     "PurchaseEntry",
 ]

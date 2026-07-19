@@ -611,3 +611,49 @@ un_migrations.py and modified env.py to upgrade all tenant schemas. Successfully
 
 ### [2026-07-18 14:23:11] Feature Foundation: PDF Generation Ported
 - **Action Taken:** Transplanted PDF generation tools, logic, and fonts from the Duro_POS repository into Duro_Tracker. Stripped domain-specific logic to keep the generic PDF builders usable for when specific reports are decided.
+
+### [2026-07-18 15:26:21] Manual Git Push
+- **Action Taken:** Executed an explicit git push upon user request, safely committing the PDF foundational work and rule changes.
+
+### [2026-07-18 15:40:00] Admin Purchases: Custom Provider Pricing
+- **Action Taken:** Added price_per_kg custom pricing support to Providers. The frontend PurchasesScreen now allows creating/editing this rate, and recording a purchase automatically calculates 	otalCost using the item's capacity and the custom rate.
+
+### [2026-07-18 15:49:41] Admin Purchases: Custom Provider Pricing UI Update
+- **Action Taken:** Updated the UI for Provider custom pricing to be a standalone card layout (matching the Buyer screen) instead of an inline element.
+
+### [2026-07-18 16:39:44] Frontend Implementation: Multi-Item Batch Purchases
+- **User Request:** "select items->able to select mutiple items, and able to enter Full and empty to enter for eah selected items... the total cost should be calculated by the custom price tier/kg * capacity_kg for that provider... add the Purchase Bill Number..."
+- **Action Taken:** Updated the frontend types (PurchaseBill) in api.ts and React Query hooks in usePurchases.ts. Completely refactored the Record Purchase Modal in PurchasesScreen.tsx to handle a dynamic batch array of items instead of a single item, auto-calculating the grand total. Updated the Purchase History table UI to display the Bill Number and a comma-separated summary of items. Ran TypeScript compiler to verify all types matched the backend schema properly. Logged structural changes in DATA_MODELS.md.
+
+### [2026-07-19 06:31:23] Fixed Backend Type Hinting
+- **User Request:** `@[current_problems]` IDE error in purchase_bill.py
+- **Action Taken:** Fixed PurchaseEntry type resolution by importing TYPE_CHECKING in purchase_bill.py. Evaluated impact of purchase changes on the entire system and confirmed no side effects on other frontend or backend functions.
+
+### [2026-07-19 06:35:34] Updated Architecture Documentation
+- **User Request:** "in the .core file i want an full architecture all files structure every files in the architecture  update it fully"
+- **Action Taken:** Generated a full folder and file tree of the Duro_Tracker repository (excluding standard ignore folders like node_modules and .git) and completely injected it into the 'Code Files & Folders Structure' section of ARCHITECTURE.md.
+
+### [2026-07-19 06:51:43] Updated Data Models Documentation
+- **User Request:** "update the data modules file and i want every function code block by block al the function"
+- **Action Taken:** Extracted the raw Python source code for every model class in ackend/app/models/*.py and appended them block-by-block into the DATA_MODELS.md file for deep technical reference.
+
+### [2026-07-19 06:55:44] Updated Rules Document
+- **User Request:** "ok updat the rules file to our current project"
+- **Action Taken:** Completely rewrote the RULES.md file to reflect the current project state, incorporating explicit rules about batch processing for purchases/deliveries, nativewind usage, and strict documentation preservation mandates.
+
+### [2026-07-19 06:58:06] Updated IDEA Log
+- **User Request:** "ok the idea file update to our current project"
+- **Action Taken:** Appended the pending upcoming tasks (Visual DB mapping, dynamic UI categories, and Postgres MCP logic checking) into the IDEA.md file.
+
+### [2026-07-19 07:05:19] Backend Logic Audit
+- **User Request:** "Run a comprehensive logic check and identify potential pitfalls in the backend..."
+- **Action Taken:** Queried the actual Postgres database schemas and backend router logic. Discovered 4 major pitfalls: flat delivery entry structure, blind frontend trust on purchase costs, lack of negative inventory boundaries, and missing idempotency keys on purchases. Created ackend_logic_audit.md.
+
+### [2026-07-19 07:22:56] Task 1: Backend Delivery Models
+- **Action Taken:** Refactored `DeliveryEntry` into `DeliveryBill` and `DeliveryItem` models. Generated and ran Alembic migration for tenant schema.
+
+### [2026-07-19 07:25:18] Task 2: Backend Schemas and Routers
+- **Action Taken:** Updated delivery schemas and refactored driver & dashboard routers to use batch DeliveryBills.
+
+### [2026-07-19 07:30:02] Task 3 & 4: Frontend UI for Batching
+- **Action Taken:** Updated frontend API types and Printer utilities to accept multiple items per bill. Completely rewrote driver DeliveryScreen to include a shopping cart UI for items. Updated BillsScreen to display the grouped items per bill.

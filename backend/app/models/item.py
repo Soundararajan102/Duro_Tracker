@@ -29,4 +29,4 @@ class Item(Base, BaseModelMixin):
     
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    deliveries = relationship("DeliveryEntry", back_populates="item")
+    # No direct relationship back to deliveries needed right now

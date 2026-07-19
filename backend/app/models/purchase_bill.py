@@ -1,0 +1,25 @@
+from uuid import UUID
+from sqlalchemy import Uuid, Integer, Numeric, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from .base import BaseModelMixin
+from typing import TYPE_CHECKING
+from ..core.ids import UUID_SQL_TYPE, uuid7
+from app.db.database import Base
+
+if TYPE_CHECKING:
+    from .purchase_entry import PurchaseEntry
+
+class PurchaseBill(Base, BaseModelMixin):
+    __tablename__ = "purchase_bills"
+    __table_args__ = {"schema": "tenant"}
+
+    id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, primary_key=True, default=uuid7, index=True)
+    provider_id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, ForeignKey("tenant.providers.id"), nullable=False, index=True)
+    
+    bill_number: Mapped[str | None] = mapped_column(String, nullable=True)
+    
+    total_cost: Mapped[float] = mapped_column(Numeric(12, 2), default=0.0)
+    amount_paid: Mapped[float] = mapped_column(Numeric(12, 2), default=0.0)
+    
+    # Relationship to entries
+    entries: Mapped[list["PurchaseEntry"]] = relationship("PurchaseEntry", back_populates="bill", cascade="all, delete-orphan", lazy="selectin")

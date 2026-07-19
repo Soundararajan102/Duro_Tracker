@@ -5,6 +5,7 @@ class ProviderBase(BaseModel):
     name: str
     phone: str | None = None
     gstin: str | None = None
+    price_per_kg: float | None = None
     is_active: bool = True
 
 class ProviderCreate(ProviderBase):
@@ -14,6 +15,7 @@ class ProviderUpdate(BaseModel):
     name: str | None = None
     phone: str | None = None
     gstin: str | None = None
+    price_per_kg: float | None = None
     is_active: bool | None = None
 
 class ProviderOut(ProviderBase):

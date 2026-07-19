@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView, FlatList, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { Plus, X, Search, Store, ArrowLeft, Download, FileText, Receipt, PackageOpen, Truck } from 'lucide-react-native';
-import { usePurchases, useProviders, useCreatePurchase, useCreateProvider } from '../../hooks/usePurchases';
+import { usePurchases, useProviders, useCreatePurchase, useCreateProvider, useUpdateProvider } from '../../hooks/usePurchases';
 import { useItems } from '../../hooks/useItems';
 import type { Provider } from '../../types/api';
 
@@ -12,19 +12,21 @@ export default function PurchasesScreen() {
   const [newProviderName, setNewProviderName] = useState('');
   const [newProviderPhone, setNewProviderPhone] = useState('');
   const [newProviderGstin, setNewProviderGstin] = useState('');
+  const [newProviderPricePerKg, setNewProviderPricePerKg] = useState('');
 
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
-  const [itemId, setItemId] = useState('');
-  const [fullBought, setFullBought] = useState('');
-  const [emptyReturned, setEmptyReturned] = useState('');
-  const [totalCost, setTotalCost] = useState('');
+  const [billNumber, setBillNumber] = useState('');
+  const [itemStates, setItemStates] = useState<Record<string, { fullBought: string; emptyReturned: string }>>({});
   const [amountPaid, setAmountPaid] = useState('');
+  const [isEditPriceModalOpen, setIsEditPriceModalOpen] = useState(false);
+  const [editPricePerKg, setEditPricePerKg] = useState('');
 
   const { data: purchases = [], isLoading: isPurchasesLoading } = usePurchases();
   const { data: providers = [], isLoading: isProvidersLoading } = useProviders();
   const { data: items = [] } = useItems();
   const createPurchase = useCreatePurchase();
   const createProvider = useCreateProvider();
+  const updateProvider = useUpdateProvider();
 
   const handleSaveProvider = () => {
     if (!newProviderName.trim()) return;
@@ -32,7 +34,8 @@ export default function PurchasesScreen() {
       { 
         name: newProviderName.trim(), 
         phone: newProviderPhone.trim(),
-        gstin: newProviderGstin.trim()
+        gstin: newProviderGstin.trim(),
+        price_per_kg: newProviderPricePerKg ? parseFloat(newProviderPricePerKg) : undefined
       },
       {
         onSuccess: () => {
@@ -40,27 +43,76 @@ export default function PurchasesScreen() {
           setNewProviderName('');
           setNewProviderPhone('');
           setNewProviderGstin('');
+          setNewProviderPricePerKg('');
         }
       }
     );
   };
 
+  const handleUpdatePrice = () => {
+    if (!selectedProvider) return;
+    const priceVal = parseFloat(editPricePerKg);
+    updateProvider.mutate(
+      {
+        id: selectedProvider.id,
+        data: {
+          price_per_kg: isNaN(priceVal) ? undefined : priceVal
+        }
+      },
+      {
+        onSuccess: (updated) => {
+          setIsEditPriceModalOpen(false);
+          setSelectedProvider(updated);
+        }
+      }
+    );
+  };
+
+  const calculatedTotalCost = React.useMemo(() => {
+    if (!selectedProvider?.price_per_kg) return 0;
+    let total = 0;
+    Object.entries(itemStates).forEach(([id, state]) => {
+      const full = parseInt(state.fullBought) || 0;
+      const item = items.find(i => i.id === id);
+      if (item && item.capacity_kg) {
+        total += selectedProvider.price_per_kg! * item.capacity_kg * full;
+      }
+    });
+    return total;
+  }, [itemStates, selectedProvider?.price_per_kg, items]);
+
   const handleSavePurchase = () => {
-    if (!selectedProvider || !itemId) return;
+    if (!selectedProvider) return;
+    
+    const itemsPayload = Object.entries(itemStates).map(([id, state]) => {
+      const full = parseInt(state.fullBought) || 0;
+      const empty = parseInt(state.emptyReturned) || 0;
+      if (full === 0 && empty === 0) return null;
+      
+      const item = items.find(i => i.id === id);
+      const cost = (selectedProvider.price_per_kg || 0) * (item?.capacity_kg || 0) * full;
+      
+      return {
+        item_id: id,
+        full_received: full,
+        empty_returned: empty,
+        total_cost: cost
+      };
+    }).filter(Boolean) as any[];
+
+    if (itemsPayload.length === 0) return;
+
     createPurchase.mutate({
       provider_id: selectedProvider.id,
-      item_id: itemId,
-      full_received: parseInt(fullBought) || 0,
-      empty_returned: parseInt(emptyReturned) || 0,
-      total_cost: parseFloat(totalCost) || 0,
+      bill_number: billNumber.trim() || undefined,
+      total_cost: calculatedTotalCost,
       amount_paid: parseFloat(amountPaid) || 0,
+      items: itemsPayload
     }, {
       onSuccess: () => {
         setIsPurchaseModalOpen(false);
-        setItemId('');
-        setFullBought('');
-        setEmptyReturned('');
-        setTotalCost('');
+        setBillNumber('');
+        setItemStates({});
         setAmountPaid('');
       }
     });
@@ -68,16 +120,25 @@ export default function PurchasesScreen() {
 
   const getItemName = (id: string) => items.find(i => i.id === id)?.name || id.split('-')[0];
 
+  const getItemsSummary = (entries: any[]) => {
+    if (!entries || entries.length === 0) return 'No items';
+    return entries.map(e => {
+      const name = getItemName(e.item_id);
+      return `${e.full_received}x ${name}`;
+    }).join(', ');
+  };
+
   const renderPurchaseRow = ({ item }: { item: typeof purchases[0] }) => (
-    <View className="flex flex-row items-center border-b border-gray-100 bg-white">
+    <View className="flex flex-row items-center border-b border-gray-100 bg-white min-h-[64px]">
       <View className="w-32 px-4 py-4 flex flex-col justify-center">
         <Text className="font-medium text-slate-900 text-sm">{new Date(item.created_at || Date.now()).toLocaleDateString()}</Text>
       </View>
-      <View className="w-40 px-4 py-4 justify-center">
-        <Text className="text-sm font-medium text-slate-700" numberOfLines={1}>{getItemName(item.item_id)}</Text>
+      <View className="w-32 px-4 py-4 flex flex-col justify-center">
+        <Text className="font-mono text-slate-700 text-sm">{item.bill_number || '-'}</Text>
       </View>
-      <Text className="w-24 px-4 py-4 text-center font-mono text-sm text-emerald-600 font-bold">+{item.full_received}</Text>
-      <Text className="w-24 px-4 py-4 text-center font-mono text-sm text-amber-500 font-bold">-{item.empty_returned}</Text>
+      <View className="w-56 px-4 py-4 justify-center">
+        <Text className="text-sm font-medium text-slate-700" numberOfLines={2}>{getItemsSummary(item.entries)}</Text>
+      </View>
       <View className="w-32 px-4 py-4 flex flex-col justify-center items-end">
         <Text className="font-mono text-sm text-slate-900 font-bold">₹{item.total_cost.toLocaleString()}</Text>
         {item.amount_paid > 0 && <Text className="font-mono text-[11px] text-emerald-600 mt-0.5">Paid ₹{item.amount_paid.toLocaleString()}</Text>}
@@ -141,6 +202,24 @@ export default function PurchasesScreen() {
           </View>
         </View>
 
+        <View className="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-row items-center justify-between">
+          <View>
+            <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Custom Pricing Tier</Text>
+            <Text className="text-lg font-bold text-slate-900">
+              {selectedProvider.price_per_kg ? `₹${selectedProvider.price_per_kg} / kg` : 'Standard Pricing'}
+            </Text>
+          </View>
+          <Pressable 
+            onPress={() => {
+              setEditPricePerKg(selectedProvider.price_per_kg ? selectedProvider.price_per_kg.toString() : '');
+              setIsEditPriceModalOpen(true);
+            }}
+            className="bg-indigo-50 px-4 py-2 rounded-lg active:bg-indigo-100"
+          >
+            <Text className="text-indigo-700 font-bold text-sm">Update Price</Text>
+          </Pressable>
+        </View>
+
         <View className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6 flex-1">
           <View className="px-4 py-4 border-b border-gray-200 bg-gray-50 flex flex-row items-center justify-between">
             <Text className="font-semibold text-slate-900">Purchase History</Text>
@@ -150,9 +229,8 @@ export default function PurchasesScreen() {
             <View className="flex flex-col">
               <View className="flex flex-row bg-white border-b border-gray-200">
                 <Text className="w-32 px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</Text>
-                <Text className="w-40 px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Item</Text>
-                <Text className="w-24 px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Full In</Text>
-                <Text className="w-24 px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Empty Out</Text>
+                <Text className="w-32 px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Bill No</Text>
+                <Text className="w-56 px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Items</Text>
                 <Text className="w-32 px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost/Paid</Text>
               </View>
               {providerPurchases.length === 0 ? (
@@ -194,59 +272,55 @@ export default function PurchasesScreen() {
               </View>
               
               <View className="p-6 flex flex-col gap-4">
-                <View>
-                  <Text className="text-sm font-medium text-slate-700 mb-1">Select Item</Text>
-                  {/* Custom Picker Alternative for styling (using a simple mapping or default RN picker if not using a library) */}
-                  {/* Since RN doesn't have a native styled picker, we will create a mini scroll list or simple buttons for items */}
-                  <View className="flex flex-row flex-wrap gap-2">
-                    {items.map(item => (
-                      <Pressable 
-                        key={item.id} 
-                        onPress={() => setItemId(item.id)}
-                        className="px-3 py-2 rounded-lg border"
-                        style={itemId === item.id ? { backgroundColor: '#eef2ff', borderColor: '#4f46e5' } : { backgroundColor: '#ffffff', borderColor: '#d1d5db' }}
-                      >
-                        <Text className="text-xs font-medium" style={{ color: itemId === item.id ? '#4338ca' : '#334155' }}>
-                          {item.name}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
+                <View className="mb-2">
+                  <Text className="text-sm font-medium text-slate-700 mb-1">Purchase Bill Number (Optional)</Text>
+                  <TextInput 
+                    placeholder="e.g. INV-2026-9042"
+                    value={billNumber}
+                    onChangeText={setBillNumber}
+                    className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm text-slate-900"
+                  />
+                </View>
+                
+                <View className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50 max-h-64">
+                  <ScrollView showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
+                    <View className="flex flex-row px-3 py-2 bg-gray-100 border-b border-gray-200">
+                      <Text className="flex-1 text-xs font-semibold text-gray-500 uppercase">Item Name</Text>
+                      <Text className="w-20 text-center text-xs font-semibold text-gray-500 uppercase">Full In</Text>
+                      <Text className="w-20 text-center text-xs font-semibold text-gray-500 uppercase">Empty Out</Text>
+                    </View>
+                    {items.map((item, index) => {
+                      const state = itemStates[item.id] || { fullBought: '', emptyReturned: '' };
+                      const isLast = index === items.length - 1;
+                      return (
+                        <View key={item.id} className={`flex flex-row items-center px-3 py-2 ${!isLast ? 'border-b border-gray-200' : ''}`}>
+                          <Text className="flex-1 text-sm font-medium text-slate-700">{item.name}</Text>
+                          <TextInput 
+                            placeholder="0"
+                            keyboardType="numeric"
+                            value={state.fullBought}
+                            onChangeText={(val) => setItemStates(prev => ({ ...prev, [item.id]: { ...state, fullBought: val } }))}
+                            className="w-16 h-8 bg-white border border-gray-300 rounded text-center text-xs font-mono mx-2"
+                          />
+                          <TextInput 
+                            placeholder="0"
+                            keyboardType="numeric"
+                            value={state.emptyReturned}
+                            onChangeText={(val) => setItemStates(prev => ({ ...prev, [item.id]: { ...state, emptyReturned: val } }))}
+                            className="w-16 h-8 bg-white border border-gray-300 rounded text-center text-xs font-mono"
+                          />
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
                 </View>
 
-                <View className="flex flex-row gap-3">
+                <View className="flex flex-row gap-3 pt-2">
                   <View className="flex-1">
-                    <Text className="text-sm font-medium text-slate-700 mb-1">Full Bought</Text>
-                    <TextInput 
-                      placeholder="0"
-                      keyboardType="numeric"
-                      value={fullBought}
-                      onChangeText={setFullBought}
-                      className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm text-slate-900 font-mono"
-                    />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-medium text-slate-700 mb-1">Empty Returned</Text>
-                    <TextInput 
-                      placeholder="0"
-                      keyboardType="numeric"
-                      value={emptyReturned}
-                      onChangeText={setEmptyReturned}
-                      className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm text-slate-900 font-mono"
-                    />
-                  </View>
-                </View>
-
-                <View className="flex flex-row gap-3">
-                  <View className="flex-1">
-                    <Text className="text-sm font-medium text-slate-700 mb-1">Total Cost (₹)</Text>
-                    <TextInput 
-                      placeholder="0.00"
-                      keyboardType="numeric"
-                      value={totalCost}
-                      onChangeText={setTotalCost}
-                      className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm text-slate-900 font-mono"
-                    />
+                    <Text className="text-sm font-medium text-slate-700 mb-1">Grand Total (₹)</Text>
+                    <View className="w-full rounded-lg bg-gray-100 border-gray-200 border px-3 py-2">
+                      <Text className="text-sm text-slate-700 font-mono font-bold">{calculatedTotalCost.toLocaleString()}</Text>
+                    </View>
                   </View>
                   <View className="flex-1">
                     <Text className="text-sm font-medium text-slate-700 mb-1">Amount Paid (₹)</Text>
@@ -262,12 +336,53 @@ export default function PurchasesScreen() {
 
                 <Pressable 
                   onPress={handleSavePurchase}
-                  disabled={createPurchase.isPending || !itemId}
+                  disabled={createPurchase.isPending || calculatedTotalCost === 0}
                   className="w-full rounded-lg py-3 items-center justify-center mt-2"
-                  style={{ backgroundColor: (createPurchase.isPending || !itemId) ? '#a5b4fc' : '#4f46e5' }}
+                  style={{ backgroundColor: (createPurchase.isPending || calculatedTotalCost === 0) ? '#a5b4fc' : '#4f46e5' }}
                 >
                   <Text className="text-white font-medium text-sm">
-                    {createPurchase.isPending ? 'Saving...' : 'Save Purchase'}
+                    {createPurchase.isPending ? 'Saving...' : 'Save Purchase Bill'}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+        
+        {/* Edit Price Modal */}
+        <Modal animationType="fade" transparent={true} visible={isEditPriceModalOpen} onRequestClose={() => setIsEditPriceModalOpen(false)}>
+          <View className="flex-1 items-center justify-center p-4" style={{ backgroundColor: 'rgba(15, 23, 42, 0.5)' }}>
+            <View className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+              <View className="flex flex-row items-center justify-between px-6 py-4 border-b border-gray-200">
+                <Text className="text-lg font-bold text-slate-900">Custom Price / Kg</Text>
+                <Pressable onPress={() => setIsEditPriceModalOpen(false)} className="p-1 rounded-full bg-slate-100">
+                  <X size={20} color="#64748b" />
+                </Pressable>
+              </View>
+              
+              <View className="p-6">
+                <Text className="text-sm text-slate-500 mb-4">
+                  Set a custom pricing rate for <Text className="font-bold text-slate-700">{selectedProvider.name}</Text>. Leave blank to use standard pricing.
+                </Text>
+                
+                <View className="mb-4">
+                  <Text className="text-sm font-medium text-slate-700 mb-1">Price per Kg (₹)</Text>
+                  <TextInput 
+                    placeholder="e.g. 55.50"
+                    keyboardType="numeric"
+                    value={editPricePerKg}
+                    onChangeText={setEditPricePerKg}
+                    className="w-full rounded-lg border-gray-300 border px-4 py-3 text-sm text-slate-900 font-mono"
+                  />
+                </View>
+                
+                <Pressable 
+                  onPress={handleUpdatePrice}
+                  disabled={updateProvider.isPending}
+                  className="w-full rounded-lg py-3 items-center justify-center bg-indigo-600"
+                >
+                  <Text className="text-white font-medium text-sm">
+                    {updateProvider.isPending ? 'Saving...' : 'Save Custom Price'}
                   </Text>
                 </Pressable>
               </View>
@@ -385,6 +500,16 @@ export default function PurchasesScreen() {
                   keyboardType="phone-pad"
                   value={newProviderPhone}
                   onChangeText={setNewProviderPhone}
+                  className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50"
+                />
+              </View>
+              <View>
+                <Text className="text-sm font-bold text-slate-700 mb-1">Price per Kg (Optional)</Text>
+                <TextInput 
+                  placeholder="e.g. 55.50"
+                  keyboardType="numeric"
+                  value={newProviderPricePerKg}
+                  onChangeText={setNewProviderPricePerKg}
                   className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50"
                 />
               </View>
