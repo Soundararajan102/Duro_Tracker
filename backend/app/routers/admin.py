@@ -160,13 +160,13 @@ async def list_buyers(
 async def get_global_bills(
     db: AsyncSession = Depends(get_tenant_db),
 ):
-    from sqlalchemy.orm import joinedload
-    from app.models import DeliveryEntry
+    from sqlalchemy.orm import joinedload, selectinload
+    from app.models import DeliveryBill
     result = await db.scalars(
-        select(DeliveryEntry)
-        .options(joinedload(DeliveryEntry.buyer))
-        .where(DeliveryEntry.full_delivered > 0)
-        .order_by(DeliveryEntry.timestamp.desc())
+        select(DeliveryBill)
+        .options(joinedload(DeliveryBill.buyer), selectinload(DeliveryBill.items))
+        .where(DeliveryBill.total_bill_amount > 0)
+        .order_by(DeliveryBill.timestamp.desc())
         .limit(20)
     )
     entries = result.all()
@@ -174,13 +174,15 @@ async def get_global_bills(
     bills = []
     for e in entries:
         buyer_name = e.buyer.name if e.buyer else e.adhoc_buyer_name or "Unknown"
+        total_full = sum(i.full_delivered for i in e.items)
+        total_empty = sum(i.empty_received for i in e.items)
         bills.append(
             GlobalBillOut(
                 id=e.id,
                 time=e.timestamp.isoformat(),
                 buyer=buyer_name,
-                fullGiven=e.full_delivered,
-                emptyCollected=e.empty_received,
+                fullGiven=total_full,
+                emptyCollected=total_empty,
                 total=float(e.total_bill_amount)
             )
         )
@@ -192,13 +194,15 @@ async def get_buyer_ledger(
     buyer_id: uuid.UUID,
     db: AsyncSession = Depends(get_tenant_db),
 ):
-    from app.models import DeliveryEntry
+    from app.models import DeliveryBill
+    from sqlalchemy.orm import selectinload
     
     # Get all entries for the buyer in chronological order
     result = await db.scalars(
-        select(DeliveryEntry)
-        .where(DeliveryEntry.buyer_id == buyer_id)
-        .order_by(DeliveryEntry.timestamp.asc())
+        select(DeliveryBill)
+        .options(selectinload(DeliveryBill.items))
+        .where(DeliveryBill.buyer_id == buyer_id)
+        .order_by(DeliveryBill.timestamp.asc())
     )
     entries = result.all()
     
@@ -213,18 +217,21 @@ async def get_buyer_ledger(
         # Financial impact: bill increases debt, paid decreases debt
         run_fin += (bill_amt - paid)
         
-        # Cylinder impact: full_delivered increases debt, empty_received decreases debt
-        run_cyl += (e.full_delivered - e.empty_received)
+        total_full = sum(i.full_delivered for i in e.items)
+        total_empty = sum(i.empty_received for i in e.items)
         
-        etype = 'bill' if e.full_delivered > 0 else 'payment'
+        # Cylinder impact: full_delivered increases debt, empty_received decreases debt
+        run_cyl += (total_full - total_empty)
+        
+        etype = 'bill' if total_full > 0 else 'payment'
         
         ledger.append(
             LedgerEntryOut(
                 id=e.id,
                 date=e.timestamp.isoformat(),
                 type=etype,
-                fullGiven=e.full_delivered,
-                emptyCollected=e.empty_received,
+                fullGiven=total_full,
+                emptyCollected=total_empty,
                 amount=bill_amt,
                 paid=paid,
                 finRunBal=run_fin,
