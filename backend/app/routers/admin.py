@@ -142,6 +142,7 @@ async def create_buyer(
     buyer_in: BuyerCreate,
     db: AsyncSession = Depends(get_tenant_db),
 ):
+    from app.models.buyer import BuyerInventory
     buyer = Buyer(
         name=buyer_in.name,
         phone=buyer_in.phone,
@@ -149,11 +150,15 @@ async def create_buyer(
         address=buyer_in.address,
         price_per_kg=buyer_in.price_per_kg,
         balance_pending=buyer_in.balance_pending,
-        cylinders_pending=buyer_in.cylinders_pending,
     )
+    if buyer_in.inventory:
+        buyer.inventory = [
+            BuyerInventory(item_id=inv.item_id, cylinders_pending=inv.cylinders_pending)
+            for inv in buyer_in.inventory
+        ]
     db.add(buyer)
     await db.commit()
-    await db.refresh(buyer)
+    await db.refresh(buyer, ['inventory'])
     return buyer
 
 
@@ -161,7 +166,8 @@ async def create_buyer(
 async def list_buyers(
     db: AsyncSession = Depends(get_tenant_db),
 ):
-    result = await db.scalars(select(Buyer))
+    from sqlalchemy.orm import selectinload
+    result = await db.scalars(select(Buyer).options(selectinload(Buyer.inventory)))
     return result.all()
 
 
@@ -173,7 +179,7 @@ async def get_global_bills(
     from app.models import DeliveryBill
     result = await db.scalars(
         select(DeliveryBill)
-        .options(joinedload(DeliveryBill.buyer), selectinload(DeliveryBill.items))
+        .options(joinedload(DeliveryBill.buyer).selectinload(Buyer.inventory), selectinload(DeliveryBill.items))
         .where(DeliveryBill.total_bill_amount > 0)
         .order_by(DeliveryBill.timestamp.desc())
         .limit(20)
@@ -257,7 +263,9 @@ async def update_buyer(
     buyer_in: BuyerUpdate,
     db: AsyncSession = Depends(get_tenant_db),
 ):
-    buyer = await db.get(Buyer, buyer_id)
+    from sqlalchemy.orm import selectinload
+    from app.models.buyer import BuyerInventory
+    buyer = await db.get(Buyer, buyer_id, options=[selectinload(Buyer.inventory)])
     if not buyer:
         raise HTTPException(status_code=404, detail="Buyer not found")
 
@@ -275,11 +283,20 @@ async def update_buyer(
         buyer.price_per_kg = buyer_in.price_per_kg
     if buyer_in.balance_pending is not None:
         buyer.balance_pending = buyer_in.balance_pending
-    if buyer_in.cylinders_pending is not None:
-        buyer.cylinders_pending = buyer_in.cylinders_pending
+    if buyer_in.inventory is not None:
+        # Update existing inventory or add new ones
+        existing_inventory = {inv.item_id: inv for inv in buyer.inventory}
+        for new_inv in buyer_in.inventory:
+            if new_inv.item_id in existing_inventory:
+                existing_inventory[new_inv.item_id].cylinders_pending = new_inv.cylinders_pending
+            else:
+                buyer.inventory.append(BuyerInventory(item_id=new_inv.item_id, cylinders_pending=new_inv.cylinders_pending))
+        # Remove ones not in the incoming list
+        incoming_ids = {inv.item_id for inv in buyer_in.inventory}
+        buyer.inventory = [inv for inv in buyer.inventory if inv.item_id in incoming_ids]
 
     await db.commit()
-    await db.refresh(buyer)
+    await db.refresh(buyer, ['inventory'])
     return buyer
 
 

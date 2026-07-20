@@ -4,6 +4,7 @@ import { View, Text, Pressable, ScrollView, FlatList, Modal, TextInput } from 'r
 import { Plus, X, Search, Store, ArrowLeft, Download, FileText, Receipt, Edit2, Trash2, RefreshCw } from 'lucide-react-native';
 
 import { useBuyers, useCreateBuyer, useUpdateBuyer, useDeleteBuyer, useGlobalBills, useBuyerLedger } from '../../hooks/useBuyers';
+import { useItems } from '../../hooks/useItems';
 import type { Buyer } from '../../types/api';
 import { format } from 'date-fns';
 
@@ -14,6 +15,8 @@ export default function BuyersScreen() {
   const [activeTab, setActiveTab] = useState<'crm' | 'bills'>('crm');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBuyer, setSelectedBuyer] = useState<Buyer | null>(null);
+  
+  const { data: items = [] } = useItems();
   
   const { data: buyerLedgerData = [], isLoading: isLedgerLoading, refetch: refetchLedger, isRefetching: isLedgerRefetching } = useBuyerLedger(selectedBuyer?.id);
 
@@ -33,7 +36,7 @@ export default function BuyersScreen() {
   const [newPhone, setNewPhone] = useState('');
   const [newAddress, setNewAddress] = useState('');
   const [newFinBal, setNewFinBal] = useState('');
-  const [newCylBal, setNewCylBal] = useState('');
+  const [newInventory, setNewInventory] = useState<Record<string, string>>({});
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editBuyerId, setEditBuyerId] = useState<string | null>(null);
@@ -42,7 +45,7 @@ export default function BuyersScreen() {
   const [editPhone, setEditPhone] = useState('');
   const [editAddress, setEditAddress] = useState('');
   const [editFinBal, setEditFinBal] = useState('');
-  const [editCylBal, setEditCylBal] = useState('');
+  const [editInventory, setEditInventory] = useState<Record<string, string>>({});
 
   const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
   const [editPricePerKg, setEditPricePerKg] = useState('');
@@ -55,7 +58,9 @@ export default function BuyersScreen() {
       address: newAddress.trim(),
       type: 'commercial',
       balance_pending: parseFloat(newFinBal) || 0,
-      cylinders_pending: parseInt(newCylBal) || 0,
+      inventory: Object.entries(newInventory)
+        .map(([item_id, cylinders_pending]) => ({ item_id, cylinders_pending: parseInt(cylinders_pending) || 0 }))
+        .filter(inv => inv.cylinders_pending > 0),
     }, {
       onSuccess: () => {
         setIsModalOpen(false);
@@ -64,7 +69,7 @@ export default function BuyersScreen() {
         setNewPhone('');
         setNewAddress('');
         setNewFinBal('');
-        setNewCylBal('');
+        setNewInventory({});
       }
     });
   };
@@ -75,7 +80,11 @@ export default function BuyersScreen() {
     setEditPhone(buyer.phone || '');
     setEditAddress(buyer.address || '');
     setEditFinBal(buyer.balance_pending.toString());
-    setEditCylBal(buyer.cylinders_pending.toString());
+    const invMap: Record<string, string> = {};
+    buyer.inventory?.forEach(inv => {
+      invMap[inv.item_id] = inv.cylinders_pending.toString();
+    });
+    setEditInventory(invMap);
     setIsEditModalOpen(true);
   };
 
@@ -88,7 +97,9 @@ export default function BuyersScreen() {
         phone: editPhone.trim(),
         address: editAddress.trim(),
         balance_pending: parseFloat(editFinBal) || 0,
-        cylinders_pending: parseInt(editCylBal) || 0,
+        inventory: Object.entries(editInventory)
+          .map(([item_id, cylinders_pending]) => ({ item_id, cylinders_pending: parseInt(cylinders_pending) || 0 }))
+          .filter(inv => inv.cylinders_pending > 0),
       }
     }, {
       onSuccess: () => {
@@ -101,7 +112,9 @@ export default function BuyersScreen() {
             phone: editPhone.trim(),
             address: editAddress.trim(),
             balance_pending: parseFloat(editFinBal) || 0,
-            cylinders_pending: parseInt(editCylBal) || 0,
+            inventory: Object.entries(editInventory)
+              .map(([item_id, cylinders_pending]) => ({ item_id, cylinders_pending: parseInt(cylinders_pending) || 0 }))
+              .filter(inv => inv.cylinders_pending > 0),
           } : null);
         }
       }
@@ -226,9 +239,20 @@ export default function BuyersScreen() {
             <View className="flex-1 bg-white rounded-xl border border-gray-200 p-4 flex flex-row items-center justify-between">
               <View>
                 <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Cylinder Holding</Text>
-                <Text className="text-xl font-mono tracking-tight font-bold text-amber-600">
-                  {selectedBuyer.cylinders_pending} <Text className="text-sm text-amber-400 font-medium">Empties</Text>
-                </Text>
+                <View className="flex flex-col gap-1 mt-1">
+                  {selectedBuyer.inventory && selectedBuyer.inventory.length > 0 ? (
+                    selectedBuyer.inventory.map(inv => {
+                      const itemDetails = items.find(i => i.id === inv.item_id);
+                      return (
+                        <Text key={inv.item_id} className="text-base font-mono tracking-tight font-bold text-amber-600">
+                          {inv.cylinders_pending} <Text className="text-sm text-amber-400 font-medium">x {itemDetails?.name || 'Unknown'}</Text>
+                        </Text>
+                      );
+                    })
+                  ) : (
+                    <Text className="text-sm text-slate-400 font-medium mt-1">No cylinders held</Text>
+                  )}
+                </View>
               </View>
               <View className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center">
                 <Store size={20} color="#f59e0b" />
@@ -312,7 +336,12 @@ export default function BuyersScreen() {
                     </Text>
                     <View className="w-1 h-1 rounded-full bg-slate-300" />
                     <Text className="text-xs font-bold text-amber-600">
-                      +{item.cylinders_pending} Empties Owed
+                      {item.inventory?.length > 0
+                        ? item.inventory.map(inv => {
+                            const iName = items.find(i => i.id === inv.item_id)?.name || 'Cyl';
+                            return `${inv.cylinders_pending}x ${iName}`;
+                          }).join(', ')
+                        : '0 Empties'}
                     </Text>
                   </View>
                 </View>
@@ -479,9 +508,19 @@ export default function BuyersScreen() {
                     <Text className="text-[10px] text-slate-500 mt-1">Amount they owe you.</Text>
                   </View>
                   <View className="flex-1">
-                    <Text className="text-sm font-medium text-slate-700 mb-1">Cylinder Balance</Text>
-                    <TextInput value={newCylBal} onChangeText={setNewCylBal} keyboardType="numeric" placeholder="0" className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm font-mono" />
-                    <Text className="text-[10px] text-slate-500 mt-1">Empties currently held.</Text>
+                    <Text className="text-sm font-medium text-slate-700 mb-2">Cylinder Balances (Empties)</Text>
+                    {items.map(item => (
+                      <View key={item.id} className="flex flex-row items-center justify-between mb-2">
+                        <Text className="text-xs text-slate-600 w-1/2">{item.name}</Text>
+                        <TextInput 
+                          value={newInventory[item.id] || ''} 
+                          onChangeText={(val) => setNewInventory(prev => ({...prev, [item.id]: val}))} 
+                          keyboardType="numeric" 
+                          placeholder="0" 
+                          className="w-1/2 rounded-lg border-gray-300 border px-2 py-1 text-xs font-mono" 
+                        />
+                      </View>
+                    ))}
                   </View>
                 </View>
               </View>
@@ -546,8 +585,19 @@ export default function BuyersScreen() {
                     <TextInput value={editFinBal} onChangeText={setEditFinBal} keyboardType="numeric" placeholder="0" className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm font-mono" />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-sm font-medium text-slate-700 mb-1">Cylinder Balance</Text>
-                    <TextInput value={editCylBal} onChangeText={setEditCylBal} keyboardType="numeric" placeholder="0" className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm font-mono" />
+                    <Text className="text-sm font-medium text-slate-700 mb-2">Cylinder Balances (Empties)</Text>
+                    {items.map(item => (
+                      <View key={item.id} className="flex flex-row items-center justify-between mb-2">
+                        <Text className="text-xs text-slate-600 w-1/2">{item.name}</Text>
+                        <TextInput 
+                          value={editInventory[item.id] || ''} 
+                          onChangeText={(val) => setEditInventory(prev => ({...prev, [item.id]: val}))} 
+                          keyboardType="numeric" 
+                          placeholder="0" 
+                          className="w-1/2 rounded-lg border-gray-300 border px-2 py-1 text-xs font-mono" 
+                        />
+                      </View>
+                    ))}
                   </View>
                 </View>
               </View>

@@ -33,7 +33,7 @@ async def create_delivery_entry(
             # Need to eager load items for the response
             final_existing = await db.scalar(
                 select(DeliveryBill)
-                .options(joinedload(DeliveryBill.buyer), selectinload(DeliveryBill.items).joinedload(DeliveryItem.item))
+                .options(joinedload(DeliveryBill.buyer).selectinload(Buyer.inventory), selectinload(DeliveryBill.items).joinedload(DeliveryItem.item))
                 .where(DeliveryBill.id == existing_bill.id)
             )
             return final_existing
@@ -41,7 +41,8 @@ async def create_delivery_entry(
     async with db.begin_nested() if db.in_transaction() else db.begin():
         buyer = None
         if bill_in.buyer_id:
-            buyer = await db.get(Buyer, bill_in.buyer_id)
+            from sqlalchemy.orm import selectinload
+            buyer = await db.get(Buyer, bill_in.buyer_id, options=[selectinload(Buyer.inventory)])
             if not buyer:
                 raise HTTPException(status_code=404, detail="Buyer not found")
 
@@ -90,6 +91,16 @@ async def create_delivery_entry(
             item.current_full -= item_in.full_delivered
             item.current_empty += item_in.empty_received
             
+            # Update Buyer Inventory
+            if buyer:
+                from app.models.buyer import BuyerInventory
+                buyer_inv = next((inv for inv in buyer.inventory if inv.item_id == item.id), None)
+                if not buyer_inv:
+                    buyer_inv = BuyerInventory(item_id=item.id, cylinders_pending=0)
+                    buyer.inventory.append(buyer_inv)
+                buyer_inv.cylinders_pending += item_in.full_delivered
+                buyer_inv.cylinders_pending -= item_in.empty_received
+            
             total_full_delivered += item_in.full_delivered
             total_empty_received += item_in.empty_received
         
@@ -97,9 +108,6 @@ async def create_delivery_entry(
         
         # Update Buyer Balances
         if buyer:
-            buyer.cylinders_pending = int(buyer.cylinders_pending) + total_full_delivered
-            buyer.cylinders_pending = int(buyer.cylinders_pending) - total_empty_received
-            
             buyer.balance_pending = float(buyer.balance_pending) + total_bill
             buyer.balance_pending = float(buyer.balance_pending) - (bill_in.cash_collected + bill_in.upi_collected)
             
@@ -111,7 +119,7 @@ async def create_delivery_entry(
     # Eagerly load the buyer and items for response
     final_bill = await db.scalar(
         select(DeliveryBill)
-        .options(joinedload(DeliveryBill.buyer), selectinload(DeliveryBill.items).joinedload(DeliveryItem.item))
+        .options(joinedload(DeliveryBill.buyer).selectinload(Buyer.inventory), selectinload(DeliveryBill.items).joinedload(DeliveryItem.item))
         .where(DeliveryBill.id == bill_id)
     )
     return final_bill
@@ -123,7 +131,7 @@ async def list_delivery_entries(
 ):
     result = await db.scalars(
         select(DeliveryBill)
-        .options(joinedload(DeliveryBill.buyer), selectinload(DeliveryBill.items).joinedload(DeliveryItem.item))
+        .options(joinedload(DeliveryBill.buyer).selectinload(Buyer.inventory), selectinload(DeliveryBill.items).joinedload(DeliveryItem.item))
         .order_by(DeliveryBill.timestamp.desc())
     )
     return result.unique().all()
@@ -143,5 +151,9 @@ async def list_active_buyers(
     db: AsyncSession = Depends(get_tenant_db),
 ):
     # Driver can only see active buyers
-    result = await db.scalars(select(Buyer).where(Buyer.is_active == True))
-    return result.all()
+    result = await db.scalars(
+        select(Buyer)
+        .options(selectinload(Buyer.inventory))
+        .where(Buyer.is_active == True)
+    )
+    return result.unique().all()

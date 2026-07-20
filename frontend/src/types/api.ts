@@ -50,6 +50,11 @@ export interface Driver {
   lastActive?: string;
 }
 
+export interface InventoryItem {
+  item_id: string;
+  cylinders_pending: number;
+}
+
 export interface Buyer {
   id: string;
   name: string;
@@ -58,7 +63,7 @@ export interface Buyer {
   address?: string;
   is_active: boolean;
   balance_pending: number;
-  cylinders_pending: number;
+  inventory: InventoryItem[];
   price_per_kg?: number;
 }
 
@@ -68,7 +73,7 @@ export interface BuyerCreate {
   type: 'retail' | 'commercial';
   address?: string;
   balance_pending?: number;
-  cylinders_pending?: number;
+  inventory?: InventoryItem[];
   price_per_kg?: number;
 }
 
@@ -80,7 +85,7 @@ export interface BuyerUpdate {
   is_active?: boolean;
   price_per_kg?: number;
   balance_pending?: number;
-  cylinders_pending?: number;
+  inventory?: InventoryItem[];
 }
 
 export interface DashboardMetrics {
@@ -99,7 +104,7 @@ export interface Provider {
   gstin?: string;
   price_per_kg?: number;
   balance_pending: number;
-  cylinders_pending: number;
+  inventory: InventoryItem[];
   is_active: boolean;
 }
 
@@ -108,6 +113,8 @@ export interface ProviderCreate {
   phone?: string;
   gstin?: string;
   price_per_kg?: number;
+  balance_pending?: number;
+  inventory?: InventoryItem[];
 }
 
 export interface ProviderUpdate {
@@ -116,6 +123,8 @@ export interface ProviderUpdate {
   gstin?: string;
   price_per_kg?: number;
   is_active?: boolean;
+  balance_pending?: number;
+  inventory?: InventoryItem[];
 }
 
 export interface PurchaseEntry {

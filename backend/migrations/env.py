@@ -97,7 +97,7 @@ def do_run_migrations(connection: Connection, tenant_schemas: list[str]) -> None
             include_schemas=False,
             include_object=include_object_public,
             version_table_schema="public",
-            version_locations=[public_version_loc, tenant_version_loc],
+            version_locations=[public_version_loc],
         )
         with context.begin_transaction():
             context.run_migrations()

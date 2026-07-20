@@ -25,7 +25,7 @@ export default function PurchasesScreen() {
   const [newProviderGstin, setNewProviderGstin] = useState('');
   const [newProviderPricePerKg, setNewProviderPricePerKg] = useState('');
   const [newProviderFinBal, setNewProviderFinBal] = useState('');
-  const [newProviderCylBal, setNewProviderCylBal] = useState('');
+  const [newProviderInventory, setNewProviderInventory] = useState<Record<string, string>>({});
 
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [billNumber, setBillNumber] = useState('');
@@ -48,7 +48,9 @@ export default function PurchasesScreen() {
         gstin: newProviderGstin.trim(),
         price_per_kg: newProviderPricePerKg ? parseFloat(newProviderPricePerKg) : undefined,
         balance_pending: parseFloat(newProviderFinBal) || 0,
-        cylinders_pending: parseInt(newProviderCylBal) || 0
+        inventory: Object.entries(newProviderInventory)
+          .map(([item_id, cylinders_pending]) => ({ item_id, cylinders_pending: parseInt(cylinders_pending) || 0 }))
+          .filter(inv => inv.cylinders_pending > 0),
       },
       {
         onSuccess: () => {
@@ -58,7 +60,7 @@ export default function PurchasesScreen() {
           setNewProviderGstin('');
           setNewProviderPricePerKg('');
           setNewProviderFinBal('');
-          setNewProviderCylBal('');
+          setNewProviderInventory({});
         }
       }
     );
@@ -207,9 +209,20 @@ export default function PurchasesScreen() {
           <View className="flex-1 bg-white rounded-xl border border-gray-200 p-4 flex flex-row items-center justify-between">
             <View>
               <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Empty Cylinders</Text>
-              <Text className="text-xl font-mono tracking-tight font-bold text-amber-600">
-                {selectedProvider.cylinders_pending} <Text className="text-sm text-amber-400 font-medium">Pending</Text>
-              </Text>
+              <View className="flex flex-col gap-1 mt-1">
+                {selectedProvider.inventory && selectedProvider.inventory.length > 0 ? (
+                  selectedProvider.inventory.map(inv => {
+                    const itemDetails = items.find(i => i.id === inv.item_id);
+                    return (
+                      <Text key={inv.item_id} className="text-base font-mono tracking-tight font-bold text-amber-600">
+                        {inv.cylinders_pending} <Text className="text-sm text-amber-400 font-medium">x {itemDetails?.name || 'Unknown'}</Text>
+                      </Text>
+                    );
+                  })
+                ) : (
+                  <Text className="text-sm text-slate-400 font-medium mt-1">No pending empties</Text>
+                )}
+              </View>
             </View>
             <View className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center">
               <Store size={20} color="#f59e0b" />
@@ -466,7 +479,12 @@ export default function PurchasesScreen() {
                     </Text>
                     <View className="w-1 h-1 rounded-full bg-slate-300" />
                     <Text className="text-xs font-bold text-amber-600">
-                      {item.cylinders_pending} Empties Pending
+                      {item.inventory?.length > 0
+                        ? item.inventory.map(inv => {
+                            const iName = items.find(i => i.id === inv.item_id)?.name || 'Cyl';
+                            return `${inv.cylinders_pending}x ${iName}`;
+                          }).join(', ')
+                        : '0 Empties'}
                     </Text>
                   </View>
                 </View>
@@ -552,15 +570,20 @@ export default function PurchasesScreen() {
                     className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50"
                   />
                 </View>
-                <View className="flex-1">
-                  <Text className="text-sm font-bold text-slate-700 mb-1">Initial Cyl Bal</Text>
-                  <TextInput 
-                    placeholder="e.g. 50"
-                    keyboardType="numeric"
-                    value={newProviderCylBal}
-                    onChangeText={setNewProviderCylBal}
-                    className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50"
-                  />
+                <View className="flex-1 ml-2">
+                  <Text className="text-sm font-bold text-slate-700 mb-1">Initial Empties</Text>
+                  {items.map(item => (
+                    <View key={item.id} className="flex flex-row items-center justify-between mb-2">
+                      <Text className="text-xs text-slate-600 w-1/2" numberOfLines={1}>{item.name}</Text>
+                      <TextInput 
+                        value={newProviderInventory[item.id] || ''} 
+                        onChangeText={(val) => setNewProviderInventory(prev => ({...prev, [item.id]: val}))} 
+                        keyboardType="numeric" 
+                        placeholder="0" 
+                        className="w-1/2 rounded-xl border-gray-300 border px-3 py-1.5 text-xs text-slate-900 bg-slate-50 font-mono" 
+                      />
+                    </View>
+                  ))}
                 </View>
               </View>
 

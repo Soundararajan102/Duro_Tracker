@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import Boolean, Enum, Integer, Numeric, String
+from sqlalchemy import Boolean, Enum, Integer, Numeric, String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.ids import UUID_SQL_TYPE, uuid7
@@ -22,9 +22,20 @@ class Buyer(Base, BaseModelMixin):
     
     # Financial debt
     balance_pending: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
-    # Physical asset debt
-    cylinders_pending: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     deliveries = relationship("DeliveryBill", back_populates="buyer")
+    inventory = relationship("BuyerInventory", back_populates="buyer", cascade="all, delete-orphan")
+
+class BuyerInventory(Base, BaseModelMixin):
+    __tablename__ = "buyer_inventory"
+    __table_args__ = {"schema": "tenant"}
+
+    id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, primary_key=True, index=True, default=uuid7)
+    buyer_id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, ForeignKey("tenant.buyers.id"), nullable=False)
+    item_id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, ForeignKey("tenant.items.id"), nullable=False)
+    cylinders_pending: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    buyer = relationship("Buyer", back_populates="inventory")
+    item = relationship("Item")

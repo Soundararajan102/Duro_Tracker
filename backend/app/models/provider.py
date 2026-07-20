@@ -1,7 +1,7 @@
 from uuid import UUID
 from typing import Optional
-from sqlalchemy import String, Numeric, Integer, Boolean, Uuid
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String, Numeric, Integer, Boolean, Uuid, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import BaseModelMixin
 from ..core.ids import UUID_SQL_TYPE, uuid7
 from app.db.database import Base
@@ -16,5 +16,19 @@ class Provider(Base, BaseModelMixin):
     gstin: Mapped[Optional[str]] = mapped_column(String(50))
     price_per_kg: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     balance_pending: Mapped[float] = mapped_column(Numeric(12, 2), default=0.0)
-    cylinders_pending: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    purchases = relationship("PurchaseBill", back_populates="provider")
+    inventory = relationship("ProviderInventory", back_populates="provider", cascade="all, delete-orphan")
+
+class ProviderInventory(Base, BaseModelMixin):
+    __tablename__ = "provider_inventory"
+    __table_args__ = {"schema": "tenant"}
+
+    id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, primary_key=True, index=True, default=uuid7)
+    provider_id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, ForeignKey("tenant.providers.id"), nullable=False)
+    item_id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, ForeignKey("tenant.items.id"), nullable=False)
+    cylinders_pending: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    provider = relationship("Provider", back_populates="inventory")
+    item = relationship("Item")

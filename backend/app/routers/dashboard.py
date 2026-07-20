@@ -87,7 +87,7 @@ async def get_recent_activity(
     # Fetch last 20 deliveries
     result = await db.scalars(
         select(DeliveryBill)
-        .options(joinedload(DeliveryBill.driver), joinedload(DeliveryBill.buyer), selectinload(DeliveryBill.items).joinedload(DeliveryItem.item))
+        .options(joinedload(DeliveryBill.driver), joinedload(DeliveryBill.buyer).selectinload(Buyer.inventory), selectinload(DeliveryBill.items).joinedload(DeliveryItem.item))
         .order_by(DeliveryBill.timestamp.desc())
         .limit(20)
     )

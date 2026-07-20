@@ -19,18 +19,23 @@ async def create_provider(
     provider_in: ProviderCreate,
     db: AsyncSession = Depends(get_tenant_db),
 ):
+    from app.models.provider import ProviderInventory
     provider = Provider(
         name=provider_in.name,
         phone=provider_in.phone,
         gstin=provider_in.gstin,
         price_per_kg=provider_in.price_per_kg,
         balance_pending=provider_in.balance_pending,
-        cylinders_pending=provider_in.cylinders_pending,
         is_active=provider_in.is_active,
     )
+    if provider_in.inventory:
+        provider.inventory = [
+            ProviderInventory(item_id=inv.item_id, cylinders_pending=inv.cylinders_pending)
+            for inv in provider_in.inventory
+        ]
     db.add(provider)
     await db.commit()
-    await db.refresh(provider)
+    await db.refresh(provider, ['inventory'])
     return provider
 
 @router.put("/providers/{provider_id}", response_model=ProviderOut)
@@ -39,7 +44,8 @@ async def update_provider(
     provider_in: ProviderUpdate,
     db: AsyncSession = Depends(get_tenant_db),
 ):
-    provider = await db.get(Provider, provider_id)
+    from app.models.provider import ProviderInventory
+    provider = await db.get(Provider, provider_id, options=[selectinload(Provider.inventory)])
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
 
@@ -53,20 +59,29 @@ async def update_provider(
         provider.price_per_kg = provider_in.price_per_kg
     if provider_in.balance_pending is not None:
         provider.balance_pending = provider_in.balance_pending
-    if provider_in.cylinders_pending is not None:
-        provider.cylinders_pending = provider_in.cylinders_pending
     if provider_in.is_active is not None:
         provider.is_active = provider_in.is_active
+    if provider_in.inventory is not None:
+        # Update existing inventory or add new ones
+        existing_inventory = {inv.item_id: inv for inv in provider.inventory}
+        for new_inv in provider_in.inventory:
+            if new_inv.item_id in existing_inventory:
+                existing_inventory[new_inv.item_id].cylinders_pending = new_inv.cylinders_pending
+            else:
+                provider.inventory.append(ProviderInventory(item_id=new_inv.item_id, cylinders_pending=new_inv.cylinders_pending))
+        # Remove ones not in the incoming list
+        incoming_ids = {inv.item_id for inv in provider_in.inventory}
+        provider.inventory = [inv for inv in provider.inventory if inv.item_id in incoming_ids]
 
     await db.commit()
-    await db.refresh(provider)
+    await db.refresh(provider, ['inventory'])
     return provider
 
 @router.get("/providers", response_model=list[ProviderOut])
 async def list_providers(
     db: AsyncSession = Depends(get_tenant_db),
 ):
-    result = await db.scalars(select(Provider))
+    result = await db.scalars(select(Provider).options(selectinload(Provider.inventory)))
     return result.all()
 
 @router.post("/", response_model=PurchaseBillOut)
@@ -87,7 +102,7 @@ async def create_purchase_bill(
             )
             return final_existing
 
-    provider = await db.get(Provider, bill_in.provider_id)
+    provider = await db.get(Provider, bill_in.provider_id, options=[selectinload(Provider.inventory)])
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
         
@@ -121,12 +136,20 @@ async def create_purchase_bill(
         item.current_full += item_in.full_received
         item.current_empty -= item_in.empty_returned
         
+        # Update Provider Inventory
+        from app.models.provider import ProviderInventory
+        provider_inv = next((inv for inv in provider.inventory if inv.item_id == item.id), None)
+        if not provider_inv:
+            provider_inv = ProviderInventory(item_id=item.id, cylinders_pending=0)
+            provider.inventory.append(provider_inv)
+        provider_inv.cylinders_pending += item_in.full_received
+        provider_inv.cylinders_pending -= item_in.empty_returned
+        
         total_full_received += item_in.full_received
         total_empty_returned += item_in.empty_returned
         
     # Update Provider ledger ONCE for the entire bill
     provider.balance_pending = float(provider.balance_pending) + (bill_in.total_cost - bill_in.amount_paid)
-    provider.cylinders_pending = int(provider.cylinders_pending) + (total_full_received - total_empty_returned)
 
     await db.commit()
     

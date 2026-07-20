@@ -3,16 +3,25 @@ import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, ScrollView, Pressable, Modal, TextInput } from 'react-native';
 import { Settings2, X, ChevronDown, RefreshCw } from 'lucide-react-native';
 import { useItems, useUpdateItem } from '../../hooks/useItems';
+import { useBuyers } from '../../hooks/useBuyers';
+import { useProviders } from '../../hooks/usePurchases';
 
 export default function InventoryScreen() {
   const { data: inventoryData = [], refetch: refetchInventory, isRefetching: isInventoryRefetching } = useItems();
   const updateItem = useUpdateItem();
 
+  const { data: buyers = [], refetch: refetchBuyers } = useBuyers();
+  const { data: providers = [], refetch: refetchProviders } = useProviders();
+
   useFocusEffect(
     useCallback(() => {
       refetchInventory();
-    }, [refetchInventory])
+      refetchBuyers();
+      refetchProviders();
+    }, [refetchInventory, refetchBuyers, refetchProviders])
   );
+
+  const [activeTab, setActiveTab] = useState<'warehouse' | 'total'>('warehouse');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isItemDropdownOpen, setIsItemDropdownOpen] = useState(false);
@@ -64,7 +73,11 @@ export default function InventoryScreen() {
             <Text className="text-slate-500 text-sm mt-1">Real-time inventory levels</Text>
           </View>
           <Pressable 
-            onPress={() => refetchInventory()}
+            onPress={() => {
+              refetchInventory();
+              refetchBuyers();
+              refetchProviders();
+            }}
             disabled={isInventoryRefetching}
             className="p-2.5 bg-white border border-gray-200 rounded-xl active:bg-slate-50 shadow-sm"
             style={{ opacity: isInventoryRefetching ? 0.5 : 1 }}
@@ -73,37 +86,99 @@ export default function InventoryScreen() {
           </Pressable>
         </View>
 
+        <View className="flex flex-row p-1 bg-gray-200 rounded-xl mb-6">
+          <Pressable
+            onPress={() => setActiveTab('warehouse')}
+            className="flex-1 py-2 items-center justify-center rounded-lg"
+            style={activeTab === 'warehouse' ? { backgroundColor: '#ffffff', elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2 } : {}}
+          >
+            <Text className="text-sm font-medium" style={{ color: activeTab === 'warehouse' ? '#0f172a' : '#64748b' }}>Warehouse</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setActiveTab('total')}
+            className="flex-1 py-2 items-center justify-center rounded-lg"
+            style={activeTab === 'total' ? { backgroundColor: '#ffffff', elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2 } : {}}
+          >
+            <Text className="text-sm font-medium" style={{ color: activeTab === 'total' ? '#0f172a' : '#64748b' }}>Market Total</Text>
+          </Pressable>
+        </View>
+
         {/* Grid Layout */}
         <View className="flex flex-col gap-6 pb-20">
-          {inventoryData.map((item) => (
-            <View key={item.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col">
-              <View className="p-6 pb-4">
-                <Text className="text-lg font-semibold text-slate-900">{item.name}</Text>
-              </View>
-              
-              <View className="flex flex-row px-6 pb-6 gap-4">
-                <View className="flex flex-col flex-1">
-                  <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Asset: Ready for Dispatch</Text>
-                  <Text className="text-xs font-semibold text-slate-800 mb-2">Full Cylinders</Text>
-                  <Text className="text-5xl font-black font-mono tracking-tighter text-emerald-600 leading-none">
-                    {item.current_full}
-                  </Text>
+          {inventoryData.map((item) => {
+            let buyerEmpties = 0;
+            buyers.forEach(b => {
+              const inv = b.inventory?.find(i => i.item_id === item.id);
+              if (inv) buyerEmpties += inv.cylinders_pending;
+            });
+            
+            let providerEmpties = 0;
+            providers.forEach(p => {
+              const inv = p.inventory?.find(i => i.item_id === item.id);
+              if (inv) providerEmpties += inv.cylinders_pending;
+            });
+            
+            const netMarketEmpties = buyerEmpties - providerEmpties;
+            const totalOwned = item.current_full + item.current_empty + netMarketEmpties;
+
+            if (activeTab === 'warehouse') {
+              return (
+                <View key={item.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col">
+                  <View className="p-6 pb-4">
+                    <Text className="text-lg font-semibold text-slate-900">{item.name}</Text>
+                  </View>
+                  
+                  <View className="flex flex-row px-6 pb-6 gap-4">
+                    <View className="flex flex-col flex-1">
+                      <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Asset: Ready for Dispatch</Text>
+                      <Text className="text-xs font-semibold text-slate-800 mb-2">Full Cylinders</Text>
+                      <Text className="text-5xl font-black font-mono tracking-tighter text-emerald-600 leading-none">
+                        {item.current_full}
+                      </Text>
+                    </View>
+                    <View className="flex flex-col flex-1 border-l border-gray-100 pl-4">
+                      <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Liability: Awaiting Refill</Text>
+                      <Text className="text-xs font-semibold text-slate-800 mb-2">Empty Cylinders</Text>
+                      <Text className="text-5xl font-black font-mono tracking-tighter text-amber-500 leading-none">
+                        {item.current_empty}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  <View className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex flex-row justify-between items-center">
+                    <Text className="text-sm font-medium text-slate-500">Total Physical Assets</Text>
+                    <Text className="text-sm font-mono font-bold text-slate-700">{item.current_full + item.current_empty}</Text>
+                  </View>
                 </View>
-                <View className="flex flex-col flex-1 border-l border-gray-100 pl-4">
-                  <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Liability: Awaiting Refill</Text>
-                  <Text className="text-xs font-semibold text-slate-800 mb-2">Empty Cylinders</Text>
-                  <Text className="text-5xl font-black font-mono tracking-tighter text-amber-500 leading-none">
-                    {item.current_empty}
-                  </Text>
+              );
+            }
+
+            return (
+              <View key={item.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col">
+                <View className="p-4 border-b border-gray-100 flex flex-row justify-between items-center bg-indigo-50/50">
+                  <Text className="text-lg font-semibold text-slate-900">{item.name}</Text>
+                  <View className="bg-indigo-100 px-3 py-1 rounded-full">
+                    <Text className="text-indigo-700 font-bold text-sm">{totalOwned} Total Owned</Text>
+                  </View>
+                </View>
+                
+                <View className="flex flex-col p-4 gap-4">
+                  <View className="flex flex-row justify-between items-center">
+                    <Text className="text-sm font-medium text-slate-600">In Warehouse (Full + Empty)</Text>
+                    <Text className="text-base font-mono font-bold text-slate-900">{item.current_full + item.current_empty}</Text>
+                  </View>
+                  <View className="flex flex-row justify-between items-center">
+                    <Text className="text-sm font-medium text-emerald-600">With Buyers (We are owed)</Text>
+                    <Text className="text-base font-mono font-bold text-emerald-600">+{buyerEmpties}</Text>
+                  </View>
+                  <View className="flex flex-row justify-between items-center">
+                    <Text className="text-sm font-medium text-rose-600">With Providers (We owe them)</Text>
+                    <Text className="text-base font-mono font-bold text-rose-600">-{providerEmpties}</Text>
+                  </View>
                 </View>
               </View>
-              
-              <View className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex flex-row justify-between items-center">
-                <Text className="text-sm font-medium text-slate-500">Total Physical Assets</Text>
-                <Text className="text-sm font-mono font-bold text-slate-700">{item.current_full + item.current_empty}</Text>
-              </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       </ScrollView>
 
