@@ -28,3 +28,10 @@ class ProviderOut(ProviderBase):
     inventory: list[InventoryItem] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+class ProviderSummary(BaseModel):
+    id: UUID
+    name: str
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)

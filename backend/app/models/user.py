@@ -51,4 +51,4 @@ class User(Base, BaseModelMixin):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     organization = relationship("Organization", back_populates="users")
-    deliveries = relationship("DeliveryBill", back_populates="driver")
+    deliveries = relationship("DeliveryBill", back_populates="driver", passive_deletes=True)

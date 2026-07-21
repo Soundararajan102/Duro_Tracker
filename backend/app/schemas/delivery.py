@@ -2,14 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
-from app.schemas.buyer import BuyerOut
-
-
-from datetime import datetime
-from uuid import UUID
-
-from pydantic import BaseModel, ConfigDict, Field
-from app.schemas.buyer import BuyerOut
+from app.schemas.buyer import BuyerSummary
 from app.schemas.item import ItemOut
 
 
@@ -25,6 +18,7 @@ class DeliveryBillCreate(BaseModel):
     items: list[DeliveryItemCreate]
     cash_collected: float = Field(default=0.0, ge=0.0)
     upi_collected: float = Field(default=0.0, ge=0.0)
+    timestamp: datetime | None = None
 
 
 class DeliveryItemOut(BaseModel):
@@ -44,8 +38,9 @@ class DeliveryBillOut(BaseModel):
     driver_id: UUID | None
     buyer_id: UUID | None
     adhoc_buyer_name: str | None = None
+    bill_number: str | None = None
     idempotency_key: str | None = None
-    buyer: BuyerOut | None = None
+    buyer: BuyerSummary | None = None
     
     total_bill_amount: float
     cash_collected: float

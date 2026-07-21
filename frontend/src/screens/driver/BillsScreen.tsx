@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../services/api';
 import { useReceiptImagePrintJob } from '../../hooks/use-receipt-image-print-job';
@@ -10,13 +10,28 @@ import { DeliveryReceiptData, DeliveryReceiptItem } from '../../utils/printer';
 export default function BillsScreen() {
   const { receiptImagePrintBridge, startReceiptImagePrintJob } = useReceiptImagePrintJob();
   const preferredPrinter = usePrinterStore((state) => state.preferredPrinter);
-  const { data: history, isLoading, refetch, isRefetching } = useQuery({
+  const { 
+    data: historyData, 
+    isLoading, 
+    refetch, 
+    isRefetching, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage 
+  } = useInfiniteQuery({
     queryKey: ['driver_history'],
-    queryFn: async () => {
-      const res = await api.get('/driver/entries');
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      const res = await api.get('/driver/entries', {
+        params: { paginated: true, cursor: pageParam, limit: 20 }
+      });
       return res.data;
-    }
+    },
+    getNextPageParam: (lastPage) => lastPage.next_cursor || undefined,
+    select: (data) => data.pages.flatMap((page) => page.items),
   });
+
+  const history = historyData || [];
 
   if (isLoading) {
     return (
@@ -43,7 +58,7 @@ export default function BillsScreen() {
     }));
     
     const receiptData: DeliveryReceiptData = {
-      receipt_number: item.id.split('-')[0].toUpperCase(),
+      receipt_number: item.bill_number || item.id.split('-')[0].toUpperCase(),
       date: item.timestamp,
       agency_name: "Sree Hari Agencies",
       agency_address: "Namakkal",
@@ -137,6 +152,13 @@ export default function BillsScreen() {
         }
         refreshing={isRefetching}
         onRefresh={refetch}
+        onEndReached={() => {
+          if (hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={isFetchingNextPage ? <ActivityIndicator className="my-4" /> : null}
       />
       {receiptImagePrintBridge}
     </View>

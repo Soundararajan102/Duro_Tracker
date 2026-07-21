@@ -1,14 +1,25 @@
 import React, { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { View, Text, Pressable, ScrollView, FlatList, Modal, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, ScrollView, FlatList, Modal, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { Plus, X, Search, Store, ArrowLeft, Download, FileText, Receipt, PackageOpen, Truck, RefreshCw } from 'lucide-react-native';
 import { usePurchases, useProviders, useCreatePurchase, useCreateProvider, useUpdateProvider } from '../../hooks/usePurchases';
 import { useItems } from '../../hooks/useItems';
 import type { Provider } from '../../types/api';
+import CustomAlert from '../../components/CustomAlert';
 
 export default function PurchasesScreen() {
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
-  const { data: purchases = [], isLoading: isPurchasesLoading, refetch: refetchPurchases, isRefetching: isPurchasesRefetching } = usePurchases();
+  const { 
+    data: purchasesData = [], 
+    isLoading: isPurchasesLoading, 
+    refetch: refetchPurchases, 
+    isRefetching: isPurchasesRefetching,
+    fetchNextPage: fetchNextPurchasesPage,
+    hasNextPage: hasNextPurchasesPage,
+    isFetchingNextPage: isFetchingNextPurchasesPage
+  } = usePurchases();
+  const purchases = purchasesData || [];
+  
   const { data: providers = [], isLoading: isProvidersLoading, refetch: refetchProviders, isRefetching: isProvidersRefetching } = useProviders();
   const selectedProvider = providers.find(p => p.id === selectedProviderId) || null;
 
@@ -33,6 +44,15 @@ export default function PurchasesScreen() {
   const [amountPaid, setAmountPaid] = useState('');
   const [isEditPriceModalOpen, setIsEditPriceModalOpen] = useState(false);
   const [editPricePerKg, setEditPricePerKg] = useState('');
+
+  // Custom Alert State
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'error' as 'error'|'success'|'info' });
+
+  const showAlert = (title: string, message: string, type: 'error'|'success'|'info' = 'error') => {
+    setAlertConfig({ title, message, type });
+    setAlertVisible(true);
+  };
 
   const { data: items = [] } = useItems();
   const createPurchase = useCreatePurchase();
@@ -118,6 +138,20 @@ export default function PurchasesScreen() {
     }).filter(Boolean) as any[];
 
     if (itemsPayload.length === 0) return;
+
+    for (const payload of itemsPayload) {
+      const item = items.find(i => i.id === payload.item_id);
+      if (item && payload.empty_returned > (item.current_empty || 0)) {
+        showAlert("No Stock", `Not enough empty cylinders in warehouse for ${item.name}. Available: ${item.current_empty || 0}`);
+        return;
+      }
+      
+      const providerPending = selectedProvider.inventory?.find(inv => inv.item_id === payload.item_id)?.cylinders_pending || 0;
+      if (payload.full_received > providerPending) {
+        showAlert("Invalid", `Provider only holds ${providerPending} empty cylinders of ${item?.name || 'this item'} pending refill.`);
+        return;
+      }
+    }
 
     createPurchase.mutate({
       provider_id: selectedProvider.id,
@@ -206,26 +240,26 @@ export default function PurchasesScreen() {
             </View>
           </View>
           
-          <View className="flex-1 bg-white rounded-xl border border-gray-200 p-4 flex flex-row items-center justify-between">
-            <View>
-              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Empty Cylinders</Text>
-              <View className="flex flex-col gap-1 mt-1">
-                {selectedProvider.inventory && selectedProvider.inventory.length > 0 ? (
-                  selectedProvider.inventory.map(inv => {
-                    const itemDetails = items.find(i => i.id === inv.item_id);
-                    return (
-                      <Text key={inv.item_id} className="text-base font-mono tracking-tight font-bold text-amber-600">
-                        {inv.cylinders_pending} <Text className="text-sm text-amber-400 font-medium">x {itemDetails?.name || 'Unknown'}</Text>
-                      </Text>
-                    );
-                  })
-                ) : (
-                  <Text className="text-sm text-slate-400 font-medium mt-1">No pending empties</Text>
-                )}
-              </View>
+          <View className="flex-1 bg-white rounded-xl border border-gray-200 p-4">
+            <View className="flex-row justify-between items-center mb-2">
+              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Empty Cylinders</Text>
+              <Store size={18} color="#f59e0b" />
             </View>
-            <View className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center">
-              <Store size={20} color="#f59e0b" />
+            <View className="flex-row flex-wrap gap-2 mt-1">
+              {selectedProvider.inventory && selectedProvider.inventory.length > 0 ? (
+                selectedProvider.inventory.map(inv => {
+                  const itemDetails = items.find(i => i.id === inv.item_id);
+                  if (inv.cylinders_pending === 0) return null; // Don't show 0 items
+                  return (
+                    <View key={inv.item_id} className="flex-row items-center bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 shadow-sm">
+                      <Text className="text-base font-bold text-amber-700 mr-1.5">{inv.cylinders_pending}</Text>
+                      <Text className="text-xs font-bold text-amber-600 uppercase tracking-wide">{itemDetails?.name || 'Item'}</Text>
+                    </View>
+                  );
+                })
+              ) : (
+                <Text className="text-sm text-slate-400 font-medium">No pending empties</Text>
+              )}
             </View>
           </View>
         </View>
@@ -271,6 +305,13 @@ export default function PurchasesScreen() {
                   keyExtractor={(item) => item.id.toString()}
                   renderItem={renderPurchaseRow}
                   scrollEnabled={false}
+                  onEndReached={() => {
+                    if (hasNextPurchasesPage && !isFetchingNextPurchasesPage) {
+                      fetchNextPurchasesPage();
+                    }
+                  }}
+                  onEndReachedThreshold={0.5}
+                  ListFooterComponent={isFetchingNextPurchasesPage ? <ActivityIndicator className="my-4" /> : null}
                 />
               )}
             </View>
@@ -419,6 +460,14 @@ export default function PurchasesScreen() {
             </View>
           </View>
         </Modal>
+
+        <CustomAlert 
+          visible={alertVisible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          type={alertConfig.type}
+          onClose={() => setAlertVisible(false)}
+        />
       </View>
     );
   }
@@ -463,6 +512,9 @@ export default function PurchasesScreen() {
           <FlatList
             data={providers}
             keyExtractor={(item) => item.id.toString()}
+            initialNumToRender={15}
+            maxToRenderPerBatch={10}
+            windowSize={5}
             renderItem={({ item }) => (
               <Pressable 
                 onPress={() => setSelectedProviderId(item.id)}
@@ -601,6 +653,14 @@ export default function PurchasesScreen() {
           </View>
         </View>
       </Modal>
+
+      <CustomAlert 
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onClose={() => setAlertVisible(false)}
+      />
     </View>
   );
 }

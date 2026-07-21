@@ -177,6 +177,20 @@ function padColumns(left: string, right: string, width = PAPER_WIDTH_58) {
   )}${safeRight}`;
 }
 
+function formatDateForReceipt(isoString: string) {
+  const d = new Date(isoString);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'pm' : 'am';
+  hours = hours % 12;
+  hours = hours ? hours : 12; // the hour '0' should be '12'
+  const hh = String(hours).padStart(2, '0');
+  return `${dd}-${mm}-${yyyy} , ${hh}:${minutes}${ampm}`;
+}
+
 function buildPrintableReceiptLines(data: DeliveryReceiptData): PrintableReceiptLine[] {
   const divider = "-".repeat(PAPER_WIDTH_58);
 
@@ -185,39 +199,41 @@ function buildPrintableReceiptLines(data: DeliveryReceiptData): PrintableReceipt
     { text: data.agency_address || "Namakkal", align: "center" },
     { text: `Mobile: ${data.agency_mobile || "N/A"}`, align: "center" },
     { text: divider },
+    { text: `                 Bill No : ${data.receipt_number}` },
+    { text: `      Date : ${formatDateForReceipt(data.date)}` },
+    { text: divider },
     { text: " To:", bold: true },
     { text: `  ${data.buyer_name}` },
     { text: `  ${data.buyer_address || ""}` },
     { text: divider },
-    { text: padColumns("Opening Balance:", formatCurrency(data.opening_balance)), align: "center", bold: true },
+    { text: padColumns("         Opening Balance:", `₹${data.opening_balance.toFixed(2)}`), bold: true },
     { text: divider },
-    { text: padColumns("Item       Qty         Price", "Total"), bold: true },
+    { text: "Kgs        Price/Kg            Total Amount", bold: true },
   ];
   
   for (const item of data.items) {
-    // Format: ItemName (trunc to 10)  Qty (3)  Price (6) -> Total (8)
-    const name = item.name.substring(0, 10).padEnd(10);
-    const qty = item.quantity.toString().padStart(3);
+    // Format: Qty (3)  Price (8) -> Total (10)
+    const qty = item.quantity.toString().padEnd(3);
     const price = `₹${item.price}`.padStart(8);
-    const itemRowLeft = `${name} ${qty}  ${price}`;
+    const itemRowLeft = `${qty}        ${price}            `;
     lines.push({ text: padColumns(itemRowLeft, `₹${item.total}`) });
   }
   
   lines.push({ text: divider });
-  lines.push({ text: padColumns("Total Bill Amount:", `₹${data.total_bill}`), bold: true });
-  lines.push({ text: padColumns("Cash Paid:", `₹${data.cash_collected}`) });
-  lines.push({ text: padColumns("UPI Paid:", `₹${data.upi_collected}`) });
+  lines.push({ text: padColumns("Total Bill Amount:", `₹${data.total_bill.toFixed(2)}`), bold: true });
+  lines.push({ text: padColumns("Cash Paid:", `₹${data.cash_collected.toFixed(2)}`) });
+  lines.push({ text: padColumns("UPI Paid:", `₹${data.upi_collected.toFixed(2)}`) });
   
   const currentBillBal = data.total_bill - (data.cash_collected + data.upi_collected);
-  lines.push({ text: padColumns("Balance Amount:", `₹${currentBillBal}`) });
+  lines.push({ text: padColumns("Balance Amount:", `₹${currentBillBal.toFixed(2)}`) });
   
   lines.push({ text: divider });
-  lines.push({ text: padColumns("Closing Balance:", formatCurrency(data.closing_balance)), align: "center", bold: true });
+  lines.push({ text: padColumns("         Closing Balance:", `₹${data.closing_balance.toFixed(2)}`), bold: true });
   lines.push({ text: divider });
   
-  lines.push({ text: "Thank You", align: "center", bold: true });
-  lines.push({ text: "Software Provided By", align: "center" });
-  lines.push({ text: "Durozen Technologies Pvt. Ltd.", align: "center" });
+  lines.push({ text: "                    Thank You", bold: true });
+  lines.push({ text: "            Software Provided By" });
+  lines.push({ text: "       Durozen Technologies Pvt. Ltd." });
   lines.push({ text: "" });
   lines.push({ text: "" });
 

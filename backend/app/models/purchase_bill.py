@@ -1,5 +1,5 @@
 from uuid import UUID
-from sqlalchemy import Uuid, Integer, Numeric, ForeignKey, String
+from sqlalchemy import Uuid, Integer, Numeric, ForeignKey, String, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import BaseModelMixin
 from typing import TYPE_CHECKING
@@ -12,7 +12,10 @@ if TYPE_CHECKING:
 
 class PurchaseBill(Base, BaseModelMixin):
     __tablename__ = "purchase_bills"
-    __table_args__ = {"schema": "tenant"}
+    __table_args__ = (
+        Index("idx_purchase_pagination", "created_at", "id"),
+        {"schema": "tenant"}
+    )
 
     id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, primary_key=True, default=uuid7, index=True)
     provider_id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, ForeignKey("tenant.providers.id"), nullable=False, index=True)

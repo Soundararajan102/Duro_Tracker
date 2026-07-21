@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import Boolean, Enum, ForeignKey, Integer, Numeric, String
+from sqlalchemy import Boolean, Enum, ForeignKey, Integer, Numeric, String, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.ids import UUID_SQL_TYPE, uuid7
@@ -11,7 +11,11 @@ from .enums import ItemCategory
 
 class Item(Base, BaseModelMixin):
     __tablename__ = "items"
-    __table_args__ = {"schema": "tenant"}
+    __table_args__ = (
+        CheckConstraint("current_full >= 0", name="chk_item_full_positive"),
+        CheckConstraint("current_empty >= 0", name="chk_item_empty_positive"),
+        {"schema": "tenant"}
+    )
 
     id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, primary_key=True, index=True, default=uuid7)
     name: Mapped[str] = mapped_column(String(255), nullable=False)

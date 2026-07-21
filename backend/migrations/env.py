@@ -96,7 +96,6 @@ def do_run_migrations(connection: Connection, tenant_schemas: list[str]) -> None
             compare_type=True,
             include_schemas=False,
             include_object=include_object_public,
-            version_table_schema="public",
             version_locations=[public_version_loc],
         )
         with context.begin_transaction():

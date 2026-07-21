@@ -44,6 +44,7 @@ from sqlalchemy.orm import Session
 
 def create_tenant_schema_and_tables(session: Session, schema_name: str) -> None:
     connection = session.connection()
+    import app.models  # Ensure all models are registered in Base.metadata
     from app.db.database import Base
     from app.db.tenant_schema import assert_safe_schema_name
 

@@ -1,18 +1,21 @@
-import React, { useState, useMemo, useLayoutEffect } from 'react';
+import React, { useState, useMemo, useLayoutEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import CustomAlert from '../../components/CustomAlert';
 import PrinterSettingsModal from '../../components/PrinterSettingsModal';
 import { usePrinterStore } from '../../store/printer-store';
 import { DeliveryReceiptData, DeliveryReceiptItem } from '../../utils/printer';
 import { useReceiptImagePrintJob } from '../../hooks/use-receipt-image-print-job';
 
 
-interface Item { id: string; name: string; price: number; capacity_kg?: number; }
-interface Buyer { id: string; name: string; price_per_kg?: number; balance_pending?: number; address?: string; }
+interface Item { id: string; name: string; price: number; capacity_kg?: number; current_full?: number; current_empty?: number; }
+interface BuyerInventory { item_id: string; cylinders_pending: number; }
+interface Buyer { id: string; name: string; price_per_kg?: number; balance_pending?: number; address?: string; inventory?: BuyerInventory[]; }
 
 interface CartItem {
   item: Item;
@@ -41,12 +44,31 @@ export default function DeliveryScreen() {
   const [buyerModalVisible, setBuyerModalVisible] = useState(false);
   const [itemModalVisible, setItemModalVisible] = useState(false);
   const [printerModalVisible, setPrinterModalVisible] = useState(false);
+  
+  // Date Time state
+  const [billDate, setBillDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
+  // Custom Alert State
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'error' as 'error'|'success'|'info' });
+
+  const showAlert = (title: string, message: string, type: 'error'|'success'|'info' = 'error') => {
+    setAlertConfig({ title, message, type });
+    setAlertVisible(true);
+  };
 
   const { receiptImagePrintBridge, startReceiptImagePrintJob } = useReceiptImagePrintJob();
 
   const [idempotencyKey, setIdempotencyKey] = useState<string>(
     Date.now().toString(36) + Math.random().toString(36).substring(2)
   );
+
+  const handleRefresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['driver_items'] });
+    queryClient.invalidateQueries({ queryKey: ['driver_buyers'] });
+  }, [queryClient]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -55,13 +77,16 @@ export default function DeliveryScreen() {
           <TouchableOpacity onPress={() => setPrinterModalVisible(true)} className="mr-4 p-2 bg-zinc-100 rounded-full">
             <Ionicons name="print-outline" size={20} color="#52525b" />
           </TouchableOpacity>
+          <TouchableOpacity onPress={handleRefresh} className="mr-4 p-2 bg-zinc-100 rounded-full">
+            <Ionicons name="refresh-outline" size={20} color="#3b82f6" />
+          </TouchableOpacity>
           <TouchableOpacity onPress={logout} className="mr-4 p-2">
             <Ionicons name="log-out-outline" size={24} color="#ef4444" />
           </TouchableOpacity>
         </View>
       ),
     });
-  }, [navigation, logout]);
+  }, [navigation, logout, handleRefresh]);
 
   const { data: items, isLoading: itemsLoading } = useQuery<Item[]>({
     queryKey: ['driver_items'],
@@ -92,13 +117,28 @@ export default function DeliveryScreen() {
 
   const handleAddToCart = () => {
     if (!selectedItem) {
-      Alert.alert("Required", "Please select an item.");
+      showAlert("Required", "Please select an item.", "info");
       return;
     }
     const full = parseInt(fullDelivered || '0');
     const empty = parseInt(emptyReceived || '0');
     if (full === 0 && empty === 0) {
-      Alert.alert("Required", "Please enter either full delivered or empty received.");
+      showAlert("Required", "Please enter either full delivered or empty received.", "info");
+      return;
+    }
+
+    const existingFullInCart = cartItems.filter(c => c.item.id === selectedItem.id).reduce((sum, c) => sum + c.fullDelivered, 0);
+    const existingEmptyInCart = cartItems.filter(c => c.item.id === selectedItem.id).reduce((sum, c) => sum + c.emptyReceived, 0);
+
+    const availableFull = selectedItem.current_full || 0;
+    if (existingFullInCart + full > availableFull) {
+      showAlert("No Stock", `Not enough full cylinders in warehouse. Available: ${availableFull}`, "error");
+      return;
+    }
+
+    const buyerPending = selectedBuyer?.inventory?.find(i => i.item_id === selectedItem.id)?.cylinders_pending || 0;
+    if (existingEmptyInCart + empty > buyerPending) {
+      showAlert("Invalid", `Buyer only holds ${buyerPending} empty cylinders of this type.`, "error");
       return;
     }
 
@@ -134,7 +174,7 @@ export default function DeliveryScreen() {
       });
     },
     onSuccess: (data) => {
-      Alert.alert("Success", "Delivery logged successfully!");
+      showAlert("Success", "Delivery logged successfully!", "success");
       
       const preferredPrinter = usePrinterStore.getState().preferredPrinter;
       if (preferredPrinter && selectedBuyer && cartItems.length > 0) {
@@ -152,7 +192,7 @@ export default function DeliveryScreen() {
         }));
 
         const receiptData: DeliveryReceiptData = {
-          receipt_number: data?.data?.id ? data.data.id.split('-')[0].toUpperCase() : Math.random().toString(36).substring(2, 8).toUpperCase(),
+          receipt_number: data?.data?.bill_number || (data?.data?.id ? data.data.id.split('-')[0].toUpperCase() : Math.random().toString(36).substring(2, 8).toUpperCase()),
           date: data?.data?.timestamp || new Date().toISOString(),
           agency_name: "Sree Hari Agencies",
           agency_address: "Namakkal",
@@ -166,7 +206,7 @@ export default function DeliveryScreen() {
           closing_balance: closing_balance,
         };
         startReceiptImagePrintJob([receiptData], preferredPrinter).catch(err => {
-          Alert.alert("Print Error", err.message || "Failed to print receipt");
+          showAlert("Print Error", err.message || "Failed to print receipt", "error");
         });
       }
 
@@ -180,9 +220,11 @@ export default function DeliveryScreen() {
       setUpiCollected('');
       setIdempotencyKey(Date.now().toString(36) + Math.random().toString(36).substring(2));
       queryClient.invalidateQueries({ queryKey: ['driver_history'] });
+      queryClient.invalidateQueries({ queryKey: ['driver_items'] });
+      queryClient.invalidateQueries({ queryKey: ['driver_buyers'] });
     },
     onError: (err: any) => {
-      Alert.alert("Error", err.response?.data?.detail || "Failed to log delivery.");
+      showAlert("Error", err.response?.data?.detail || "Failed to log delivery.", "error");
     }
   });
 
@@ -284,6 +326,56 @@ export default function DeliveryScreen() {
           </View>
         )}
 
+        {/* Date and Time Selection */}
+        {buyerId && (
+          <View className="bg-white rounded-2xl p-4 mb-4 border border-zinc-100">
+            <Text className="text-zinc-500 font-medium mb-3">Delivery Date & Time</Text>
+            <View className="flex-row gap-4">
+              <TouchableOpacity 
+                className="flex-1 bg-zinc-50 border border-zinc-200 p-4 rounded-xl flex-row items-center justify-between"
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text className="text-zinc-800 text-base">{billDate.toLocaleDateString()}</Text>
+                <Ionicons name="calendar-outline" size={20} color="#71717a" />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                className="flex-1 bg-zinc-50 border border-zinc-200 p-4 rounded-xl flex-row items-center justify-between"
+                onPress={() => setShowTimePicker(true)}
+              >
+                <Text className="text-zinc-800 text-base">
+                  {billDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                </Text>
+                <Ionicons name="time-outline" size={20} color="#71717a" />
+              </TouchableOpacity>
+            </View>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={billDate}
+                mode="date"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  setShowDatePicker(Platform.OS === 'ios');
+                  if (selectedDate) setBillDate(selectedDate);
+                }}
+              />
+            )}
+            
+            {showTimePicker && (
+              <DateTimePicker
+                value={billDate}
+                mode="time"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  setShowTimePicker(Platform.OS === 'ios');
+                  if (selectedDate) setBillDate(selectedDate);
+                }}
+              />
+            )}
+          </View>
+        )}
+
         {/* Payments */}
         <View className="bg-white rounded-2xl p-4 mb-6 border border-zinc-100 space-y-4">
           <View className="bg-blue-50 border border-blue-100 p-4 rounded-xl mb-4 flex-row justify-between items-center">
@@ -320,7 +412,7 @@ export default function DeliveryScreen() {
           style={{ backgroundColor: submitMutation.isPending ? '#60a5fa' : '#2563eb', opacity: cartItems.length === 0 ? 0.5 : 1 }}
           onPress={() => {
             if (!buyerId || cartItems.length === 0) {
-              Alert.alert("Required", "Please select a buyer and add items to cart.");
+              showAlert("Required", "Please select a buyer and add items to cart.");
               return;
             }
 
@@ -334,7 +426,8 @@ export default function DeliveryScreen() {
               buyer_id: buyerId,
               items: payloadItems,
               cash_collected: parseFloat(cashCollected || '0'),
-              upi_collected: parseFloat(upiCollected || '0')
+              upi_collected: parseFloat(upiCollected || '0'),
+              timestamp: billDate.toISOString()
             });
           }}
           disabled={submitMutation.isPending || cartItems.length === 0}
@@ -411,6 +504,14 @@ export default function DeliveryScreen() {
       />
 
       {receiptImagePrintBridge}
+
+      <CustomAlert 
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onClose={() => setAlertVisible(false)}
+      />
     </KeyboardAvoidingView>
   );
 }

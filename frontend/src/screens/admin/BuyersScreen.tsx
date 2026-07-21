@@ -236,26 +236,26 @@ export default function BuyersScreen() {
               </View>
             </View>
             
-            <View className="flex-1 bg-white rounded-xl border border-gray-200 p-4 flex flex-row items-center justify-between">
-              <View>
-                <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Cylinder Holding</Text>
-                <View className="flex flex-col gap-1 mt-1">
-                  {selectedBuyer.inventory && selectedBuyer.inventory.length > 0 ? (
-                    selectedBuyer.inventory.map(inv => {
-                      const itemDetails = items.find(i => i.id === inv.item_id);
-                      return (
-                        <Text key={inv.item_id} className="text-base font-mono tracking-tight font-bold text-amber-600">
-                          {inv.cylinders_pending} <Text className="text-sm text-amber-400 font-medium">x {itemDetails?.name || 'Unknown'}</Text>
-                        </Text>
-                      );
-                    })
-                  ) : (
-                    <Text className="text-sm text-slate-400 font-medium mt-1">No cylinders held</Text>
-                  )}
-                </View>
+            <View className="flex-1 bg-white rounded-xl border border-gray-200 p-4">
+              <View className="flex-row justify-between items-center mb-2">
+                <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cylinder Holding</Text>
+                <Store size={18} color="#f59e0b" />
               </View>
-              <View className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center">
-                <Store size={20} color="#f59e0b" />
+              <View className="flex-row flex-wrap gap-2 mt-1">
+                {selectedBuyer.inventory && selectedBuyer.inventory.length > 0 ? (
+                  selectedBuyer.inventory.map(inv => {
+                    const itemDetails = items.find(i => i.id === inv.item_id);
+                    if (inv.cylinders_pending === 0) return null; // Don't show 0 items
+                    return (
+                      <View key={inv.item_id} className="flex-row items-center bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 shadow-sm">
+                        <Text className="text-base font-bold text-amber-700 mr-1.5">{inv.cylinders_pending}</Text>
+                        <Text className="text-xs font-bold text-amber-600 uppercase tracking-wide">{itemDetails?.name || 'Item'}</Text>
+                      </View>
+                    );
+                  })
+                ) : (
+                  <Text className="text-sm text-slate-400 font-medium">No cylinders held</Text>
+                )}
               </View>
             </View>
           </View>
@@ -320,6 +320,9 @@ export default function BuyersScreen() {
           <FlatList
             data={buyers}
             keyExtractor={(item) => item.id.toString()}
+            initialNumToRender={15}
+            maxToRenderPerBatch={10}
+            windowSize={5}
             renderItem={({ item }) => (
               <Pressable 
                 onPress={() => setSelectedBuyer(item)}

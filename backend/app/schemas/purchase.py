@@ -22,6 +22,7 @@ class PurchaseBillBase(BaseModel):
     bill_number: str | None = None
     total_cost: float = Field(default=0.0, ge=0.0)
     amount_paid: float = Field(default=0.0, ge=0.0)
+    timestamp: datetime | None = None
 
 class PurchaseBillCreate(PurchaseBillBase):
     items: list[PurchaseEntryCreate]

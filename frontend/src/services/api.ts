@@ -43,7 +43,9 @@ api.interceptors.request.use(async (config) => {
   return Promise.reject(error);
 });
 
-// Response Interceptor: Handle 401 Unauthorized
+import { Alert } from 'react-native';
+
+// Response Interceptor: Handle 401 Unauthorized and Concurrency Errors
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -51,6 +53,10 @@ api.interceptors.response.use(
       // Clear token and optionally dispatch to auth store to logout
       await AsyncStorage.removeItem('@auth_token');
       // window.location.reload() equivalent in React Native would be handled via auth context
+    } else if (error.response?.status === 423) {
+      Alert.alert("Transaction Locked", error.response.data.detail || "This record is currently being updated by another process. Please try again in a moment.");
+    } else if (error.response?.status === 409 || error.response?.status === 422) {
+      Alert.alert("Transaction Failed", error.response.data.detail || "An integrity error occurred.");
     }
     return Promise.reject(error);
   }

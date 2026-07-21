@@ -16,4 +16,9 @@ def set_active_tenant_schema(schema_name: str | None) -> object:
 
 
 def reset_active_tenant_schema(token: object) -> None:
-    active_tenant_schema.reset(token)
+    try:
+        active_tenant_schema.reset(token)
+    except ValueError:
+        # FastAPI often runs dependency teardown in a different context when an exception occurs.
+        # If the context is different, we can't reset with the token.
+        active_tenant_schema.set(None)

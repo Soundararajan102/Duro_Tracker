@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String
+from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.ids import UUID_SQL_TYPE, uuid7
@@ -12,7 +12,10 @@ from .base import BaseModelMixin
 from typing import TYPE_CHECKING
 class DeliveryBill(Base, BaseModelMixin):
     __tablename__ = "delivery_bills"
-    __table_args__ = {"schema": "tenant"}
+    __table_args__ = (
+        Index("idx_delivery_pagination", "timestamp", "id"),
+        {"schema": "tenant"}
+    )
 
     id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, primary_key=True, index=True, default=uuid7)
     driver_id: Mapped[UUID | None] = mapped_column(
@@ -22,6 +25,7 @@ class DeliveryBill(Base, BaseModelMixin):
         UUID_SQL_TYPE, ForeignKey("tenant.buyers.id", ondelete="SET NULL"), index=True, nullable=True
     )
     adhoc_buyer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    bill_number: Mapped[str | None] = mapped_column(String(50), unique=True, index=True, nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
     
     # Financial movement
@@ -31,11 +35,11 @@ class DeliveryBill(Base, BaseModelMixin):
     
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
-    driver = relationship("User")
-    buyer = relationship("Buyer", back_populates="deliveries")
+    driver = relationship("User", lazy="joined")
+    buyer = relationship("Buyer", back_populates="deliveries", lazy="joined")
     
     items: Mapped[list["DeliveryItem"]] = relationship(
-        "DeliveryItem", back_populates="bill", cascade="all, delete-orphan"
+        "DeliveryItem", back_populates="bill", cascade="all, delete-orphan", lazy="selectin"
     )
 
 class DeliveryItem(Base, BaseModelMixin):

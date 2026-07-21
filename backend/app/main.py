@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.core.config import get_settings
@@ -61,6 +61,42 @@ except ImportError as exc:
 async def handle_http_exception(request: Request, exc: HTTPException) -> JSONResponse:
     return await http_exception_handler(request, exc)
 
+
+@app.exception_handler(OperationalError)
+async def handle_operational_error(_: Request, exc: OperationalError) -> JSONResponse:
+    if "canceling statement due to lock timeout" in str(exc) or "Lock not available" in str(exc):
+        return JSONResponse(
+            status_code=423,
+            content={
+                "detail": "This record is currently being updated by another process. Please try again in a moment.",
+                "error": "lock_timeout"
+            }
+        )
+    # If not a lock timeout, let it fall through to SQLAlchemyError (FastAPI will match the closest superclass, but we can just handle it here to be safe)
+    logger.exception("Database operational error.", exc_info=exc)
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Database is unavailable or busy."},
+    )
+
+@app.exception_handler(IntegrityError)
+async def handle_integrity_error(_: Request, exc: IntegrityError) -> JSONResponse:
+    if "chk_item_full_positive" in str(exc) or "chk_item_empty_positive" in str(exc):
+        detail = "Transaction failed: Insufficient item inventory in warehouse."
+    elif "chk_buyer_inv_positive" in str(exc):
+        detail = "Transaction failed: Buyer does not have enough cylinders to return."
+    elif "chk_provider_inv_positive" in str(exc):
+        detail = "Transaction failed: Provider inventory mismatch."
+    else:
+        detail = "Transaction failed due to a data integrity constraint."
+        
+    return JSONResponse(
+        status_code=409,
+        content={
+            "detail": detail,
+            "error": "integrity_error"
+        }
+    )
 
 @app.exception_handler(SQLAlchemyError)
 async def handle_database_error(_: Request, exc: SQLAlchemyError) -> JSONResponse:

@@ -179,7 +179,53 @@ export interface OrganizationUpdate {
   max_users?: number;
 }
 
+export interface DeliveryBillCreate {
+  buyer_id?: string | null;
+  adhoc_buyer_name?: string | null;
+  items: DeliveryItemCreate[];
+  cash_collected: number;
+  upi_collected: number;
+  timestamp?: string | null;
+}
+
+export interface DeliveryBillOut {
+  id: string;
+  driver_id: string | null;
+  buyer_id: string | null;
+  adhoc_buyer_name: string | null;
+  bill_number: string | null;
+  idempotency_key: string | null;
+  buyer: BuyerSummary | null;
+  total_bill_amount: number;
+  cash_collected: number;
+  upi_collected: number;
+  items: DeliveryItemOut[];
+  timestamp: string;
+}
+
 export interface DeliveryItem {
+  id: string;
+  item_id: string;
+  unit_price_at_delivery: number;
+  line_total_amount: number;
+}
+
+
+export interface DeliveryItemCreate {
+  item_id: string;
+  full_delivered: number;
+  empty_received: number;
+}
+
+export interface BuyerSummary {
+  id: string;
+  name: string;
+  is_active: boolean;
+  address?: string;
+  balance_pending?: number;
+}
+
+export interface DeliveryItemOut {
   id: string;
   item_id: string;
   unit_price_at_delivery: number;
@@ -187,18 +233,4 @@ export interface DeliveryItem {
   full_delivered: number;
   empty_received: number;
   item?: Item;
-}
-
-export interface DeliveryBill {
-  id: string;
-  driver_id?: string;
-  buyer_id?: string;
-  adhoc_buyer_name?: string;
-  idempotency_key?: string;
-  buyer?: Buyer;
-  total_bill_amount: number;
-  cash_collected: number;
-  upi_collected: number;
-  items: DeliveryItem[];
-  timestamp: string;
 }

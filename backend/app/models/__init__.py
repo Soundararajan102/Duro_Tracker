@@ -8,6 +8,7 @@ from .delivery import DeliveryBill, DeliveryItem
 from .provider import Provider
 from .purchase_bill import PurchaseBill
 from .purchase_entry import PurchaseEntry
+from .sequence import TenantSequence
 
 __all__ = [
     "BaseModelMixin",
@@ -23,4 +24,5 @@ __all__ = [
     "Provider",
     "PurchaseBill",
     "PurchaseEntry",
+    "TenantSequence",
 ]

@@ -102,64 +102,106 @@ async def create_purchase_bill(
             )
             return final_existing
 
-    provider = await db.get(Provider, bill_in.provider_id, options=[selectinload(Provider.inventory)])
-    if not provider:
-        raise HTTPException(status_code=404, detail="Provider not found")
+    async with db.begin_nested() if db.in_transaction() else db.begin():
+        from sqlalchemy import text
+        await db.execute(text("SET LOCAL lock_timeout = '3s';"))
         
-    bill = PurchaseBill(
-        provider_id=provider.id,
-        bill_number=bill_in.bill_number,
-        total_cost=bill_in.total_cost,
-        amount_paid=bill_in.amount_paid,
-        idempotency_key=x_idempotency_key,
-    )
-    db.add(bill)
-    
-    total_full_received = 0
-    total_empty_returned = 0
-    
-    for item_in in bill_in.items:
-        item = await db.get(Item, item_in.item_id)
-        if not item:
-            raise HTTPException(status_code=404, detail=f"Item {item_in.item_id} not found")
-            
-        entry = PurchaseEntry(
-            bill=bill,
-            item_id=item.id,
-            full_received=item_in.full_received,
-            empty_returned=item_in.empty_returned,
-            total_cost=item_in.total_cost,
+        provider = await db.scalar(
+            select(Provider)
+            .options(selectinload(Provider.inventory))
+            .where(Provider.id == bill_in.provider_id)
+            .with_for_update()
         )
-        db.add(entry)
-        
-        # Update Item counts
-        item.current_full += item_in.full_received
-        item.current_empty -= item_in.empty_returned
-        
-        # Update Provider Inventory
-        from app.models.provider import ProviderInventory
-        provider_inv = next((inv for inv in provider.inventory if inv.item_id == item.id), None)
-        if not provider_inv:
-            provider_inv = ProviderInventory(item_id=item.id, cylinders_pending=0)
-            provider.inventory.append(provider_inv)
-        provider_inv.cylinders_pending += item_in.full_received
-        provider_inv.cylinders_pending -= item_in.empty_returned
-        
-        total_full_received += item_in.full_received
-        total_empty_returned += item_in.empty_returned
-        
-    # Update Provider ledger ONCE for the entire bill
-    provider.balance_pending = float(provider.balance_pending) + (bill_in.total_cost - bill_in.amount_paid)
+        if not provider:
+            raise HTTPException(status_code=404, detail="Provider not found")
+            
+        import datetime
+        bill_timestamp = bill_in.timestamp if bill_in.timestamp else datetime.datetime.now(datetime.UTC)
+        if bill_timestamp.tzinfo is None:
+            bill_timestamp = bill_timestamp.replace(tzinfo=datetime.UTC)
 
+        bill = PurchaseBill(
+            provider_id=bill_in.provider_id,
+            bill_number=bill_in.bill_number,
+            total_cost=bill_in.total_cost,
+            amount_paid=bill_in.amount_paid,
+            idempotency_key=x_idempotency_key,
+            created_at=bill_timestamp
+        )
+        db.add(bill)
+        
+        total_full_received = 0
+        total_empty_returned = 0
+        
+        sorted_items = sorted(bill_in.items, key=lambda x: str(x.item_id))
+        
+        for item_in in sorted_items:
+            item = await db.scalar(select(Item).where(Item.id == item_in.item_id).with_for_update())
+            if not item:
+                raise HTTPException(status_code=404, detail=f"Item {item_in.item_id} not found")
+                
+            entry = PurchaseEntry(
+                bill=bill,
+                item_id=item.id,
+                full_received=item_in.full_received,
+                empty_returned=item_in.empty_returned,
+                total_cost=item_in.total_cost,
+            )
+            db.add(entry)
+            
+            # Update Item counts
+            item.current_full += item_in.full_received
+            item.current_empty -= item_in.empty_returned
+            if item.current_empty < 0:
+                raise HTTPException(status_code=400, detail=f"Not enough empty cylinders in warehouse for item {item.name}")
+            
+            # Update Provider Inventory
+            from app.models.provider import ProviderInventory
+            provider_inv = next((inv for inv in provider.inventory if inv.item_id == item.id), None)
+            if not provider_inv:
+                provider_inv = ProviderInventory(item_id=item.id, cylinders_pending=0)
+                provider.inventory.append(provider_inv)
+            provider_inv.cylinders_pending += item_in.empty_returned
+            provider_inv.cylinders_pending -= item_in.full_received
+            if provider_inv.cylinders_pending < 0:
+                raise HTTPException(status_code=400, detail=f"Provider cannot give more full cylinders than the empty ones they have pending for item {item.name}")
+            
+            total_full_received += item_in.full_received
+            total_empty_returned += item_in.empty_returned
+            
+        # Update Provider Balances
+        provider.balance_pending = float(provider.balance_pending) + bill_in.total_cost
+        provider.balance_pending = float(provider.balance_pending) - bill_in.amount_paid
+        
+    await db.flush()
+    bill_id = bill.id
     await db.commit()
     
-    # Refresh bill and load entries
-    result = await db.scalars(select(PurchaseBill).options(selectinload(PurchaseBill.entries)).where(PurchaseBill.id == bill.id))
-    return result.one()
+    final_bill = await db.scalar(
+        select(PurchaseBill)
+        .options(joinedload(PurchaseBill.provider), selectinload(PurchaseBill.entries).joinedload(PurchaseEntry.item))
+        .where(PurchaseBill.id == bill_id)
+    )
+    return final_bill
 
-@router.get("/", response_model=list[PurchaseBillOut])
+@router.get("/")
 async def list_purchase_bills(
+    paginated: bool = False,
+    cursor: uuid.UUID | None = None,
+    limit: int = 20,
     db: AsyncSession = Depends(get_tenant_db),
 ):
-    result = await db.scalars(select(PurchaseBill).options(selectinload(PurchaseBill.entries)).order_by(PurchaseBill.created_at.desc()))
-    return result.all()
+    query = select(PurchaseBill).options(selectinload(PurchaseBill.entries))
+    
+    if paginated:
+        if cursor:
+            query = query.filter(PurchaseBill.id < cursor)
+        query = query.order_by(PurchaseBill.id.desc()).limit(limit)
+        result = await db.scalars(query)
+        items = result.all()
+        next_cursor = items[-1].id if len(items) == limit else None
+        return {"items": items, "next_cursor": next_cursor}
+    else:
+        query = query.order_by(PurchaseBill.id.desc()).limit(100)
+        result = await db.scalars(query)
+        return result.all()

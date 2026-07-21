@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import type { Provider, PurchaseBill } from '../types/api';
 
@@ -13,12 +13,17 @@ export function useProviders() {
 }
 
 export function usePurchases() {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['purchases'],
-    queryFn: async () => {
-      const response = await api.get<PurchaseBill[]>('/purchase/');
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      const response = await api.get('/purchase/', {
+        params: { paginated: true, cursor: pageParam, limit: 20 }
+      });
       return response.data;
-    }
+    },
+    getNextPageParam: (lastPage) => lastPage.next_cursor || undefined,
+    select: (data) => data.pages.flatMap((page) => page.items),
   });
 }
 

@@ -7,7 +7,14 @@ import { View, Text, ScrollView } from 'react-native';
 import React from 'react';
 import "./global.css"
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 60 * 60 * 1000, // 1 hour
+    },
+  },
+});
 
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null, info: React.ErrorInfo | null}> {
   constructor(props: {children: React.ReactNode}) {

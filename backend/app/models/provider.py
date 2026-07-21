@@ -1,6 +1,6 @@
 from uuid import UUID
 from typing import Optional
-from sqlalchemy import String, Numeric, Integer, Boolean, Uuid, ForeignKey
+from sqlalchemy import String, Numeric, Integer, Boolean, Uuid, ForeignKey, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import BaseModelMixin
 from ..core.ids import UUID_SQL_TYPE, uuid7
@@ -19,11 +19,14 @@ class Provider(Base, BaseModelMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     purchases = relationship("PurchaseBill", back_populates="provider")
-    inventory = relationship("ProviderInventory", back_populates="provider", cascade="all, delete-orphan")
+    inventory = relationship("ProviderInventory", back_populates="provider", cascade="all, delete-orphan", lazy="selectin")
 
 class ProviderInventory(Base, BaseModelMixin):
     __tablename__ = "provider_inventory"
-    __table_args__ = {"schema": "tenant"}
+    __table_args__ = (
+        CheckConstraint("cylinders_pending >= 0", name="chk_provider_inv_positive"),
+        {"schema": "tenant"}
+    )
 
     id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, primary_key=True, index=True, default=uuid7)
     provider_id: Mapped[UUID] = mapped_column(UUID_SQL_TYPE, ForeignKey("tenant.providers.id"), nullable=False)

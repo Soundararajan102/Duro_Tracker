@@ -203,6 +203,9 @@ export default function ItemsScreen() {
             keyExtractor={item => item.id.toString()}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 100 }}
+            initialNumToRender={15}
+            maxToRenderPerBatch={10}
+            windowSize={5}
           />
         )}
       </View>

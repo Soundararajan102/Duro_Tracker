@@ -64,6 +64,7 @@ const config = {
   web: {},
   plugins: [
     "expo-secure-store",
+    "@react-native-community/datetimepicker",
     [
       "expo-splash-screen",
       {
