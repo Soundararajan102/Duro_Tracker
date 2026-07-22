@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DeliveryScreen from '../screens/driver/DeliveryScreen';
+import DebtCollectionScreen from '../screens/driver/DebtCollectionScreen';
 import BillsScreen from '../screens/driver/BillsScreen';
 import { useAuth } from '../context/AuthContext';
 import { TouchableOpacity } from 'react-native';
@@ -52,6 +53,16 @@ export default function DriverTabNavigator() {
           title: 'New Delivery',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="navigate-circle-outline" size={size} color={color} />
+          ),
+        }} 
+      />
+      <Tab.Screen 
+        name="Collections" 
+        component={DebtCollectionScreen} 
+        options={{
+          title: 'Collections',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="cash-outline" size={size} color={color} />
           ),
         }} 
       />

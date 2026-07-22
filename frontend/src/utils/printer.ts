@@ -57,6 +57,7 @@ export type DeliveryReceiptData = {
   buyer_name: string;
   buyer_address: string;
 
+  receipt_type?: 'DELIVERY' | 'PAYMENT';
   opening_balance: number;
 
   items: DeliveryReceiptItem[];

@@ -2243,3 +2243,16 @@ configure the ip
 - Ran ipconfig to discover the new local Wi-Fi IP address after the machine restart (192.168.1.6).
 - Updated d:\Duro_Tracker\frontend\.env to set EXPO_PUBLIC_API_URL=http://192.168.1.6:8000/api/v1.
 - Logged the event in .core/SESSION_HISTORY.md and .core/CHAT_LOG.md.
+
+ # # #   [ 2 0 2 6 - 0 7 - 2 2   0 9 : 3 0 : 2 2 ] 
+ -   U s e r :   ' o k   w h a t   w i l l   y o u   d o   w i l l   y o u   g e n e r a t e   a n   n e w   b i l l   n u m b e r   f o r m a t   o r   s a m e   b i l l   n o   f o r m a t ' ,   ' d o   n o t   c h a n g e   i t   o k   r e v e r t   i y ' 
+ -   A I :   C o n f i r m e d   t h a t   w e   w i l l   l e a v e   t h e   e x i s t i n g   d e l i v e r y   s c r e e n   v a l i d a t i o n   a l o n e   ( c a s h + u p i   < =   t o t a l _ b i l l ) .   S u g g e s t e d   w e   g e n e r a t e   a   N E W   b i l l   n u m b e r   f o r m a t   ( e . g .   P A Y - Y Y Y Y - M M - X X X X X )   f o r   t h e   d e d i c a t e d   D e b t   C o l l e c t i o n   f e a t u r e   s o   t h a t   i t   i s   e a s i l y   d i s t i n g u i s h a b l e   f r o m   d e l i v e r y   b i l l s   ( S H A - ) .   F i x e d   b a c k e n d   t y p i n g   a n d   t e s t i n g . 
+  
+ 
+### [2026-07-22 10:04:42] Debt Collection Feature - UI & Tests
+- User asked to implement the debt collection frontend.
+- Created \DebtCollectionScreen.tsx\ in React Native with buyer selection, amount entry, and submit logic.
+- Reused \useReceiptImagePrintJob\ to easily print payment receipts using existing thermal printing logic.
+- Wrote \	est_debt_collection\ in pytest and ensured all tests passed.
+- Verified typing with \pyright\.
+

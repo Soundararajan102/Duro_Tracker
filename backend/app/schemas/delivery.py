@@ -21,6 +21,13 @@ class DeliveryBillCreate(BaseModel):
     timestamp: datetime | None = None
 
 
+class DebtCollectionCreate(BaseModel):
+    buyer_id: UUID
+    cash_collected: float = Field(default=0.0, ge=0.0)
+    upi_collected: float = Field(default=0.0, ge=0.0)
+    timestamp: datetime | None = None
+
+
 class DeliveryItemOut(BaseModel):
     id: UUID
     item_id: UUID
@@ -28,6 +35,7 @@ class DeliveryItemOut(BaseModel):
     line_total_amount: float
     full_delivered: int
     empty_received: int
+    buyer_holding_snapshot: int | None = None
     item: ItemOut | None = None
     
     model_config = ConfigDict(from_attributes=True)

@@ -176,3 +176,8 @@
 ### [2026-07-21 15:27:00] Historical Balance Snapshotting
 **Context:** The UI calculates historical bill balances using the buyer's real-time \alance_pending\, which causes historical receipts to display incorrect data if subsequent transactions occur.
 **Idea:** Add immutable \opening_balance\ and \closing_balance\ fields to the \DeliveryBill\ database model to persist the financial snapshot at the exact moment of delivery.
+
+ # # #   [ 2 0 2 6 - 0 7 - 2 2   0 9 : 3 0 : 2 2 ]   D e b t   C o l l e c t i o n   S e p a r a t e   F o r m a t 
+ -   I d e a :   D e b t   C o l l e c t i o n s   s h o u l d   N O T   m o d i f y   o r   b y p a s s   n o r m a l   d e l i v e r y   b i l l   v a l i d a t i o n s .   I n s t e a d ,   t h e y   s h o u l d   h a v e   t h e i r   o w n   d i s t i n c t   p r e f i x   ( e . g .   ' P A Y - Y Y Y Y - M M - X X X X X ' )   t o   s e p a r a t e   t h e m   f r o m   ' S H A - Y Y Y Y - M M - X X X X X '   d e l i v e r y   b i l l s ,   p r e v e n t i n g   o v e r l a p p i n g   l o g i c   o r   a c c o u n t i n g   c o n f u s i o n . 
+  
+ 

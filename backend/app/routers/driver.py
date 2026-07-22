@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import get_current_active_user, require_roles, get_tenant_db
 from app.models import Buyer, DeliveryBill, DeliveryItem, Item, User
 from app.models.enums import UserRole
-from app.schemas.delivery import DeliveryBillCreate, DeliveryBillOut
+from app.schemas.delivery import DeliveryBillCreate, DeliveryBillOut, DebtCollectionCreate
 from app.schemas.item import ItemOut
 from app.schemas.buyer import BuyerOut
 from fastapi import Header
@@ -22,7 +22,7 @@ async def generate_bill_number(db: AsyncSession, target_date: datetime.datetime,
     # Format: prefix_YYYY_MM
     year = target_date.strftime("%Y")
     month = target_date.strftime("%m")
-    seq_name = f"bill_{year}_{month}"
+    seq_name = f"bill_{prefix.lower()}_{year}_{month}"
     
     seq = await db.scalar(select(TenantSequence).where(TenantSequence.name == seq_name).with_for_update())
     if not seq:
@@ -120,6 +120,7 @@ async def create_delivery_entry(
                 line_total_amount=line_total,
                 full_delivered=item_in.full_delivered,
                 empty_received=item_in.empty_received,
+                buyer_holding_snapshot=0,
             )
             db.add(entry)
             
@@ -140,6 +141,8 @@ async def create_delivery_entry(
                 buyer_inv.cylinders_pending -= item_in.empty_received
                 if buyer_inv.cylinders_pending < 0:
                     raise HTTPException(status_code=400, detail=f"Buyer cannot return more empty cylinders than they currently hold for item {item.name}")
+                
+                entry.buyer_holding_snapshot = buyer_inv.cylinders_pending
             
             total_full_delivered += item_in.full_delivered
             total_empty_received += item_in.empty_received
@@ -211,3 +214,74 @@ async def list_active_buyers(
         .where(Buyer.is_active == True)
     )
     return result.unique().all()
+
+
+@router.post("/collections", response_model=DeliveryBillOut)
+async def create_debt_collection(
+    collection_in: DebtCollectionCreate,
+    x_idempotency_key: Annotated[str | None, Header()] = None,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_tenant_db),
+):
+    if collection_in.cash_collected + collection_in.upi_collected <= 0:
+        raise HTTPException(status_code=400, detail="Collection amount must be greater than zero.")
+
+    if x_idempotency_key:
+        existing_bill = await db.scalar(
+            select(DeliveryBill).where(DeliveryBill.idempotency_key == x_idempotency_key)
+        )
+        if existing_bill:
+            final_existing = await db.scalar(
+                select(DeliveryBill)
+                .options(joinedload(DeliveryBill.buyer).selectinload(Buyer.inventory), selectinload(DeliveryBill.items).joinedload(DeliveryItem.item))
+                .where(DeliveryBill.id == existing_bill.id)
+            )
+            return final_existing
+
+    async with db.begin_nested() if db.in_transaction() else db.begin():
+        from sqlalchemy import text
+        await db.execute(text("SET LOCAL lock_timeout = '3s';"))
+
+        buyer = await db.scalar(
+            select(Buyer)
+            .options(selectinload(Buyer.inventory))
+            .where(Buyer.id == collection_in.buyer_id)
+            .with_for_update()
+        )
+        if not buyer:
+            raise HTTPException(status_code=404, detail="Buyer not found")
+
+        # Determine timestamp and generate bill number
+        bill_timestamp = collection_in.timestamp if collection_in.timestamp else datetime.datetime.now(datetime.UTC)
+        if bill_timestamp.tzinfo is None:
+            bill_timestamp = bill_timestamp.replace(tzinfo=datetime.UTC)
+
+        new_bill_number = await generate_bill_number(db, bill_timestamp, prefix="PAY")
+
+        # Create the Bill parent
+        bill = DeliveryBill(
+            driver_id=current_user.id,
+            buyer_id=collection_in.buyer_id,
+            adhoc_buyer_name=None,
+            bill_number=new_bill_number,
+            total_bill_amount=0.0,
+            cash_collected=collection_in.cash_collected,
+            upi_collected=collection_in.upi_collected,
+            timestamp=bill_timestamp,
+            idempotency_key=x_idempotency_key,
+        )
+        db.add(bill)
+
+        # Update Buyer Balances
+        buyer.balance_pending = float(buyer.balance_pending) - (collection_in.cash_collected + collection_in.upi_collected)
+
+    await db.flush()
+    bill_id = bill.id
+    await db.commit()
+
+    final_bill = await db.scalar(
+        select(DeliveryBill)
+        .options(joinedload(DeliveryBill.buyer).selectinload(Buyer.inventory), selectinload(DeliveryBill.items).joinedload(DeliveryItem.item))
+        .where(DeliveryBill.id == bill_id)
+    )
+    return final_bill

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -132,6 +132,7 @@ function BillCard({ item, handlePrint, itemsCatalog }: { item: any; handlePrint:
 }
 
 export default function BillsScreen() {
+  const [activeTab, setActiveTab] = useState<'SALES' | 'COLLECTIONS'>('SALES');
   const { receiptImagePrintBridge, startReceiptImagePrintJob } = useReceiptImagePrintJob();
   const preferredPrinter = usePrinterStore((state) => state.preferredPrinter);
   const { data: itemsCatalog = [] } = useDriverItems();
@@ -166,6 +167,11 @@ export default function BillsScreen() {
     );
   }
 
+  const displayedHistory = history.filter((item: any) => {
+    const isPayment = item.bill_number?.startsWith('PAY-');
+    return activeTab === 'SALES' ? !isPayment : isPayment;
+  });
+
   const handlePrint = (item: any) => {
     if (!preferredPrinter) {
       Alert.alert("No Printer", "Please select a printer in the Delivery screen first.");
@@ -199,7 +205,10 @@ export default function BillsScreen() {
         };
       });
     
+    const isPayment = item.bill_number?.startsWith('PAY-');
+
     const receiptData: DeliveryReceiptData = {
+      receipt_type: isPayment ? 'PAYMENT' : 'DELIVERY',
       receipt_number: item.bill_number || item.id.split('-')[0].toUpperCase(),
       date: item.timestamp,
       agency_name: "Sree Hari Agencies",
@@ -222,8 +231,23 @@ export default function BillsScreen() {
 
   return (
     <View className="flex-1 bg-zinc-100">
+      <View className="flex-row bg-white p-2 mb-2">
+        <TouchableOpacity 
+          className={`flex-1 py-3 items-center rounded-lg ${activeTab === 'SALES' ? 'bg-zinc-800' : 'bg-transparent'}`}
+          onPress={() => setActiveTab('SALES')}
+        >
+          <Text className={`font-semibold ${activeTab === 'SALES' ? 'text-white' : 'text-zinc-500'}`}>Sales Bills</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          className={`flex-1 py-3 items-center rounded-lg ${activeTab === 'COLLECTIONS' ? 'bg-zinc-800' : 'bg-transparent'}`}
+          onPress={() => setActiveTab('COLLECTIONS')}
+        >
+          <Text className={`font-semibold ${activeTab === 'COLLECTIONS' ? 'text-white' : 'text-zinc-500'}`}>Collection Bills</Text>
+        </TouchableOpacity>
+      </View>
+
       <FlatList
-        data={history}
+        data={displayedHistory}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <BillCard item={item} handlePrint={handlePrint} itemsCatalog={itemsCatalog} />}
         contentContainerStyle={{ padding: 16 }}

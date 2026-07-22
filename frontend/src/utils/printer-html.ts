@@ -30,8 +30,9 @@ type ReceiptExportPayload = {
   cashValue: string;
   upiLabel: string;
   upiValue: string;
-  totalLabel: string;
-  totalValue: string;
+
+  totalLabel?: string;
+  totalValue?: string;
   balanceAmountLabel?: string;
   balanceAmountValue?: string;
   closingBalanceLabel?: string;
@@ -41,6 +42,7 @@ type ReceiptExportPayload = {
   poweredBy: string;
   provider: string;
   items: ReceiptExportItem[];
+  receiptTitleText?: string;
 };
 
 /**
@@ -85,13 +87,16 @@ export function buildReceiptExportPayload(data: DeliveryReceiptData): ReceiptExp
     lineTotal: formatReceiptCurrency(item.total),
   }));
 
+  const isPayment = data.receipt_type === 'PAYMENT';
+
   return {
     companyName: data.agency_name || "Sree Hari Agencies",
     shopName: data.agency_address || "Namakkal",
     mobileText: `Mobile: ${data.agency_mobile || "N/A"}`,
-    receiptNumberText: `Bill No: ${data.receipt_number}`,
+    receiptTitleText: isPayment ? "PAYMENT RECEIPT" : undefined,
+    receiptNumberText: `${isPayment ? 'Receipt No' : 'Bill No'}: ${data.receipt_number}`,
     dateText: `Date: ${format(new Date(data.date), "dd-MMM-yyyy hh:mm a")}`,
-    toText: "To:",
+    toText: isPayment ? "Customer:" : "To:",
     buyerName: data.buyer_name,
     buyerShopName: data.buyer_address,
     openingBalanceLabel: "Opening Balance",
@@ -100,14 +105,14 @@ export function buildReceiptExportPayload(data: DeliveryReceiptData): ReceiptExp
     quantityHeader: "Qty",
     totalHeader: "Total",
     items: items,
-    totalLabel: "Total Bill Amount:",
-    totalValue: formatReceiptCurrency(data.total_bill),
-    cashLabel: "Cash Paid:",
+    totalLabel: isPayment ? undefined : "Total Bill Amount:",
+    totalValue: isPayment ? undefined : formatReceiptCurrency(data.total_bill),
+    cashLabel: isPayment ? "Amount Paid (Cash):" : "Cash Paid:",
     cashValue: formatReceiptCurrency(data.cash_collected),
-    upiLabel: "UPI Paid:",
+    upiLabel: isPayment ? "Amount Paid (UPI):" : "UPI Paid:",
     upiValue: formatReceiptCurrency(data.upi_collected),
-    balanceAmountLabel: "Balance Amount:",
-    balanceAmountValue: formatReceiptCurrency(
+    balanceAmountLabel: isPayment ? undefined : "Balance Amount:",
+    balanceAmountValue: isPayment ? undefined : formatReceiptCurrency(
       data.total_bill - data.cash_collected - data.upi_collected,
     ),
     closingBalanceLabel: "Closing Balance",
@@ -389,6 +394,17 @@ function buildReceiptImageExportScript() {
                 y += 10;
                 y += 7; // divider
 
+                if (payload.receiptTitleText) {
+                  y += 7;
+                  y += drawWrappedText(measureContext, payload.receiptTitleText, 0, y, receiptWidth, {
+                    size: 21,
+                    weight: 800,
+                    align: "center",
+                    lineHeightRatio: 1.15,
+                  }).height;
+                  y += 3;
+                }
+
                 y += drawWrappedText(measureContext, payload.receiptNumberText, 0, y, receiptWidth, {
                   size: 19,
                   weight: 800,
@@ -620,6 +636,17 @@ function buildReceiptImageExportScript() {
               context.setLineDash([]);
               y += 7;
 
+              if (payload.receiptTitleText) {
+                y += 7;
+                y += drawWrappedText(context, payload.receiptTitleText, 0, y, receiptWidth, {
+                  size: 21,
+                  weight: 800,
+                  align: "center",
+                  lineHeightRatio: 1.15,
+                }).height;
+                y += 3;
+              }
+
               y += drawWrappedText(context, payload.receiptNumberText, 0, y, receiptWidth, {
                 size: 19,
                 weight: 800,
@@ -709,73 +736,76 @@ function buildReceiptImageExportScript() {
 
               y += 7;
 
-              drawWrappedText(context, payload.itemHeader, xItem, y, columnItemWidth, {
-                size: 16,
-                weight: 800,
-                align: "left",
-                lineHeightRatio: 1.2,
-              });
-              drawWrappedText(context, payload.quantityHeader, xQty, y, columnQtyWidth, {
-                size: 16,
-                weight: 800,
-                align: "left",
-                lineHeightRatio: 1.2,
-              });
-              drawWrappedText(context, payload.totalHeader, xTotal, y, columnTotalWidth, {
-                size: 16,
-                weight: 800,
-                align: "right",
-                lineHeightRatio: 1.2,
-              });
-              y += getLineHeight(16, 1.2);
-              y += 7;
-
-              context.lineWidth = 1.5;
-              context.setLineDash([6, 4]);
-              context.beginPath();
-              context.moveTo(0, y);
-              context.lineTo(receiptWidth, y);
-              context.stroke();
-              context.setLineDash([]);
-
-              for (var itemIndex = 0; itemIndex < payload.items.length; itemIndex += 1) {
-                var item = payload.items[itemIndex];
-
-                y += 8;
-                var itemName = drawWrappedText(context, item.itemName, xItem, y, columnItemWidth - 6, {
-                  size: 18,
+              if (payload.items && payload.items.length > 0) {
+                drawWrappedText(context, payload.itemHeader, xItem, y, columnItemWidth, {
+                  size: 16,
                   weight: 800,
                   align: "left",
-                  lineHeightRatio: 1.3,
+                  lineHeightRatio: 1.2,
                 });
-                var qtyBlock = drawWrappedText(context, item.quantityText, xQty, y, columnQtyWidth - 4, {
-                  size: 18,
-                  weight: 700,
+                drawWrappedText(context, payload.quantityHeader, xQty, y, columnQtyWidth, {
+                  size: 16,
+                  weight: 800,
                   align: "left",
-                  lineHeightRatio: 1.15,
-                  noWrap: true,
+                  lineHeightRatio: 1.2,
                 });
-                var totalBlockHeight = drawFittedText(context, item.lineTotal, xTotal, y, columnTotalWidth, {
-                  size: 21,
+                drawWrappedText(context, payload.totalHeader, xTotal, y, columnTotalWidth, {
+                  size: 16,
                   weight: 800,
                   align: "right",
-                  lineHeightRatio: 1.15,
+                  lineHeightRatio: 1.2,
                 });
+                y += getLineHeight(16, 1.2);
+                y += 7;
 
-                y += Math.max(itemName.height, qtyBlock.height, totalBlockHeight);
-                y += 8;
+                context.lineWidth = 1.5;
+                context.setLineDash([6, 4]);
+                context.beginPath();
+                context.moveTo(0, y);
+                context.lineTo(receiptWidth, y);
+                context.stroke();
+                context.setLineDash([]);
+
+                for (var itemIndex = 0; itemIndex < payload.items.length; itemIndex += 1) {
+                  var item = payload.items[itemIndex];
+
+                  y += 8;
+                  var itemName = drawWrappedText(context, item.itemName, xItem, y, columnItemWidth - 6, {
+                    size: 18,
+                    weight: 800,
+                    align: "left",
+                    lineHeightRatio: 1.3,
+                  });
+                  var qtyBlock = drawWrappedText(context, item.quantityText, xQty, y, columnQtyWidth - 4, {
+                    size: 18,
+                    weight: 700,
+                    align: "left",
+                    lineHeightRatio: 1.15,
+                    noWrap: true,
+                  });
+                  var totalBlockHeight = drawFittedText(context, item.lineTotal, xTotal, y, columnTotalWidth, {
+                    size: 21,
+                    weight: 800,
+                    align: "right",
+                    lineHeightRatio: 1.15,
+                  });
+
+                  y += Math.max(itemName.height, qtyBlock.height, totalBlockHeight);
+                  y += 8;
+                }
+
+                context.lineWidth = 1.5;
+                context.setLineDash([6, 4]);
+                context.beginPath();
+                context.moveTo(0, y);
+                context.lineTo(receiptWidth, y);
+                context.stroke();
+                context.setLineDash([]);
+                y += 10;
               }
 
-              context.lineWidth = 1.5;
-              context.setLineDash([6, 4]);
-              context.beginPath();
-              context.moveTo(0, y);
-              context.lineTo(receiptWidth, y);
-              context.stroke();
-              context.setLineDash([]);
-              y += 10;
-
               function drawTotalRow(label, value, fontSize, fontWeight) {
+                if (!label) return 0;
                 var labelBlock = drawWrappedText(context, label, 0, y, totalLabelWidth, {
                   size: fontSize,
                   weight: fontWeight,
@@ -791,13 +821,15 @@ function buildReceiptImageExportScript() {
                 return Math.max(labelBlock.height, valueHeight);
               }
 
-              y += drawTotalRow(payload.totalLabel, payload.totalValue, 20, 800);
-              y += 8;
-              y += drawTotalRow(payload.cashLabel, payload.cashValue, 18, 700);
-              y += 8;
-              y += drawTotalRow(payload.upiLabel, payload.upiValue, 18, 700);
-              y += 8;
-              y += drawTotalRow(payload.balanceAmountLabel, payload.balanceAmountValue, 20, 800);
+              var rowH;
+              rowH = drawTotalRow(payload.totalLabel, payload.totalValue, 20, 800);
+              if (rowH > 0) y += rowH + 8;
+              rowH = drawTotalRow(payload.cashLabel, payload.cashValue, 18, 700);
+              if (rowH > 0) y += rowH + 8;
+              rowH = drawTotalRow(payload.upiLabel, payload.upiValue, 18, 700);
+              if (rowH > 0) y += rowH + 8;
+              rowH = drawTotalRow(payload.balanceAmountLabel, payload.balanceAmountValue, 20, 800);
+              if (rowH > 0) y += rowH;
               y += 10;
 
               context.lineWidth = 1.5;
