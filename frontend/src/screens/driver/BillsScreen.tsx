@@ -145,11 +145,16 @@ export default function BillsScreen() {
     hasNextPage, 
     isFetchingNextPage 
   } = useInfiniteQuery({
-    queryKey: ['driver_history'],
+    queryKey: ['driver_history', activeTab],
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       const res = await api.get('/driver/entries', {
-        params: { paginated: true, cursor: pageParam, limit: 20 }
+        params: { 
+          paginated: true, 
+          cursor: pageParam, 
+          limit: 20, 
+          bill_type: activeTab === 'SALES' ? 'sales' : 'collections' 
+        }
       });
       return res.data;
     },
@@ -167,10 +172,7 @@ export default function BillsScreen() {
     );
   }
 
-  const displayedHistory = history.filter((item: any) => {
-    const isPayment = item.bill_number?.startsWith('PAY-');
-    return activeTab === 'SALES' ? !isPayment : isPayment;
-  });
+  const displayedHistory = history;
 
   const handlePrint = (item: any) => {
     if (!preferredPrinter) {

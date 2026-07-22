@@ -173,6 +173,7 @@ async def list_delivery_entries(
     paginated: bool = False,
     cursor: uuid.UUID | None = None,
     limit: int = 20,
+    bill_type: str | None = None,
     db: AsyncSession = Depends(get_tenant_db),
 ):
     query = select(DeliveryBill).options(
@@ -180,6 +181,11 @@ async def list_delivery_entries(
         selectinload(DeliveryBill.items).joinedload(DeliveryItem.item)
     )
     
+    if bill_type == "sales":
+        query = query.filter(DeliveryBill.items.any())
+    elif bill_type == "collections":
+        query = query.filter(~DeliveryBill.items.any())
+
     if paginated:
         if cursor:
             query = query.filter(DeliveryBill.id < cursor)
