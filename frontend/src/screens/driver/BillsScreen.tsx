@@ -9,6 +9,7 @@ import { DeliveryReceiptData, DeliveryReceiptItem } from '../../utils/printer';
 import { format } from 'date-fns';
 import { useDriverItems } from '../../hooks/useItems';
 function BillCard({ item, handlePrint, itemsCatalog }: { item: any; handlePrint: (item: any) => void; itemsCatalog?: any[] }) {
+  const isCollection = !item.items || item.items.length === 0;
   const currentBalance = item.buyer?.balance_pending || 0;
   // Use snapshot if available, otherwise fallback to approximation
   const openingBalance = item.opening_balance != null ? item.opening_balance : (currentBalance - item.total_bill_amount + item.cash_collected + item.upi_collected);
@@ -44,53 +45,66 @@ function BillCard({ item, handlePrint, itemsCatalog }: { item: any; handlePrint:
         <Text className="text-zinc-800 text-sm font-bold">₹{openingBalance.toFixed(2)}</Text>
       </View>
 
-      {/* Items Table */}
-      <View className="mb-4 bg-zinc-50 rounded-xl overflow-hidden border border-zinc-100">
-        <View className="flex-row border-b border-zinc-200 px-3 py-2 bg-zinc-100/50">
-          <Text className="flex-1 text-zinc-500 text-xs font-bold uppercase tracking-wider">Item</Text>
-          <Text className="w-12 text-center text-zinc-500 text-xs font-bold uppercase tracking-wider">Qty</Text>
-          <Text className="w-16 text-center text-zinc-500 text-xs font-bold uppercase tracking-wider">Rate</Text>
-          <Text className="w-20 text-right text-zinc-500 text-xs font-bold uppercase tracking-wider">Total</Text>
-        </View>
-        {item.items && item.items.length > 0 ? (
-          item.items.map((i: any, idx: number) => (
-            <View key={idx} className="flex-row px-3 py-2.5 border-b border-zinc-100 last:border-0 items-center">
-              <View className="flex-1 pr-2">
-                <Text className="text-zinc-800 font-medium text-sm">{i.item?.name || 'Unknown'}</Text>
-                {i.empty_received > 0 && (
-                  <Text className="text-orange-500 text-xs mt-0.5">{i.empty_received} Empty Returned</Text>
-                )}
-              </View>
-              <Text className="w-12 text-center text-zinc-800 font-semibold">{i.full_delivered}</Text>
-              <Text className="w-16 text-center text-zinc-600 text-xs font-medium">₹{i.unit_price_at_delivery}</Text>
-              <Text className="w-20 text-right text-zinc-800 font-bold">₹{i.line_total_amount}</Text>
-            </View>
-          ))
-        ) : (
-          <View className="px-3 py-4 items-center">
-             <Text className="text-zinc-400 text-sm font-medium">No items in this bill</Text>
+      {/* Items Table - Only for Sales */}
+      {!isCollection && (
+        <View className="mb-4 bg-zinc-50 rounded-xl overflow-hidden border border-zinc-100">
+          <View className="flex-row border-b border-zinc-200 px-3 py-2 bg-zinc-100/50">
+            <Text className="flex-1 text-zinc-500 text-xs font-bold uppercase tracking-wider">Item</Text>
+            <Text className="w-12 text-center text-zinc-500 text-xs font-bold uppercase tracking-wider">Qty</Text>
+            <Text className="w-16 text-center text-zinc-500 text-xs font-bold uppercase tracking-wider">Rate</Text>
+            <Text className="w-20 text-right text-zinc-500 text-xs font-bold uppercase tracking-wider">Total</Text>
           </View>
-        )}
-      </View>
+          {item.items && item.items.length > 0 ? (
+            item.items.map((i: any, idx: number) => (
+              <View key={idx} className="flex-row px-3 py-2.5 border-b border-zinc-100 last:border-0 items-center">
+                <View className="flex-1 pr-2">
+                  <Text className="text-zinc-800 font-medium text-sm">{i.item?.name || 'Unknown'}</Text>
+                  {i.empty_received > 0 && (
+                    <Text className="text-orange-500 text-xs mt-0.5">{i.empty_received} Empty Returned</Text>
+                  )}
+                </View>
+                <Text className="w-12 text-center text-zinc-800 font-semibold">{i.full_delivered}</Text>
+                <Text className="w-16 text-center text-zinc-600 text-xs font-medium">₹{i.unit_price_at_delivery}</Text>
+                <Text className="w-20 text-right text-zinc-800 font-bold">₹{i.line_total_amount}</Text>
+              </View>
+            ))
+          ) : (
+            <View className="px-3 py-4 items-center">
+               <Text className="text-zinc-400 text-sm font-medium">No items in this bill</Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Summary Section */}
       <View className="mb-4 px-1">
+        {!isCollection && (
+          <View className="flex-row justify-between items-center py-1.5">
+            <Text className="text-zinc-600 font-medium">Total Bill Amount</Text>
+            <Text className="text-zinc-900 font-bold text-base">₹{item.total_bill_amount.toFixed(2)}</Text>
+          </View>
+        )}
         <View className="flex-row justify-between items-center py-1.5">
-          <Text className="text-zinc-600 font-medium">Total Bill Amount</Text>
-          <Text className="text-zinc-900 font-bold text-base">₹{item.total_bill_amount.toFixed(2)}</Text>
+          <Text className="text-emerald-600 font-medium">{isCollection ? 'Cash Received' : 'Cash Paid'}</Text>
+          <Text className="text-emerald-600 font-semibold">{!isCollection && '- '}₹{item.cash_collected.toFixed(2)}</Text>
         </View>
         <View className="flex-row justify-between items-center py-1.5">
-          <Text className="text-emerald-600 font-medium">Cash Paid</Text>
-          <Text className="text-emerald-600 font-semibold">- ₹{item.cash_collected.toFixed(2)}</Text>
+          <Text className="text-blue-600 font-medium">{isCollection ? 'UPI Received' : 'UPI Paid'}</Text>
+          <Text className="text-blue-600 font-semibold">{!isCollection && '- '}₹{item.upi_collected.toFixed(2)}</Text>
         </View>
-        <View className="flex-row justify-between items-center py-1.5">
-          <Text className="text-blue-600 font-medium">UPI Paid</Text>
-          <Text className="text-blue-600 font-semibold">- ₹{item.upi_collected.toFixed(2)}</Text>
-        </View>
-        <View className="flex-row justify-between items-center pt-3 pb-1 border-t border-zinc-100 mt-1.5">
-          <Text className="text-zinc-800 font-semibold">Balance Amount</Text>
-          <Text className="text-zinc-900 font-bold text-base">₹{currentBillBal.toFixed(2)}</Text>
-        </View>
+        
+        {isCollection && (
+          <View className="flex-row justify-between items-center pt-3 pb-1 border-t border-zinc-100 mt-1.5">
+            <Text className="text-zinc-800 font-semibold">Total Amount Received</Text>
+            <Text className="text-zinc-900 font-bold text-base text-emerald-600">₹{(item.cash_collected + item.upi_collected).toFixed(2)}</Text>
+          </View>
+        )}
+        {!isCollection && (
+          <View className="flex-row justify-between items-center pt-3 pb-1 border-t border-zinc-100 mt-1.5">
+            <Text className="text-zinc-800 font-semibold">Balance Amount</Text>
+            <Text className="text-zinc-900 font-bold text-base">₹{currentBillBal.toFixed(2)}</Text>
+          </View>
+        )}
       </View>
 
       {/* Closing Balance */}

@@ -833,3 +833,9 @@ ull and failing to render the snapshot correctly. Fixed the backend router to pr
 
 ### [2026-07-22 11:20:00] Workspace File Arrangement Verification
 - **User Request:** lso the file arrangement and full check ok`n- **Action Taken:** Performed a full structural scan of both the frontend (src/) and backend (pp/) directories. Verified that all components, screens, routers, and schemas correctly align with the ARCHITECTURE.md guidelines. Verified that DebtCollectionScreen is fully linked. The workspace is officially clean and fully structurally sound.
+
+
+### [2026-07-22 11:49:03] Separate Sales and Collection Bills
+- Implemented server-side filtering for sales and collection bills in backend driver entries endpoint.
+- Updated frontend BillsScreen to fetch data dynamically based on active tab.
+- Verified that Bill sequences (SHA vs PAY) are already completely isolated.
