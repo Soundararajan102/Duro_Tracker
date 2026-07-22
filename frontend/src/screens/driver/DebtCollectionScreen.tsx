@@ -7,8 +7,11 @@ import { useReceiptImagePrintJob } from '../../hooks/use-receipt-image-print-job
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 
+import { usePrinterStore } from '../../store/printer-store';
+
 export default function DebtCollectionScreen() {
-  const { token, preferredPrinter } = useAuth();
+  const { userToken } = useAuth();
+  const { preferredPrinter } = usePrinterStore();
   const queryClient = useQueryClient();
   const { startReceiptImagePrintJob, receiptImagePrintBridge } = useReceiptImagePrintJob();
   
@@ -25,7 +28,7 @@ export default function DebtCollectionScreen() {
       const res = await api.get(`/driver/buyers`);
       return res.data as { id: string, name: string, address: string, balance_pending: number }[];
     },
-    enabled: !!token
+    enabled: !!userToken
   });
 
   const selectedBuyer = buyers?.find(b => b.id === buyerId);
