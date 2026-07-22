@@ -49,6 +49,7 @@ async def create_organization(
     # Provision the physical schema for this tenant
     schema_name = build_schema_name(org.id)
     await db.run_sync(create_tenant_schema_and_tables, schema_name)
+    await db.commit()
     
     return org
 
