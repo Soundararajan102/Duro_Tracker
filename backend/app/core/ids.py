@@ -32,7 +32,7 @@ def uuid7() -> UUID:
     on the standard-library UUIDv7 layout and monotonic counter strategy.
     """
     if hasattr(uuid, "uuid7"):
-        return uuid.uuid7()
+        return uuid.uuid7()  # type: ignore
 
     timestamp_ms = time.time_ns() // 1_000_000
 

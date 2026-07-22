@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { ShieldAlert } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SuperAdminDashboardStack from './SuperAdminDashboardStack';
 
 export type SuperAdminTabParamList = {
@@ -10,6 +11,9 @@ export type SuperAdminTabParamList = {
 const Tab = createBottomTabNavigator<SuperAdminTabParamList>();
 
 export default function SuperAdminTabNavigator() {
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 12);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -18,9 +22,9 @@ export default function SuperAdminTabNavigator() {
           backgroundColor: 'white',
           borderTopWidth: 1,
           borderTopColor: '#f4f4f5',
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
+          minHeight: 65 + insets.bottom,
+          paddingBottom: bottomPadding,
+          paddingTop: 10,
         },
         tabBarActiveTintColor: '#3b82f6',
         tabBarInactiveTintColor: '#a1a1aa',

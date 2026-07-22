@@ -45,6 +45,8 @@ class DeliveryBillOut(BaseModel):
     total_bill_amount: float
     cash_collected: float
     upi_collected: float
+    opening_balance: float | None = None
+    closing_balance: float | None = None
     
     items: list[DeliveryItemOut] = []
     

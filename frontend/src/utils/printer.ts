@@ -49,23 +49,24 @@ export type DeliveryReceiptItem = {
 export type DeliveryReceiptData = {
   receipt_number: string;
   date: string;
-  
+
   agency_name?: string;
   agency_address?: string;
   agency_mobile?: string;
 
   buyer_name: string;
   buyer_address: string;
-  
+
   opening_balance: number;
-  
+
   items: DeliveryReceiptItem[];
-  
+
   total_bill: number;
   cash_collected: number;
   upi_collected: number;
-  
+
   closing_balance: number;
+  cylinder_balances?: { name: string; count: number; given?: number; taken?: number }[];
 };
 
 const RECEIPT_COPY = {
@@ -134,9 +135,9 @@ async function requestBluetoothPermissions() {
   const permissions =
     apiLevel >= 31
       ? [
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-        ]
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+      ]
       : [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION];
 
   const statuses = await PermissionsAndroid.requestMultiple(permissions);
@@ -191,7 +192,39 @@ function formatDateForReceipt(isoString: string) {
   return `${dd}-${mm}-${yyyy} , ${hh}:${minutes}${ampm}`;
 }
 
-function buildPrintableReceiptLines(data: DeliveryReceiptData): PrintableReceiptLine[] {
+/**
+ * =========================================================
+ *                  RECEIPT VISUAL LAYOUT
+ * =========================================================
+ *           Sree Hari Agencies
+ *                     Namakkal
+ *               Mobile: [Agency Mobile]
+ * -----------------------------------------------
+ * Bill No: [receipt_number]
+ * Date: [date]
+ * -----------------------------------------------
+ *  To: 
+ *   [Retailer Name]
+ *   [Shop Name]
+ * -----------------------------------------------
+ *          Opening Balance: ₹[Amount]
+ * -----------------------------------------------
+ * Item       Qty            Total
+ * [X]        [Y]            ₹[Total]
+ * -----------------------------------------------
+ * Total Bill Amount:         ₹[Total]
+ * Cash Paid:                 ₹[Cash]
+ * UPI Paid:                  ₹[UPI]
+ * Balance Amount:            ₹[Current Bill Bal]
+ * -----------------------------------------------
+ *          Closing Balance: ₹[Amount]
+ * -----------------------------------------------
+ *                  Thank You
+ *          Software Provided By
+ *    Durozen Technologies Pvt. Ltd.
+ * =========================================================
+ */
+export function buildPrintableReceiptLines(data: DeliveryReceiptData): PrintableReceiptLine[] {
   const divider = "-".repeat(PAPER_WIDTH_58);
 
   const lines: PrintableReceiptLine[] = [
@@ -210,7 +243,7 @@ function buildPrintableReceiptLines(data: DeliveryReceiptData): PrintableReceipt
     { text: divider },
     { text: "Kgs        Price/Kg            Total Amount", bold: true },
   ];
-  
+
   for (const item of data.items) {
     // Format: Qty (3)  Price (8) -> Total (10)
     const qty = item.quantity.toString().padEnd(3);
@@ -218,19 +251,27 @@ function buildPrintableReceiptLines(data: DeliveryReceiptData): PrintableReceipt
     const itemRowLeft = `${qty}        ${price}            `;
     lines.push({ text: padColumns(itemRowLeft, `₹${item.total}`) });
   }
-  
+
   lines.push({ text: divider });
   lines.push({ text: padColumns("Total Bill Amount:", `₹${data.total_bill.toFixed(2)}`), bold: true });
   lines.push({ text: padColumns("Cash Paid:", `₹${data.cash_collected.toFixed(2)}`) });
   lines.push({ text: padColumns("UPI Paid:", `₹${data.upi_collected.toFixed(2)}`) });
-  
+
   const currentBillBal = data.total_bill - (data.cash_collected + data.upi_collected);
   lines.push({ text: padColumns("Balance Amount:", `₹${currentBillBal.toFixed(2)}`) });
-  
+
   lines.push({ text: divider });
   lines.push({ text: padColumns("         Closing Balance:", `₹${data.closing_balance.toFixed(2)}`), bold: true });
   lines.push({ text: divider });
-  
+
+  if (data.cylinder_balances && data.cylinder_balances.length > 0) {
+    lines.push({ text: "Cylinders Holding :", align: "center", bold: true });
+    for (const bal of data.cylinder_balances) {
+      lines.push({ text: `* ${bal.name} - Given: ${bal.given || 0} Taken: ${bal.taken || 0} Hold: ${bal.count}`, align: "center" });
+    }
+    lines.push({ text: divider });
+  }
+
   lines.push({ text: "                    Thank You", bold: true });
   lines.push({ text: "            Software Provided By" });
   lines.push({ text: "       Durozen Technologies Pvt. Ltd." });

@@ -2,6 +2,7 @@ import React from 'react';
 // Force Metro Bundler cache invalidation
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DeliveryScreen from '../screens/driver/DeliveryScreen';
 import BillsScreen from '../screens/driver/BillsScreen';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +12,8 @@ const Tab = createBottomTabNavigator();
 
 export default function DriverTabNavigator() {
   const { logout } = useAuth();
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 12);
 
   return (
     <Tab.Navigator
@@ -20,9 +23,9 @@ export default function DriverTabNavigator() {
         tabBarStyle: {
           backgroundColor: '#ffffff',
           borderTopColor: '#f4f4f5',
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
+          minHeight: 65 + insets.bottom,
+          paddingBottom: bottomPadding,
+          paddingTop: 10,
         },
         headerStyle: {
           backgroundColor: '#ffffff',

@@ -1,4 +1,5 @@
 import { formatCurrency, type DeliveryReceiptData } from "./printer";
+import { format } from "date-fns";
 
 function formatReceiptCurrency(value?: string | number | null) {
   const numValue = typeof value === 'string' ? parseFloat(value) : (value || 0);
@@ -15,6 +16,8 @@ type ReceiptExportPayload = {
   companyName: string;
   shopName: string;
   mobileText: string;
+  receiptNumberText: string;
+  dateText: string;
   toText: string;
   buyerName: string;
   buyerShopName: string;
@@ -33,12 +36,48 @@ type ReceiptExportPayload = {
   balanceAmountValue?: string;
   closingBalanceLabel?: string;
   closingBalanceValue?: string;
+  cylinderBalances?: { name: string; count: number; given?: number; taken?: number }[];
   thankYou: string;
   poweredBy: string;
   provider: string;
   items: ReceiptExportItem[];
 };
 
+/**
+ * =========================================================
+ *                  RECEIPT VISUAL LAYOUT
+ * =========================================================
+ *           Sree Hari Agencies
+ *                     Namakkal
+ *               Mobile: [Agency Mobile]
+ * -----------------------------------------------
+ * Bill No: [receipt_number]
+ * Date: [date]
+ * -----------------------------------------------
+ *  To: 
+ *   [Retailer Name]
+ *   [Shop Name]
+ * -----------------------------------------------
+ *          Opening Balance: ₹[Amount]
+ * -----------------------------------------------
+ * Item       Qty            Total
+ * [X]        [Y]            ₹[Total]
+ * -----------------------------------------------
+ * Total Bill Amount:         ₹[Total]
+ * Cash Paid:                 ₹[Cash]
+ * UPI Paid:                  ₹[UPI]
+ * Balance Amount:            ₹[Current Bill Bal]
+ * -----------------------------------------------
+ *          Closing Balance: ₹[Amount]
+ * -----------------------------------------------
+ * Cylinders Holding :
+ * [Name] - Given: [X]  Taken: [Y]  Hold: [Z]
+ * -----------------------------------------------
+ *                  Thank You
+ *          Software Provided By
+ *    Durozen Technologies Pvt. Ltd.
+ * =========================================================================
+ */
 export function buildReceiptExportPayload(data: DeliveryReceiptData): ReceiptExportPayload {
   const items = data.items.map(item => ({
     itemName: item.name,
@@ -50,6 +89,8 @@ export function buildReceiptExportPayload(data: DeliveryReceiptData): ReceiptExp
     companyName: data.agency_name || "Sree Hari Agencies",
     shopName: data.agency_address || "Namakkal",
     mobileText: `Mobile: ${data.agency_mobile || "N/A"}`,
+    receiptNumberText: `Bill No: ${data.receipt_number}`,
+    dateText: `Date: ${format(new Date(data.date), "dd-MMM-yyyy hh:mm a")}`,
     toText: "To:",
     buyerName: data.buyer_name,
     buyerShopName: data.buyer_address,
@@ -71,6 +112,7 @@ export function buildReceiptExportPayload(data: DeliveryReceiptData): ReceiptExp
     ),
     closingBalanceLabel: "Closing Balance",
     closingBalanceValue: formatReceiptCurrency(data.closing_balance),
+    cylinderBalances: data.cylinder_balances,
     thankYou: "Thank You",
     poweredBy: "Software Provided By",
     provider: "Durozen Technologies Pvt. Ltd.",
@@ -347,6 +389,23 @@ function buildReceiptImageExportScript() {
                 y += 10;
                 y += 7; // divider
 
+                y += drawWrappedText(measureContext, payload.receiptNumberText, 0, y, receiptWidth, {
+                  size: 19,
+                  weight: 800,
+                  align: "center",
+                  lineHeightRatio: 1.15,
+                }).height;
+                y += 5;
+
+                y += drawWrappedText(measureContext, payload.dateText, 0, y, receiptWidth, {
+                  size: 17,
+                  weight: 700,
+                  align: "center",
+                  lineHeightRatio: 1.15,
+                }).height;
+                y += 10;
+                y += 7; // divider
+
                 y += drawWrappedText(measureContext, payload.toText, 0, y, receiptWidth, {
                   size: 17,
                   weight: 700,
@@ -455,6 +514,30 @@ function buildReceiptImageExportScript() {
                   y += 7; // divider
                 }
 
+                if (payload.cylinderBalances && payload.cylinderBalances.length > 0) {
+                  y += 10;
+                  y += drawWrappedText(measureContext, "Cylinders Holding :", 0, y, receiptWidth, {
+                    size: 19,
+                    weight: 800,
+                    align: "center",
+                    lineHeightRatio: 1.2,
+                  }).height;
+                  y += 6;
+                  for (var cIndex = 0; cIndex < payload.cylinderBalances.length; cIndex++) {
+                    var cb = payload.cylinderBalances[cIndex];
+                    var combinedText = cb.name + " - Given: " + (cb.given || 0) + " Taken: " + (cb.taken || 0) + " Hold: " + cb.count;
+                    y += drawWrappedText(measureContext, combinedText, 0, y, receiptWidth, {
+                      size: 16,
+                      weight: 700,
+                      align: "center",
+                      lineHeightRatio: 1.2,
+                    }).height;
+                    y += 6;
+                  }
+                  y += 10;
+                  y += 7; // divider
+                }
+
                 y += 18;
 
                 y += drawWrappedText(measureContext, payload.thankYou, 0, y, receiptWidth, {
@@ -521,6 +604,31 @@ function buildReceiptImageExportScript() {
               y += 3;
               
               y += drawWrappedText(context, payload.mobileText, 0, y, receiptWidth, {
+                size: 17,
+                weight: 700,
+                align: "center",
+                lineHeightRatio: 1.15,
+              }).height;
+              y += 10;
+
+              context.lineWidth = 1.5;
+              context.setLineDash([6, 4]);
+              context.beginPath();
+              context.moveTo(0, y);
+              context.lineTo(receiptWidth, y);
+              context.stroke();
+              context.setLineDash([]);
+              y += 7;
+
+              y += drawWrappedText(context, payload.receiptNumberText, 0, y, receiptWidth, {
+                size: 19,
+                weight: 800,
+                align: "center",
+                lineHeightRatio: 1.15,
+              }).height;
+              y += 5;
+
+              y += drawWrappedText(context, payload.dateText, 0, y, receiptWidth, {
                 size: 17,
                 weight: 700,
                 align: "center",
@@ -727,6 +835,37 @@ function buildReceiptImageExportScript() {
                 y += 10;
               }
 
+              if (payload.cylinderBalances && payload.cylinderBalances.length > 0) {
+                y += drawWrappedText(context, "Cylinders Holding :", 0, y, receiptWidth, {
+                  size: 19,
+                  weight: 800,
+                  align: "left",
+                  lineHeightRatio: 1.2,
+                }).height;
+                y += 6;
+                for (var cIndex = 0; cIndex < payload.cylinderBalances.length; cIndex++) {
+                  var cb = payload.cylinderBalances[cIndex];
+                  var combinedText = cb.name + " - Given: " + (cb.given || 0) + " Taken: " + (cb.taken || 0) + " Hold: " + cb.count;
+                  y += drawWrappedText(context, combinedText, 0, y, receiptWidth, {
+                    size: 16,
+                    weight: 700,
+                    align: "center",
+                    lineHeightRatio: 1.2,
+                  }).height;
+                  y += 6;
+                }
+                y += 10;
+                
+                context.lineWidth = 1.5;
+                context.setLineDash([6, 4]);
+                context.beginPath();
+                context.moveTo(0, y);
+                context.lineTo(receiptWidth, y);
+                context.stroke();
+                context.setLineDash([]);
+                y += 10;
+              }
+
               y += 18;
 
               y += drawWrappedText(context, payload.thankYou, 0, y, receiptWidth, {
@@ -819,3 +958,121 @@ export function buildReceiptHtmlMarkup(exportPayload: ReceiptExportPayload) {
       </body>
     </html>`;
 }
+
+
+export const printPaymentReceipt = async (payment: any, driverName: string) => {
+  try {
+    const timestamp = new Date(payment.timestamp).toLocaleString('en-IN', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+
+    const cash = payment.amount_cash || 0;
+    const upi = payment.amount_upi || 0;
+    const total = payment.total_amount || 0;
+    const opening = payment.opening_balance || 0;
+    const closing = payment.closing_balance || 0;
+
+    let html = `
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+        <style>
+          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; margin: 0; padding: 10px; color: #000; font-size: 14px; line-height: 1.4; }
+          .header { text-align: center; margin-bottom: 15px; border-bottom: 2px dashed #000; padding-bottom: 10px; }
+          .title { font-size: 20px; font-weight: bold; margin: 0 0 5px 0; text-transform: uppercase; }
+          .subtitle { font-size: 12px; margin: 0; }
+          .section { margin-bottom: 15px; }
+          .row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+          .label { font-weight: normal; color: #333; }
+          .value { font-weight: bold; text-align: right; }
+          .divider { border-top: 1px dashed #000; margin: 10px 0; }
+          .footer { text-align: center; margin-top: 20px; font-size: 12px; }
+          .amount-box { border: 2px solid #000; padding: 8px; text-align: center; font-size: 18px; font-weight: bold; margin: 15px 0; border-radius: 4px;}
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1 class="title">SREE HARI AGENCIES</h1>
+          <p class="subtitle">Indane Gas Distributor</p>
+          <p class="subtitle">123 Market Street, City</p>
+          <p class="subtitle">Ph: 9876543210</p>
+          <h2 style="margin: 10px 0 0 0; text-decoration: underline;">PAYMENT RECEIPT</h2>
+        </div>
+
+        <div class="section">
+          <div class="row">
+            <span class="label">Receipt No:</span>
+            <span class="value">${payment.receipt_number}</span>
+          </div>
+          <div class="row">
+            <span class="label">Date:</span>
+            <span class="value">${timestamp}</span>
+          </div>
+          <div class="row">
+            <span class="label">Driver:</span>
+            <span class="value">${driverName}</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section">
+          <div class="row" style="margin-bottom: 8px;">
+            <span class="label">Customer Name:</span>
+            <span class="value" style="font-size: 16px;">${payment.buyer?.name || 'Customer'}</span>
+          </div>
+          ${payment.buyer?.phone ? `
+          <div class="row">
+            <span class="label">Phone:</span>
+            <span class="value">${payment.buyer.phone}</span>
+          </div>` : ''}
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section">
+          <div class="row">
+            <span class="label">Opening Balance:</span>
+            <span class="value">Rs. ${opening.toFixed(2)}</span>
+          </div>
+          
+          <div class="amount-box">
+            Amount Received: Rs. ${total.toFixed(2)}
+          </div>
+          
+          ${cash > 0 ? `
+          <div class="row">
+            <span class="label">By Cash:</span>
+            <span class="value">Rs. ${cash.toFixed(2)}</span>
+          </div>` : ''}
+          ${upi > 0 ? `
+          <div class="row">
+            <span class="label">By UPI:</span>
+            <span class="value">Rs. ${upi.toFixed(2)}</span>
+          </div>` : ''}
+          
+          <div class="divider"></div>
+          
+          <div class="row">
+            <span class="label">Closing Balance:</span>
+            <span class="value">Rs. ${closing.toFixed(2)}</span>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p style="margin: 0;">Thank you for your payment!</p>
+          <p style="margin: 5px 0 0 0; font-size: 10px; color: #666;">Generated electronically by DuroTracker</p>
+        </div>
+      </body>
+    </html>
+    `;
+
+    const { printAsync } = await import('expo-print');
+    
+    // Fallback simple print via expo-print
+    await printAsync({ html });
+  } catch (error) {
+    console.error('Print failed:', error);
+  }
+};

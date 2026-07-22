@@ -426,3 +426,9 @@ class User(Base, BaseModelMixin):
 **ProviderInventory Model (provider_inventory) (New)**
 - Tracks exact empties owed to a provider per item.
 - Fields: id, provider_id, item_id, current_empty.
+
+### [2026-07-21 20:08:00] New Architecture
+Added \uyer_holding_snapshot: int | None\ to the \DeliveryItem\ table to persistently snapshot the amount of cylinders the buyer held right after the delivery transaction.
+
+### [2026-07-21 20:50:00] BuyerPayment Model
+Added \BuyerPayment\ table in tenant schema to strictly track standalone debt collections (cash/UPI), isolated from cylinder \DeliveryBill\s.

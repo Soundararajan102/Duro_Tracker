@@ -501,7 +501,8 @@ async def generate_purchase_pdf_endpoint(
     for b in bills_db:
         pdf_items = []
         # get provider rate
-        price_per_kg = float(b.provider.price_per_kg) if getattr(b.provider, 'price_per_kg', None) else 0.0
+        price_val = getattr(b.provider, 'price_per_kg', None)
+        price_per_kg = float(price_val) if price_val is not None else 0.0
         for entry in b.entries:
             qty = entry.full_received
             if qty <= 0:

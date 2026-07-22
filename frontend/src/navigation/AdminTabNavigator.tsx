@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { LayoutDashboard, Package, ShoppingCart, Warehouse, Users, Settings } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import DashboardScreen from '../screens/admin/DashboardScreen';
 import ItemsScreen from '../screens/admin/ItemsScreen';
@@ -12,6 +13,9 @@ import SettingsScreen from '../screens/admin/SettingsScreen';
 const Tab = createBottomTabNavigator();
 
 export default function AdminTabNavigator() {
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 12);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -26,8 +30,8 @@ export default function AdminTabNavigator() {
           shadowColor: '#000',
           shadowOpacity: 0.05,
           shadowRadius: 20,
-          height: 65,
-          paddingBottom: 10,
+          minHeight: 65 + insets.bottom,
+          paddingBottom: bottomPadding,
           paddingTop: 10,
         },
         tabBarLabelStyle: {

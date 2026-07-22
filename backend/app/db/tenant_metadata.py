@@ -10,8 +10,10 @@ from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
 from sqlalchemy.engine import Connection
 
 
+from typing import Iterator, Any
+
 @contextmanager
-def _reuse_public_pg_enums(connection: Connection) -> Iterator[None]:
+def _reuse_public_pg_enums(connection: Connection | Any) -> Iterator[None]:
     if connection.dialect.name != "postgresql":
         yield
         return
@@ -27,7 +29,7 @@ def _reuse_public_pg_enums(connection: Connection) -> Iterator[None]:
                 original_schemas[column.type.name] = column.type.schema
                 column.type.schema = "public"
                 if isinstance(column.type.dialect_impl(connection.dialect), PG_ENUM):
-                    column.type.create_type = False
+                    column.type.create_type = False  # type: ignore[attr-defined]
     try:
         yield
     finally:
@@ -37,7 +39,7 @@ def _reuse_public_pg_enums(connection: Connection) -> Iterator[None]:
             for column in table.columns:
                 if isinstance(column.type, SAEnum) and column.type.name:
                     column.type.schema = original_schemas.get(column.type.name)
-                    column.type.create_type = True
+                    column.type.create_type = True  # type: ignore[attr-defined]
 
 
 from sqlalchemy.orm import Session

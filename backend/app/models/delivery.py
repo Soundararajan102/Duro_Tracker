@@ -33,6 +33,10 @@ class DeliveryBill(Base, BaseModelMixin):
     cash_collected: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     upi_collected: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     
+    # Financial snapshots
+    opening_balance: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
+    closing_balance: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
+    
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     driver = relationship("User", lazy="joined")
@@ -61,6 +65,7 @@ class DeliveryItem(Base, BaseModelMixin):
     # Physical movement
     full_delivered: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     empty_received: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    buyer_holding_snapshot: Mapped[int | None] = mapped_column(Integer, nullable=True)
     
     bill: Mapped["DeliveryBill"] = relationship("DeliveryBill", back_populates="items")
     item = relationship("Item")

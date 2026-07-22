@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
+import { useQueryClient } from '@tanstack/react-query';
 
 export type UserRole = 'super_admin' | 'admin' | 'driver' | 'delivery';
 
@@ -18,6 +19,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userToken, setUserToken] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const bootstrapAsync = async () => {
@@ -42,6 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await AsyncStorage.setItem('@auth_token', token);
       const decoded = jwtDecode<{ role: UserRole }>(token);
+      queryClient.clear(); // Ensure we don't leak old user's cache
       setUserToken(token);
       setUserRole(decoded.role);
     } catch (e) {
@@ -52,6 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await AsyncStorage.removeItem('@auth_token');
+      queryClient.clear();
       setUserToken(null);
       setUserRole(null);
     } catch (e) {

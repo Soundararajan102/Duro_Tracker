@@ -16,15 +16,7 @@ async def initialize_database() -> None:
 
 
 async def migrate_legacy_item_images_before_schema_changes() -> None:
-    async with get_session_local()() as db:
-        from .storage import migrate_item_image_data_to_rustfs
-
-        migrated_image_count = await migrate_item_image_data_to_rustfs(db)
-        if migrated_image_count:
-            logger.info(
-                "Pre-schema migration moved/cleared %s legacy database item image(s).",
-                migrated_image_count,
-            )
+    pass
 
 
 async def run_database_startup_tasks() -> None:
@@ -35,12 +27,4 @@ async def run_database_startup_tasks() -> None:
         await conn.run_sync(_ensure_inventory_vehicle_number_column)
         await conn.run_sync(_ensure_item_image_columns)
         await conn.run_sync(_ensure_uuid_identifier_columns)
-    async with get_session_local()() as db:
-        from .storage import migrate_item_image_data_to_rustfs
 
-        migrated_image_count = await migrate_item_image_data_to_rustfs(db)
-        if migrated_image_count:
-            logger.info(
-                "Database initialization migrated/cleared %s legacy database item image(s).",
-                migrated_image_count,
-            )

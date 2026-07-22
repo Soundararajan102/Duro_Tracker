@@ -1,3 +1,4 @@
+from typing import Any
 import json
 import logging
 import time
@@ -106,7 +107,7 @@ SessionLocal: async_sessionmaker[AsyncSession] | None = None
 _search_path_listener_registered = False
 
 
-def _register_search_path_reset_if_needed(engine_url: URL | str) -> None:
+def _register_search_path_reset_if_needed(engine_url: Any) -> None:
     """Reset search_path at ORM transaction start — pooled PG connections retain session state."""
     global _search_path_listener_registered
     if _search_path_listener_registered or "postgresql" not in str(engine_url):
@@ -163,8 +164,8 @@ def get_engine() -> AsyncEngine:
             else "QueuePool"
         )
         engine_info = {
-            "driver": str(engine_url.drivername),
-            "host": str(engine_url.host),
+            "driver": str(getattr(engine_url, "drivername", "")),
+            "host": str(getattr(engine_url, "host", "")),
             "pgbouncer": uses_pgbouncer(engine_url),
             "poolclass": poolclass_name,
             "connect_arg_keys": sorted(engine_connect_args.keys()),

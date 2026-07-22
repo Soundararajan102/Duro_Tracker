@@ -1,6 +1,5 @@
 import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -12,7 +11,7 @@ from app.core.security import get_password_hash
 
 async def main():
     engine = create_async_engine("postgresql+asyncpg://postgres:root@localhost:5432/Duro_Tracker")
-    async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     async with async_session() as session:
         # Check superadmin

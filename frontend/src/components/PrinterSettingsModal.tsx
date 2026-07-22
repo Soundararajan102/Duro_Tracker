@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, FlatList, ActivityIndicator, Alert, SafeAreaView } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, FlatList, ActivityIndicator, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { usePrinterStore } from '../store/printer-store';
 import { PrinterDevice } from '../types/printer';

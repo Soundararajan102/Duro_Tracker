@@ -757,3 +757,47 @@ un_migrations.py and modified env.py to upgrade all tenant schemas. Successfully
 ### [2026-07-19] Hotfix for Greenlet Error
 - Fixed 'MissingGreenlet' error in /api/v1/driver/buyers endpoint by adding selectinload(Buyer.inventory) to eager load the itemized inventory relationships.
 - Extended the Greenlet fix to 'DeliveryBill' queries where 'Buyer' is joined, explicitly eager-loading 'Buyer.inventory' across driver.py, admin.py, and dashboard.py.
+
+### [2026-07-21 14:15:00] UI Engineering: Bill Card
+- Updated `BillsScreen.tsx` in the driver app to display a comprehensive Bill Card with full receipt details (Bill No, Date, Opening/Closing Balance, Itemized table, Payment Summary, and Cylinders Holding).
+- Fixed a TypeScript error in `useBuyers.ts` for `GlobalBill`.
+
+### [2026-07-21 14:22:00] Bug Fixes: Bill Card
+- Fixed a 403 Forbidden error where the driver app was attempting to fetch items from the admin endpoint (`useItems` hook) by replacing it with a direct query to `/driver/items` in `BillsScreen.tsx`.
+- Fixed a TypeScript implicit 'any' error for the inline `find` callback parameter.
+
+### [2026-07-21 15:35:00] Architecture: Immutable Bill Balances
+- Modified \DeliveryBill\ database model to store \opening_balance\ and \closing_balance\.
+- Ran a migration script across all tenant schemas to add these columns.
+- Updated the \/entries\ POST endpoint to snapshot these balances when a bill is created.
+- Updated \DeliveryBillOut\ schema and \BillsScreen.tsx\ to read these fields, fixing historical receipts displaying incorrect shifting balances.
+
+### [2026-07-21 20:08:00] Cylinder Holding Snapshots
+- **Request:** Make the printed historical bills preserve their exact cylinder holding counts rather than updating dynamically.
+- **Action:** Added \uyer_holding_snapshot\ column to \DeliveryItem\ table, ran cross-tenant migration script, updated \driver.py\ to save snapshot, and updated \BillsScreen.tsx\ to read the snapshot.
+
+### [2026-07-21 20:20:00] Fix Bills Screen UI
+- **Request:** Prevent the Bills screen UI from hiding the holding section when buyer inventory drops to zero.
+- **Action:** Synced the UI in \BillsScreen.tsx\ to use the \uyer_holding_snapshot\ for historical accuracy.
+
+### [2026-07-21 20:50:00] Driver Debt Collection Feature
+- **Request:** Implement Debt Collection for drivers.
+- **Action:** Created \BuyerPayment\ backend model, \POST/GET /driver/payments\ endpoints, \CollectionScreen\ UI, added \PAY-\ prefix receipt generation, and integrated thermal printing for payments.
+
+### [2026-07-21 21:43:41] Fixed Collection Screen Navigation Context Crash
+- **User Request:** "if i press the buyer in the collection page" (crashes with Couldn't find a navigation context).
+- **Action Taken:** Diagnosed the issue as a React Native text-rendering bug caused by inline boolean && evaluation which corrupts the React Native tree and bubbles up as a Navigation Context crash. Created an implementation plan to safely extract variables and use explicit ternaries (? <View /> : null). Executed the plan by rewriting the entire Step 2 block of CollectionScreen.tsx to conform to frontend UI engineering best practices. Re-wrote && checks in other sections of the file as well. Ensured form variables clear out successfully on payment record.
+
+
+### [2026-07-21 21:59:51] Backend Logic & Concurrency Bug Fixes
+- **User Request:** "ok use the mpc server find the error in the backend and the locgic"
+- **Action Taken:** Utilized the postgres MCP server to inspect the TenantSequence and uyers tables. Identified two critical bugs in driver.py: 1. A race condition in generate_bill_number when generating the first bill of the month concurrently. 2. A flawed validation rule that prevented drivers from collecting cash/UPI amounts that exceeded the current delivery total (blocking debt collections). 
+- **Outcome:** Refactored sequence generation to use atomic INSERT ... ON CONFLICT DO UPDATE. Updated collection validation logic to permit collecting up to 	otal_bill + buyer.balance_pending.
+
+### [2026-07-21 22:05:48] Validation Logic Reversion
+- **User Request:** "do not change it ok revert iy"
+- **Action Taken:** Reverted the collection validation limit back to strict 	otal_bill instead of 	otal_bill + buyer.balance_pending, as the user intends to handle debt collection as an isolated flow rather than inside the main delivery bill logic.
+
+### [2026-07-22 09:13:37] Network Re-configuration
+- **User Request:** "configure the ip"
+- **Action Taken:** Queried the current local Wi-Fi IP address using ipconfig (which changed after the system restart to 192.168.1.6). Updated rontend/.env so that Expo and the physical mobile device can connect to the Uvicorn backend over the local network.

@@ -10,11 +10,11 @@ async def main():
         
         for org_id in org_ids:
             schema_name = f'tenant_{str(org_id).replace("-", "")}'
-            print(f'Adding bill_number to {schema_name}...')
+            print(f'Adding opening_balance and closing_balance to {schema_name}...')
             
             try:
-                await conn.execute(text(f'ALTER TABLE {schema_name}.delivery_bills ADD COLUMN IF NOT EXISTS bill_number VARCHAR(50);'))
-                await conn.execute(text(f'CREATE UNIQUE INDEX IF NOT EXISTS ix_{schema_name}_delivery_bills_bill_number ON {schema_name}.delivery_bills (bill_number);'))
+                await conn.execute(text(f'ALTER TABLE {schema_name}.delivery_bills ADD COLUMN IF NOT EXISTS opening_balance NUMERIC(12, 2);'))
+                await conn.execute(text(f'ALTER TABLE {schema_name}.delivery_bills ADD COLUMN IF NOT EXISTS closing_balance NUMERIC(12, 2);'))
                 print(f'Success for {schema_name}')
             except Exception as e:
                 print(f'Error for {schema_name}: {e}')

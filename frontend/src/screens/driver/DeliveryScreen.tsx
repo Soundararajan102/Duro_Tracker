@@ -3,7 +3,6 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator,
 import { useNavigation } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import CustomAlert from '../../components/CustomAlert';
@@ -44,11 +43,6 @@ export default function DeliveryScreen() {
   const [buyerModalVisible, setBuyerModalVisible] = useState(false);
   const [itemModalVisible, setItemModalVisible] = useState(false);
   const [printerModalVisible, setPrinterModalVisible] = useState(false);
-  
-  // Date Time state
-  const [billDate, setBillDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
 
   // Custom Alert State
   const [alertVisible, setAlertVisible] = useState(false);
@@ -191,6 +185,25 @@ export default function DeliveryScreen() {
           total: c.lineTotal
         }));
 
+        const cylinder_balances = items?.map(item => {
+          const cartItem = cartItems.find(c => c.item.id === item.id);
+          const oldInv = selectedBuyer.inventory?.find(i => i.item_id === item.id);
+          const oldBalance = oldInv ? oldInv.cylinders_pending : 0;
+          
+          const given = cartItem ? cartItem.fullDelivered : 0;
+          const taken = cartItem ? cartItem.emptyReceived : 0;
+          
+          const newBalance = oldBalance + given - taken;
+          if (newBalance === 0 && given === 0 && taken === 0) return null;
+          
+          return {
+             name: item.name,
+             count: newBalance,
+             given: given,
+             taken: taken
+          };
+        }).filter(Boolean) as {name: string, count: number, given?: number, taken?: number}[];
+
         const receiptData: DeliveryReceiptData = {
           receipt_number: data?.data?.bill_number || (data?.data?.id ? data.data.id.split('-')[0].toUpperCase() : Math.random().toString(36).substring(2, 8).toUpperCase()),
           date: data?.data?.timestamp || new Date().toISOString(),
@@ -204,6 +217,7 @@ export default function DeliveryScreen() {
           cash_collected: cash_paid,
           upi_collected: upi_paid,
           closing_balance: closing_balance,
+          cylinder_balances: cylinder_balances,
         };
         startReceiptImagePrintJob([receiptData], preferredPrinter).catch(err => {
           showAlert("Print Error", err.message || "Failed to print receipt", "error");
@@ -326,56 +340,6 @@ export default function DeliveryScreen() {
           </View>
         )}
 
-        {/* Date and Time Selection */}
-        {buyerId && (
-          <View className="bg-white rounded-2xl p-4 mb-4 border border-zinc-100">
-            <Text className="text-zinc-500 font-medium mb-3">Delivery Date & Time</Text>
-            <View className="flex-row gap-4">
-              <TouchableOpacity 
-                className="flex-1 bg-zinc-50 border border-zinc-200 p-4 rounded-xl flex-row items-center justify-between"
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Text className="text-zinc-800 text-base">{billDate.toLocaleDateString()}</Text>
-                <Ionicons name="calendar-outline" size={20} color="#71717a" />
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                className="flex-1 bg-zinc-50 border border-zinc-200 p-4 rounded-xl flex-row items-center justify-between"
-                onPress={() => setShowTimePicker(true)}
-              >
-                <Text className="text-zinc-800 text-base">
-                  {billDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                </Text>
-                <Ionicons name="time-outline" size={20} color="#71717a" />
-              </TouchableOpacity>
-            </View>
-
-            {showDatePicker && (
-              <DateTimePicker
-                value={billDate}
-                mode="date"
-                display="default"
-                onChange={(event, selectedDate) => {
-                  setShowDatePicker(Platform.OS === 'ios');
-                  if (selectedDate) setBillDate(selectedDate);
-                }}
-              />
-            )}
-            
-            {showTimePicker && (
-              <DateTimePicker
-                value={billDate}
-                mode="time"
-                display="default"
-                onChange={(event, selectedDate) => {
-                  setShowTimePicker(Platform.OS === 'ios');
-                  if (selectedDate) setBillDate(selectedDate);
-                }}
-              />
-            )}
-          </View>
-        )}
-
         {/* Payments */}
         <View className="bg-white rounded-2xl p-4 mb-6 border border-zinc-100 space-y-4">
           <View className="bg-blue-50 border border-blue-100 p-4 rounded-xl mb-4 flex-row justify-between items-center">
@@ -390,7 +354,16 @@ export default function DeliveryScreen() {
                 className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-lg text-center"
                 keyboardType="numeric"
                 value={cashCollected}
-                onChangeText={setCashCollected}
+                onChangeText={(val) => {
+                  const numVal = parseFloat(val || '0');
+                  const currentUpi = parseFloat(upiCollected || '0');
+                  const maxAllowed = Math.max(0, parseFloat(totalBill) - currentUpi);
+                  if (numVal > maxAllowed) {
+                    setCashCollected(maxAllowed > 0 ? maxAllowed.toString() : '');
+                  } else {
+                    setCashCollected(val);
+                  }
+                }}
                 placeholder="₹ 0"
               />
             </View>
@@ -400,7 +373,16 @@ export default function DeliveryScreen() {
                 className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-lg text-center"
                 keyboardType="numeric"
                 value={upiCollected}
-                onChangeText={setUpiCollected}
+                onChangeText={(val) => {
+                  const numVal = parseFloat(val || '0');
+                  const currentCash = parseFloat(cashCollected || '0');
+                  const maxAllowed = Math.max(0, parseFloat(totalBill) - currentCash);
+                  if (numVal > maxAllowed) {
+                    setUpiCollected(maxAllowed > 0 ? maxAllowed.toString() : '');
+                  } else {
+                    setUpiCollected(val);
+                  }
+                }}
                 placeholder="₹ 0"
               />
             </View>
@@ -416,6 +398,15 @@ export default function DeliveryScreen() {
               return;
             }
 
+            const cash = parseFloat(cashCollected || '0');
+            const upi = parseFloat(upiCollected || '0');
+            const total = parseFloat(totalBill);
+            
+            if (cash + upi > total) {
+              showAlert("Invalid Payment", "Total collected amount cannot exceed the bill amount.");
+              return;
+            }
+
             const payloadItems = cartItems.map(c => ({
               item_id: c.item.id,
               full_delivered: c.fullDelivered,
@@ -426,8 +417,7 @@ export default function DeliveryScreen() {
               buyer_id: buyerId,
               items: payloadItems,
               cash_collected: parseFloat(cashCollected || '0'),
-              upi_collected: parseFloat(upiCollected || '0'),
-              timestamp: billDate.toISOString()
+              upi_collected: parseFloat(upiCollected || '0')
             });
           }}
           disabled={submitMutation.isPending || cartItems.length === 0}

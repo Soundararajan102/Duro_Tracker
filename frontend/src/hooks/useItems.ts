@@ -12,6 +12,16 @@ export function useItems() {
   });
 }
 
+export function useDriverItems() {
+  return useQuery({
+    queryKey: ['driver_items'],
+    queryFn: async () => {
+      const response = await api.get<Item[]>('/driver/items');
+      return response.data;
+    }
+  });
+}
+
 export function useCreateItem() {
   const queryClient = useQueryClient();
   

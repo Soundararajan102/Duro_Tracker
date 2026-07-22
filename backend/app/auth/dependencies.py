@@ -65,7 +65,9 @@ async def get_current_active_user(
     return current_user
 
 
-def require_roles(*roles: UserRole) -> Callable[[User], User]:
+from typing import Coroutine, Any
+
+def require_roles(*roles: UserRole) -> Callable[..., Coroutine[Any, Any, User]]:
     async def dependency(current_user: User = Depends(get_current_active_user)) -> User:
         if current_user.role not in roles:
             raise HTTPException(
@@ -76,11 +78,11 @@ def require_roles(*roles: UserRole) -> Callable[[User], User]:
     return dependency
 
 
-def require_super_admin() -> Callable[[User], User]:
+def require_super_admin() -> Callable[..., Coroutine[Any, Any, User]]:
     return require_roles(UserRole.SUPER_ADMIN)
 
 
-def require_tenant_admin() -> Callable[[User], User]:
+def require_tenant_admin() -> Callable[..., Coroutine[Any, Any, User]]:
     return require_roles(UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN)
 
 

@@ -175,7 +175,7 @@ export default function BuyersScreen() {
       <View className="flex flex-row items-center border-b border-gray-100 bg-white">
         <View className="w-32 px-4 py-4 flex flex-col justify-center">
           <Text className="font-medium text-slate-900 text-sm">{formattedDate}</Text>
-          <Text className="text-xs text-slate-500">{item.id ? String(item.id).substring(0,8) : '-'}</Text>
+          <Text className="text-xs text-slate-500 font-mono">{item.bill_number || (item.id ? String(item.id).substring(0,8) : '-')}</Text>
         </View>
         <View className="w-28 px-4 py-4 justify-center items-center">
           <View className="rounded-md px-2 py-1 items-center self-center" style={{ backgroundColor: item.type === 'bill' ? '#eef2ff' : '#ecfdf5' }}>
@@ -392,7 +392,7 @@ export default function BuyersScreen() {
               return (
                 <View key={item?.id || index} className="flex flex-row items-center border-b border-gray-100 bg-white">
                   <View className="w-32 px-4 py-4 flex flex-col justify-center">
-                    <Text className="font-medium text-slate-900 text-sm">{item?.id ? String(item.id).substring(0,8) : 'N/A'}</Text>
+                    <Text className="font-medium text-slate-900 text-sm font-mono">{item?.bill_number || (item?.id ? String(item.id).substring(0,8) : 'N/A')}</Text>
                     <Text className="text-xs text-slate-500">{formattedTime}</Text>
                   </View>
                   <View className="w-40 px-4 py-4 flex justify-center">

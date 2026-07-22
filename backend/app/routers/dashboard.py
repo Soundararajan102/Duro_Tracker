@@ -48,7 +48,7 @@ async def get_dashboard_metrics(
             func.coalesce(func.sum(DeliveryBill.total_bill_amount), 0),
         ).where(DeliveryBill.timestamp >= start_of_today)
     )
-    bill_row = bill_result.fetchone()
+    bill_row = bill_result.fetchone() or (0, 0, 0)
     
     # Aggregate today's item dispatches from DeliveryItem joined with DeliveryBill
     item_result = await db.execute(
@@ -57,21 +57,21 @@ async def get_dashboard_metrics(
             func.coalesce(func.sum(DeliveryItem.empty_received), 0),
         ).join(DeliveryBill).where(DeliveryBill.timestamp >= start_of_today)
     )
-    item_row = item_result.fetchone()
+    item_row = item_result.fetchone() or (0, 0)
     
     # Sum of all buyers' pending balances (All time)
     buyers_result = await db.execute(
         select(func.coalesce(func.sum(Buyer.balance_pending), 0))
     )
-    outstanding_balance = buyers_result.scalar()
+    outstanding_balance = buyers_result.scalar() or 0.0
 
     return DashboardMetrics(
-        total_dispatched=item_row[0],
-        total_empty_received=item_row[1],
-        total_cash_collected=bill_row[0],
-        total_upi_collected=bill_row[1],
-        outstanding_balance=outstanding_balance,
-        todays_sales=bill_row[2],
+        total_dispatched=int(item_row[0]),
+        total_empty_received=int(item_row[1]),
+        total_cash_collected=float(bill_row[0]),
+        total_upi_collected=float(bill_row[1]),
+        outstanding_balance=float(outstanding_balance),
+        todays_sales=float(bill_row[2]),
     )
 
 @router.get("/recent-activity", response_model=list[RecentActivityOut])
@@ -102,17 +102,18 @@ async def get_recent_activity(
         total_full = sum(item.full_delivered for item in entry.items)
         
         # Determine if it's primarily a delivery or a collection
+        bill_prefix = f"[{entry.bill_number}] " if entry.bill_number else ""
         if total_full > 0:
             act_type = 'delivery'
-            msg = f"Driver {driver_name} delivered {total_full} items to {buyer_name}"
+            msg = f"{bill_prefix}Driver {driver_name} delivered {total_full} items to {buyer_name}"
             amt = float(entry.total_bill_amount)
         elif entry.cash_collected > 0 or entry.upi_collected > 0:
             act_type = 'collection'
-            msg = f"Driver {driver_name} collected payment from {buyer_name}"
+            msg = f"{bill_prefix}Driver {driver_name} collected payment from {buyer_name}"
             amt = float(entry.cash_collected + entry.upi_collected)
         else:
             act_type = 'delivery'
-            msg = f"Driver {driver_name} recorded empty receipt from {buyer_name}"
+            msg = f"{bill_prefix}Driver {driver_name} recorded empty receipt from {buyer_name}"
             amt = 0.0
             
         activities.append(

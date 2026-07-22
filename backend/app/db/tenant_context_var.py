@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from contextvars import ContextVar
 
 active_tenant_schema: ContextVar[str | None] = ContextVar("active_tenant_schema", default=None)
@@ -15,7 +16,7 @@ def set_active_tenant_schema(schema_name: str | None) -> object:
     return active_tenant_schema.set(schema_name)
 
 
-def reset_active_tenant_schema(token: object) -> None:
+def reset_active_tenant_schema(token: Any) -> None:
     try:
         active_tenant_schema.reset(token)
     except ValueError:

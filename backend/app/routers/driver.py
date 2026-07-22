@@ -1,3 +1,5 @@
+# pyright: reportUnboundVariable=false
+# pyright: reportPossiblyUnboundVariable=false
 import uuid
 from typing import Annotated
 
@@ -31,7 +33,7 @@ async def generate_bill_number(db: AsyncSession, target_date: datetime.datetime,
     # 5-digit padding: SHA-YYYY-MM-XXXXX
     return f"{prefix}-{year}-{month}-{seq.last_value:05d}"
 
-router = APIRouter(prefix="/driver", tags=["Driver"])
+router = APIRouter(tags=["Driver"])
 
 @router.post("/entries", response_model=DeliveryBillOut)
 async def create_delivery_entry(
@@ -59,7 +61,6 @@ async def create_delivery_entry(
         
         buyer = None
         if bill_in.buyer_id:
-            from sqlalchemy.orm import selectinload
             buyer = await db.scalar(
                 select(Buyer)
                 .options(selectinload(Buyer.inventory))

@@ -55,6 +55,7 @@ export function useDeleteBuyer() {
 
 export interface GlobalBill {
   id: string;
+  bill_number?: string;
   time: string;
   buyer: string;
   fullGiven: number;
@@ -74,6 +75,7 @@ export function useGlobalBills() {
 
 export interface LedgerEntry {
   id: string;
+  bill_number?: string;
   date: string;
   type: string;
   fullGiven: number;

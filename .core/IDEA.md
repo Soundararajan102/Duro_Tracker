@@ -172,3 +172,7 @@
 - **Feature Request (UI):** Frontend UI update for dynamic ItemCategory (allowing admins to manage different categories dynamically instead of hardcoded).
 - **Technical Request (Database):** Create a visual view (ERD diagram) of the database tables and their linking/relationships.
 - **Technical Request (Backend QA):** Run a comprehensive logic check and identify potential pitfalls in the backend using the Postgres MCP server to query actual database states and edge cases.
+
+### [2026-07-21 15:27:00] Historical Balance Snapshotting
+**Context:** The UI calculates historical bill balances using the buyer's real-time \alance_pending\, which causes historical receipts to display incorrect data if subsequent transactions occur.
+**Idea:** Add immutable \opening_balance\ and \closing_balance\ fields to the \DeliveryBill\ database model to persist the financial snapshot at the exact moment of delivery.

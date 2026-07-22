@@ -147,8 +147,8 @@ export default function PurchasesScreen() {
       }
       
       const providerPending = selectedProvider.inventory?.find(inv => inv.item_id === payload.item_id)?.cylinders_pending || 0;
-      if (payload.full_received > providerPending) {
-        showAlert("Invalid", `Provider only holds ${providerPending} empty cylinders of ${item?.name || 'this item'} pending refill.`);
+      if (payload.full_received > (providerPending + payload.empty_returned)) {
+        showAlert("Invalid", `Provider cannot give ${payload.full_received} full cylinders when they only hold ${providerPending} pending and you are only returning ${payload.empty_returned} empties.`);
         return;
       }
     }

@@ -20,14 +20,14 @@ try:
 except ImportError:  # ponytail: tests/dev without redis sdk still run
     CacheBackend = None  # type: ignore[assignment,misc]
 
-    def get_redis_settings():  # type: ignore[misc]
+    def get_redis_settings() -> Any:  # type: ignore[misc]
         class _Disabled:
             url = ""
             prefix = "brolier360"
 
         return _Disabled()
 
-    def _get_pool_state(_app):  # type: ignore[misc]
+    def _get_pool_state(app: Any) -> Any:  # type: ignore[misc]
         raise RuntimeError("redis sdk unavailable")
 
 

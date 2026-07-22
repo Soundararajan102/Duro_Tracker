@@ -1,6 +1,7 @@
 """Normalize PostgreSQL SQLAlchemy URLs for async (asyncpg) or sync (psycopg) drivers."""
 
 from __future__ import annotations
+from typing import Any
 
 from sqlalchemy.engine import URL, make_url
 
@@ -44,7 +45,7 @@ def async_postgres_url_object(url: str) -> URL:
     return make_url(async_postgres_database_url(url))
 
 
-def uses_pgbouncer(url: URL) -> bool:
+def uses_pgbouncer(url: Any) -> bool:
     host = (url.host or "").lower()
     return host == "pgbouncer" or host.endswith(".pgbouncer")
 
