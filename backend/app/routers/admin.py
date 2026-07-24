@@ -4,14 +4,14 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from typing import Optional
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, or_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 from app.auth.dependencies import require_tenant_admin, get_tenant_db, get_platform_db
 from app.core.security import get_password_hash
-from app.models import Buyer, Item, User, Organization, PurchaseBill, PurchaseEntry, Provider
+from app.models import Buyer, Item, User, Organization, PurchaseBill, PurchaseEntry, Provider, DeliveryBill, DeliveryItem
 from app.models.enums import UserRole
 from app.schemas.buyer import BuyerCreate, BuyerOut, BuyerUpdate
 from app.schemas.item import ItemCreate, ItemOut, ItemUpdate
@@ -22,6 +22,7 @@ import datetime
 
 class GlobalBillOut(BaseModel):
     id: uuid.UUID
+    bill_number: str | None = None
     time: str
     buyer: str
     fullGiven: int
@@ -32,6 +33,7 @@ class LedgerEntryOut(BaseModel):
     id: uuid.UUID
     date: str
     type: str
+    bill_number: str | None = None
     fullGiven: int
     emptyCollected: int
     amount: float
@@ -194,6 +196,7 @@ async def get_global_bills(
         bills.append(
             GlobalBillOut(
                 id=e.id,
+                bill_number=e.bill_number,
                 time=e.timestamp.isoformat(),
                 buyer=buyer_name,
                 fullGiven=total_full,
@@ -245,6 +248,7 @@ async def get_buyer_ledger(
                 id=e.id,
                 date=e.timestamp.isoformat(),
                 type=etype,
+                bill_number=e.bill_number,
                 fullGiven=total_full,
                 emptyCollected=total_empty,
                 amount=bill_amt,
@@ -402,6 +406,153 @@ async def delete_driver(
 
 
 # --- REPORTS ---
+@router.get("/reports/sales/pdf")
+async def generate_sales_pdf_endpoint(
+    date_mode: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    buyer_ids: Optional[str] = None,
+    db: AsyncSession = Depends(get_tenant_db),
+    current_user: User = Depends(require_tenant_admin()),
+    platform_db: AsyncSession = Depends(get_platform_db),
+):
+    from app.services.reports.sales_pdf import generate_sales_pdf, SalesPdfData, SalesPdfBillData, SalesPdfItemData
+    from app.models import DeliveryBill, DeliveryItem, Buyer
+    import datetime
+
+    # Base query
+    stmt = select(DeliveryBill).options(
+        selectinload(DeliveryBill.items).selectinload(DeliveryItem.item),
+        selectinload(DeliveryBill.buyer)
+    )
+
+    filters = []
+
+    # Date Filtering
+    date_display_text = ""
+    if date_mode == 'single' and start_date:
+        dt = datetime.datetime.fromisoformat(start_date)
+        dt_start = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        dt_end = dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+        filters.append(DeliveryBill.timestamp >= dt_start)
+        filters.append(DeliveryBill.timestamp <= dt_end)
+        date_display_text = dt.strftime("%d-%m-%Y")
+    elif date_mode == 'range' and start_date and end_date:
+        dt1 = datetime.datetime.fromisoformat(start_date)
+        dt2 = datetime.datetime.fromisoformat(end_date)
+        dt_start = dt1.replace(hour=0, minute=0, second=0, microsecond=0)
+        dt_end = dt2.replace(hour=23, minute=59, second=59, microsecond=999999)
+        filters.append(DeliveryBill.timestamp >= dt_start)
+        filters.append(DeliveryBill.timestamp <= dt_end)
+        date_display_text = f"{dt1.strftime('%d-%m-%Y')} to {dt2.strftime('%d-%m-%Y')}"
+    elif date_mode == 'month' and start_date:
+        dates = start_date.split(',')
+        month_filters = []
+        display_months = []
+        for d in dates:
+            dt = datetime.datetime.fromisoformat(d)
+            dt_start = dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            if dt_start.month == 12:
+                dt_end = dt_start.replace(year=dt_start.year+1, month=1, day=1) - datetime.timedelta(seconds=1)
+            else:
+                dt_end = dt_start.replace(month=dt_start.month+1, day=1) - datetime.timedelta(seconds=1)
+            month_filters.append(
+                and_(DeliveryBill.timestamp >= dt_start, DeliveryBill.timestamp <= dt_end)
+            )
+            display_months.append(dt.strftime("%b %Y"))
+        if month_filters:
+            filters.append(or_(*month_filters))
+        date_display_text = ", ".join(display_months)
+    elif date_mode == 'year' and start_date:
+        dates = start_date.split(',')
+        year_filters = []
+        display_years = []
+        for d in dates:
+            dt = datetime.datetime.fromisoformat(d)
+            dt_start = dt.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            dt_end = dt_start.replace(year=dt_start.year+1, month=1, day=1) - datetime.timedelta(seconds=1)
+            year_filters.append(
+                and_(DeliveryBill.timestamp >= dt_start, DeliveryBill.timestamp <= dt_end)
+            )
+            display_years.append(dt.strftime("%Y"))
+        if year_filters:
+            filters.append(or_(*year_filters))
+        date_display_text = ", ".join(display_years)
+
+    if filters:
+        stmt = stmt.where(and_(*filters))
+
+    if buyer_ids:
+        b_ids = [uuid.UUID(pid.strip()) for pid in buyer_ids.split(',')]
+        stmt = stmt.where(DeliveryBill.buyer_id.in_(b_ids))
+
+    stmt = stmt.order_by(DeliveryBill.timestamp.asc())
+    result = await db.execute(stmt)
+    bills = result.scalars().all()
+
+    # Determine buyer info
+    buyer_name = "Multiple Buyers"
+    buyer_gstin = ""
+    buyer_phone = ""
+
+    if buyer_ids and len(buyer_ids.split(',')) == 1:
+        b_id = uuid.UUID(buyer_ids.strip())
+        b_stmt = select(Buyer).where(Buyer.id == b_id)
+        b_res = await db.execute(b_stmt)
+        buyer = b_res.scalar_one_or_none()
+        if buyer:
+            buyer_name = buyer.name
+            buyer_phone = buyer.phone or ""
+
+    # Fetch Organization info
+    org_name = "Gas Agency"
+    from app.models.organization import Organization
+    org_stmt = select(Organization).where(Organization.id == current_user.organization_id)
+    org_res = await platform_db.execute(org_stmt)
+    org = org_res.scalar_one_or_none()
+    if org:
+        org_name = org.name
+
+    sales_bills = []
+    for b in bills:
+        items_data = []
+        for e in b.items:
+            items_data.append(SalesPdfItemData(
+                item_name=e.item.name,
+                hsn="",
+                qty=e.full_delivered,
+                rate=float(e.unit_price_at_delivery),
+                gst_percent=0.0,
+                amount=float(e.line_total_amount)
+            ))
+        sales_bills.append(SalesPdfBillData(
+            date=b.timestamp.strftime("%d-%m-%Y"),
+            bill_no=b.bill_number or str(b.id)[:8],
+            items=items_data
+        ))
+
+    pdf_data = SalesPdfData(
+        org_name=org_name,
+        org_gstin="",
+        org_address="",
+        org_phone="",
+        buyer_name=buyer_name,
+        buyer_gstin=buyer_gstin,
+        buyer_phone=buyer_phone,
+        date_display_text=f"Sales Report: {date_display_text}",
+        bills=sales_bills
+    )
+
+    pdf_buffer = generate_sales_pdf(pdf_data)
+
+    from fastapi.responses import StreamingResponse
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=Sales_Report.pdf"}
+    )
+
+
 @router.get("/reports/purchases/pdf")
 async def generate_purchase_pdf_endpoint(
     date_mode: str,
@@ -442,23 +593,38 @@ async def generate_purchase_pdf_endpoint(
         filters.append(PurchaseBill.created_at <= dt_end)
         date_display_text = f"{dt1.strftime('%d-%m-%Y')} to {dt2.strftime('%d-%m-%Y')}"
     elif date_mode == 'month' and start_date:
-        dt = datetime.datetime.fromisoformat(start_date)
-        dt_start = dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        # simplistic end of month
-        if dt_start.month == 12:
-            dt_end = dt_start.replace(year=dt_start.year+1, month=1, day=1) - datetime.timedelta(seconds=1)
-        else:
-            dt_end = dt_start.replace(month=dt_start.month+1, day=1) - datetime.timedelta(seconds=1)
-        filters.append(PurchaseBill.created_at >= dt_start)
-        filters.append(PurchaseBill.created_at <= dt_end)
-        date_display_text = dt.strftime("%B %Y")
+        dates = start_date.split(',')
+        month_filters = []
+        display_months = []
+        for d in dates:
+            dt = datetime.datetime.fromisoformat(d)
+            dt_start = dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            if dt_start.month == 12:
+                dt_end = dt_start.replace(year=dt_start.year+1, month=1, day=1) - datetime.timedelta(seconds=1)
+            else:
+                dt_end = dt_start.replace(month=dt_start.month+1, day=1) - datetime.timedelta(seconds=1)
+            month_filters.append(
+                and_(PurchaseBill.created_at >= dt_start, PurchaseBill.created_at <= dt_end)
+            )
+            display_months.append(dt.strftime("%b %Y"))
+        if month_filters:
+            filters.append(or_(*month_filters))
+        date_display_text = ", ".join(display_months)
     elif date_mode == 'year' and start_date:
-        dt = datetime.datetime.fromisoformat(start_date)
-        dt_start = dt.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-        dt_end = dt.replace(month=12, day=31, hour=23, minute=59, second=59, microsecond=999999)
-        filters.append(PurchaseBill.created_at >= dt_start)
-        filters.append(PurchaseBill.created_at <= dt_end)
-        date_display_text = dt.strftime("%Y")
+        dates = start_date.split(',')
+        year_filters = []
+        display_years = []
+        for d in dates:
+            dt = datetime.datetime.fromisoformat(d)
+            dt_start = dt.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            dt_end = dt_start.replace(year=dt_start.year+1, month=1, day=1) - datetime.timedelta(seconds=1)
+            year_filters.append(
+                and_(PurchaseBill.created_at >= dt_start, PurchaseBill.created_at <= dt_end)
+            )
+            display_years.append(dt.strftime("%Y"))
+        if year_filters:
+            filters.append(or_(*year_filters))
+        date_display_text = ", ".join(display_years)
 
     if provider_ids:
         # provider_ids is comma separated string of UUIDs

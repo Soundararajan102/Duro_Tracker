@@ -60,7 +60,7 @@ async def get_cache_backend_optional() -> Any | None:
         return None
     try:
         client = _get_pool_state(_bound_app).get_async_client()
-        await client.ping()
+        await client.ping()  # type: ignore[misc]
         return CacheBackend(client)
     except Exception:
         logger.debug("redis unavailable, bypassing cache", exc_info=True)

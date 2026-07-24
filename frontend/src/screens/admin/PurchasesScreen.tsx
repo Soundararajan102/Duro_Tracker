@@ -44,6 +44,7 @@ export default function PurchasesScreen() {
   const [amountPaid, setAmountPaid] = useState('');
   const [isEditPriceModalOpen, setIsEditPriceModalOpen] = useState(false);
   const [editPricePerKg, setEditPricePerKg] = useState('');
+  const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
 
   // Custom Alert State
   const [alertVisible, setAlertVisible] = useState(false);
@@ -89,6 +90,12 @@ export default function PurchasesScreen() {
   const handleUpdatePrice = () => {
     if (!selectedProvider) return;
     const priceVal = parseFloat(editPricePerKg);
+    
+    if (priceVal < 0) {
+      showAlert("Invalid", "Price cannot be negative.", "error");
+      return;
+    }
+    
     updateProvider.mutate(
       {
         id: selectedProvider.id,
@@ -121,21 +128,35 @@ export default function PurchasesScreen() {
   const handleSavePurchase = () => {
     if (!selectedProvider) return;
     
-    const itemsPayload = Object.entries(itemStates).map(([id, state]) => {
+    const itemsPayload = [];
+    let hasNegatives = false;
+    
+    for (const [id, state] of Object.entries(itemStates)) {
       const full = parseInt(state.fullBought) || 0;
       const empty = parseInt(state.emptyReturned) || 0;
-      if (full === 0 && empty === 0) return null;
+      
+      if (full < 0 || empty < 0) {
+        hasNegatives = true;
+        break;
+      }
+      
+      if (full === 0 && empty === 0) continue;
       
       const item = items.find(i => i.id === id);
       const cost = (selectedProvider.price_per_kg || 0) * (item?.capacity_kg || 0) * full;
       
-      return {
+      itemsPayload.push({
         item_id: id,
         full_received: full,
         empty_returned: empty,
         total_cost: cost
-      };
-    }).filter(Boolean) as any[];
+      });
+    }
+
+    if (hasNegatives) {
+      showAlert("Invalid", "Quantities cannot be negative.", "error");
+      return;
+    }
 
     if (itemsPayload.length === 0) return;
 
@@ -153,11 +174,17 @@ export default function PurchasesScreen() {
       }
     }
 
+    const amount = parseFloat(amountPaid) || 0;
+    if (amount < 0) {
+      showAlert("Invalid Payment", "Payment amount cannot be negative.", "error");
+      return;
+    }
+
     createPurchase.mutate({
       provider_id: selectedProvider.id,
       bill_number: billNumber.trim() || undefined,
       total_cost: calculatedTotalCost,
-      amount_paid: parseFloat(amountPaid) || 0,
+      amount_paid: amount,
       items: itemsPayload
     }, {
       onSuccess: () => {
@@ -228,40 +255,26 @@ export default function PurchasesScreen() {
         </View>
 
         <View className="flex flex-row gap-4 mb-6">
-          <View className="flex-1 bg-white rounded-xl border border-gray-200 p-4 flex flex-row items-center justify-between">
-            <View>
-              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Outstanding</Text>
-              <Text className="text-xl font-mono tracking-tight font-bold" style={{ color: selectedProvider.balance_pending > 0 ? '#e11d48' : '#059669' }}>
-                {selectedProvider.balance_pending > 0 ? `₹${selectedProvider.balance_pending.toLocaleString()} Due` : `₹${Math.abs(selectedProvider.balance_pending).toLocaleString()} Adv`}
-              </Text>
-            </View>
-            <View className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center">
-              <Receipt size={20} color="#94a3b8" />
-            </View>
+          <View className="flex-1 bg-white rounded-xl border border-gray-200 p-4 flex flex-col justify-center">
+            <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Outstanding</Text>
+            <Text className="text-xl font-mono tracking-tight font-bold" style={{ color: selectedProvider.balance_pending > 0 ? '#e11d48' : '#059669' }}>
+              {selectedProvider.balance_pending > 0 ? `₹${selectedProvider.balance_pending.toLocaleString()} Due` : `₹${Math.abs(selectedProvider.balance_pending).toLocaleString()} Adv`}
+            </Text>
           </View>
           
-          <View className="flex-1 bg-white rounded-xl border border-gray-200 p-4">
-            <View className="flex-row justify-between items-center mb-2">
-              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Empty Cylinders</Text>
-              <Store size={18} color="#f59e0b" />
+          <Pressable 
+            onPress={() => setIsInventoryModalOpen(true)}
+            className="flex-1 bg-white rounded-xl border border-gray-200 p-4 active:bg-gray-50"
+          >
+            <View className="mb-2">
+              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cylinder Holding</Text>
             </View>
-            <View className="flex-row flex-wrap gap-2 mt-1">
-              {selectedProvider.inventory && selectedProvider.inventory.length > 0 ? (
-                selectedProvider.inventory.map(inv => {
-                  const itemDetails = items.find(i => i.id === inv.item_id);
-                  if (inv.cylinders_pending === 0) return null; // Don't show 0 items
-                  return (
-                    <View key={inv.item_id} className="flex-row items-center bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 shadow-sm">
-                      <Text className="text-base font-bold text-amber-700 mr-1.5">{inv.cylinders_pending}</Text>
-                      <Text className="text-xs font-bold text-amber-600 uppercase tracking-wide">{itemDetails?.name || 'Item'}</Text>
-                    </View>
-                  );
-                })
-              ) : (
-                <Text className="text-sm text-slate-400 font-medium">No pending empties</Text>
-              )}
+            <View>
+              <Text className="text-xl font-mono tracking-tight font-bold text-slate-900">
+                {selectedProvider.inventory ? selectedProvider.inventory.reduce((sum, inv) => sum + inv.cylinders_pending, 0) : 0} Total
+              </Text>
             </View>
-          </View>
+          </Pressable>
         </View>
 
         <View className="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-row items-center justify-between">
@@ -355,8 +368,8 @@ export default function PurchasesScreen() {
                   <ScrollView showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
                     <View className="flex flex-row px-3 py-2 bg-gray-100 border-b border-gray-200">
                       <Text className="flex-1 text-xs font-semibold text-gray-500 uppercase">Item Name</Text>
-                      <Text className="w-20 text-center text-xs font-semibold text-gray-500 uppercase">Full In</Text>
-                      <Text className="w-20 text-center text-xs font-semibold text-gray-500 uppercase">Empty Out</Text>
+                      <Text className="w-20 text-center text-xs font-semibold text-gray-500 uppercase">Full Recv</Text>
+                      <Text className="w-24 text-center text-xs font-semibold text-gray-500 uppercase">Empty Given</Text>
                     </View>
                     {items.map((item, index) => {
                       const state = itemStates[item.id] || { fullBought: '', emptyReturned: '' };
@@ -364,22 +377,26 @@ export default function PurchasesScreen() {
                       return (
                         <View key={item.id} className={`flex flex-row items-center px-3 py-2 ${!isLast ? 'border-b border-gray-200' : ''}`}>
                           <Text className="flex-1 text-sm font-medium text-slate-700">{item.name}</Text>
-                          <TextInput 
-                            placeholder="0"
-                            placeholderTextColor="#94a3b8"
-                            keyboardType="numeric"
-                            value={state.fullBought}
-                            onChangeText={(val) => setItemStates(prev => ({ ...prev, [item.id]: { ...state, fullBought: val } }))}
-                            className="w-16 h-10 p-1 bg-white border border-gray-300 rounded text-center text-sm font-mono mx-2 text-slate-900"
-                          />
-                          <TextInput 
-                            placeholder="0"
-                            placeholderTextColor="#94a3b8"
-                            keyboardType="numeric"
-                            value={state.emptyReturned}
-                            onChangeText={(val) => setItemStates(prev => ({ ...prev, [item.id]: { ...state, emptyReturned: val } }))}
-                            className="w-16 h-10 p-1 bg-white border border-gray-300 rounded text-center text-sm font-mono text-slate-900"
-                          />
+                          <View className="w-20 items-center justify-center">
+                            <TextInput 
+                              placeholder="0"
+                              placeholderTextColor="#94a3b8"
+                              keyboardType="numeric"
+                              value={state.fullBought}
+                              onChangeText={(val) => setItemStates(prev => ({ ...prev, [item.id]: { ...state, fullBought: val } }))}
+                              className="w-16 h-10 p-1 bg-white border border-gray-300 rounded text-center text-sm font-mono text-slate-900"
+                            />
+                          </View>
+                          <View className="w-24 items-center justify-center">
+                            <TextInput 
+                              placeholder="0"
+                              placeholderTextColor="#94a3b8"
+                              keyboardType="numeric"
+                              value={state.emptyReturned}
+                              onChangeText={(val) => setItemStates(prev => ({ ...prev, [item.id]: { ...state, emptyReturned: val } }))}
+                              className="w-16 h-10 p-1 bg-white border border-gray-300 rounded text-center text-sm font-mono text-slate-900"
+                            />
+                          </View>
                         </View>
                       );
                     })}
@@ -407,9 +424,9 @@ export default function PurchasesScreen() {
 
                 <Pressable 
                   onPress={handleSavePurchase}
-                  disabled={createPurchase.isPending || calculatedTotalCost === 0}
+                  disabled={createPurchase.isPending || !Object.values(itemStates).some(state => (parseInt(state.fullBought) || 0) > 0 || (parseInt(state.emptyReturned) || 0) > 0)}
                   className="w-full rounded-lg py-3 items-center justify-center mt-2"
-                  style={{ backgroundColor: (createPurchase.isPending || calculatedTotalCost === 0) ? '#a5b4fc' : '#4f46e5' }}
+                  style={{ backgroundColor: (createPurchase.isPending || !Object.values(itemStates).some(state => (parseInt(state.fullBought) || 0) > 0 || (parseInt(state.emptyReturned) || 0) > 0)) ? '#a5b4fc' : '#4f46e5' }}
                 >
                   <Text className="text-white font-medium text-sm">
                     {createPurchase.isPending ? 'Saving...' : 'Save Purchase Bill'}
@@ -456,6 +473,38 @@ export default function PurchasesScreen() {
                     {updateProvider.isPending ? 'Saving...' : 'Save Custom Price'}
                   </Text>
                 </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Inventory Breakdown Modal */}
+        <Modal animationType="fade" transparent={true} visible={isInventoryModalOpen} onRequestClose={() => setIsInventoryModalOpen(false)}>
+          <View className="flex-1 bg-black/50 justify-center items-center p-4">
+            <View className="bg-white rounded-2xl w-full max-w-sm overflow-hidden">
+              <View className="p-4 border-b border-gray-200 flex flex-row items-center justify-between bg-gray-50">
+                <Text className="text-lg font-bold text-slate-900">Cylinder Breakdown</Text>
+                <Pressable onPress={() => setIsInventoryModalOpen(false)} className="p-1.5 rounded-full bg-slate-200 active:bg-slate-300">
+                  <X size={20} color="#475569" />
+                </Pressable>
+              </View>
+              <View className="p-4">
+                {(selectedProvider as any)?.inventory && (selectedProvider as any).inventory.length > 0 ? (
+                  <View className="flex flex-col gap-3">
+                    {(selectedProvider as any).inventory.map((inv: any) => {
+                      if (inv.cylinders_pending === 0) return null;
+                      const itemDetails = items.find(i => i.id === inv.item_id);
+                      return (
+                        <View key={inv.item_id} className="flex flex-row justify-between items-center bg-amber-50 p-3 rounded-xl border border-amber-100">
+                          <Text className="font-semibold text-slate-700 text-base">{itemDetails?.name || 'Unknown Item'}</Text>
+                          <Text className="font-mono font-bold text-lg text-amber-600">{inv.cylinders_pending} cyl</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  <Text className="text-center text-slate-500 py-4">No cylinders held.</Text>
+                )}
               </View>
             </View>
           </View>

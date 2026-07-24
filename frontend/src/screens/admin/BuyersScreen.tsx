@@ -1,18 +1,29 @@
-import React, { useState, useCallback } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
-import { View, Text, Pressable, ScrollView, FlatList, Modal, TextInput } from 'react-native';
-import { Plus, X, Search, Store, ArrowLeft, Download, FileText, Receipt, Edit2, Trash2, RefreshCw } from 'lucide-react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, Pressable, ScrollView, FlatList, Modal, TextInput, Alert } from 'react-native';
+import { Plus, X, Search, Store, ArrowLeft, Download, FileText, Receipt, Edit2, Trash2, RefreshCw, PackageOpen } from 'lucide-react-native';
 
-import { useBuyers, useCreateBuyer, useUpdateBuyer, useDeleteBuyer, useGlobalBills, useBuyerLedger } from '../../hooks/useBuyers';
+import { useBuyers, useCreateBuyer, useUpdateBuyer, useDeleteBuyer, useGlobalBills, useBuyerLedger, useGlobalBillsPaginated } from '../../hooks/useBuyers';
 import { useItems } from '../../hooks/useItems';
+import { BillCard } from '../../components/BillCard';
 import type { Buyer } from '../../types/api';
 import { format } from 'date-fns';
 
 
 export default function BuyersScreen() {
   const { data: buyers = [], isLoading, refetch: refetchBuyers, isRefetching: isBuyersRefetching } = useBuyers();
-  const { data: globalBillsData = [], isLoading: isGlobalBillsLoading, refetch: refetchGlobalBills, isRefetching: isGlobalBillsRefetching } = useGlobalBills();
   const [activeTab, setActiveTab] = useState<'crm' | 'bills'>('crm');
+  const [globalBillsTab, setGlobalBillsTab] = useState<'ALL' | 'SALES' | 'COLLECTIONS'>('ALL');
+  const { 
+    data: globalBillsPages, 
+    isLoading: isGlobalBillsLoading, 
+    hasNextPage, 
+    fetchNextPage,
+    refetch: refetchGlobalBills,
+    isRefetching: isGlobalBillsRefetching
+  } = useGlobalBillsPaginated(globalBillsTab);
+
+  const globalBillsData = Array.isArray(globalBillsPages) ? globalBillsPages : [];
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBuyer, setSelectedBuyer] = useState<Buyer | null>(null);
   
@@ -20,12 +31,12 @@ export default function BuyersScreen() {
   
   const { data: buyerLedgerData = [], isLoading: isLedgerLoading, refetch: refetchLedger, isRefetching: isLedgerRefetching } = useBuyerLedger(selectedBuyer?.id);
 
-  useFocusEffect(
-    useCallback(() => {
-      refetchBuyers();
+  useEffect(() => {
+    refetchBuyers();
+    if (activeTab === 'bills') {
       refetchGlobalBills();
-    }, [refetchBuyers, refetchGlobalBills])
-  );
+    }
+  }, [refetchBuyers, refetchGlobalBills, activeTab]);
 
   const createBuyer = useCreateBuyer();
   const updateBuyer = useUpdateBuyer();
@@ -48,6 +59,8 @@ export default function BuyersScreen() {
   const [editInventory, setEditInventory] = useState<Record<string, string>>({});
 
   const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
+  const [isSalesModalOpen, setIsSalesModalOpen] = useState(false);
+  const [isCollectionsModalOpen, setIsCollectionsModalOpen] = useState(false);
   const [editPricePerKg, setEditPricePerKg] = useState('');
 
   const handleSaveBuyer = () => {
@@ -134,6 +147,12 @@ export default function BuyersScreen() {
   const handleUpdatePrice = () => {
     if (!selectedBuyer) return;
     const priceVal = parseFloat(editPricePerKg);
+
+    if (priceVal < 0) {
+      Alert.alert("Invalid", "Price cannot be negative.");
+      return;
+    }
+
     updateBuyer.mutate({
       id: selectedBuyer.id,
       data: {
@@ -147,21 +166,7 @@ export default function BuyersScreen() {
     });
   };
 
-  const renderLedgerRow = ({ item, isHeader }: { item?: any, isHeader?: boolean }) => {
-    if (isHeader) {
-      return (
-        <View className="flex flex-row bg-white border-b border-gray-200">
-          <Text className="w-32 px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date / Ref</Text>
-          <Text className="w-28 px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</Text>
-          <Text className="w-24 px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Full</Text>
-          <Text className="w-24 px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Empty</Text>
-          <Text className="w-32 px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount / Paid</Text>
-          <Text className="w-28 px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Fin. Bal</Text>
-          <Text className="w-24 px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Cyl. Bal</Text>
-        </View>
-      );
-    }
-    
+  const renderLedgerRow = ({ item }: { item?: any }) => {
     if (!item) return null;
 
     let formattedDate = 'N/A';
@@ -171,27 +176,57 @@ export default function BuyersScreen() {
       }
     } catch (e) {}
 
+    const isBill = item.type === 'bill';
+
     return (
-      <View className="flex flex-row items-center border-b border-gray-100 bg-white">
-        <View className="w-32 px-4 py-4 flex flex-col justify-center">
-          <Text className="font-medium text-slate-900 text-sm">{formattedDate}</Text>
-          <Text className="text-xs text-slate-500 font-mono">{item.bill_number || (item.id ? String(item.id).substring(0,8) : '-')}</Text>
-        </View>
-        <View className="w-28 px-4 py-4 justify-center items-center">
-          <View className="rounded-md px-2 py-1 items-center self-center" style={{ backgroundColor: item.type === 'bill' ? '#eef2ff' : '#ecfdf5' }}>
-            <Text className="text-xs font-medium" style={{ color: item.type === 'bill' ? '#4338ca' : '#047857' }}>
-              {item.type === 'bill' ? 'Sales Bill' : 'Payment'}
+      <View className="bg-white rounded-2xl shadow-sm shadow-slate-200/50 border border-slate-200 mb-3 overflow-hidden">
+        {/* Top Section: Identity & Value */}
+        <View className="p-4 flex flex-row justify-between items-start">
+          <View className="flex-1 pr-4">
+            <Text className="text-base font-bold text-slate-900 tracking-tight" numberOfLines={1}>
+              {item.bill_number ? `Bill #${item.bill_number}` : `Ref: ${item.id?.substring(0,8) || '-'}`}
             </Text>
+            <Text className="text-xs font-medium text-slate-500 mt-1">{formattedDate}</Text>
+          </View>
+          <View className="items-end shrink-0">
+            {isBill ? (
+              <Text className="text-lg font-black font-mono text-indigo-600">
+                ₹{item.amount ? item.amount.toLocaleString() : '0'}
+              </Text>
+            ) : (
+              <Text className="text-lg font-black font-mono text-emerald-600">
+                +₹{item.paid ? item.paid.toLocaleString() : '0'}
+              </Text>
+            )}
           </View>
         </View>
-        <Text className="w-24 px-4 py-4 text-center font-mono text-sm text-slate-700">{item.fullGiven !== undefined ? item.fullGiven : '-'}</Text>
-        <Text className="w-24 px-4 py-4 text-center font-mono text-sm text-slate-700">{item.emptyCollected !== undefined ? item.emptyCollected : '-'}</Text>
-        <View className="w-32 px-4 py-4 flex flex-col justify-center items-end">
-          {item.type === 'bill' && <Text className="font-mono text-sm text-slate-900">₹{item.amount ? item.amount.toLocaleString() : '0'}</Text>}
-          {item.paid > 0 && <Text className="font-mono text-xs text-emerald-600 mt-0.5">Paid ₹{item.paid.toLocaleString()}</Text>}
+
+        {/* Bottom Section: Details & Balances */}
+        <View className="bg-slate-50 px-4 py-3 flex flex-row justify-between items-center border-t border-slate-100">
+          <View className="flex flex-row items-center gap-2">
+            <View className="px-2 py-1 rounded" style={{ backgroundColor: isBill ? '#eef2ff' : '#ecfdf5' }}>
+              <Text className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isBill ? '#4338ca' : '#047857' }}>
+                {isBill ? 'Sales Bill' : 'Payment'}
+              </Text>
+            </View>
+            {isBill && (
+              <Text className="text-xs font-semibold text-slate-600 ml-1">
+                {item.fullGiven || 0} Full / {item.emptyCollected || 0} MT
+              </Text>
+            )}
+          </View>
+          <View className="items-end flex flex-row gap-3">
+            <View className="items-end">
+              <Text className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Fin Bal</Text>
+              <Text className="text-xs font-bold text-slate-700 font-mono tracking-tight">₹{item.finRunBal !== undefined ? item.finRunBal.toLocaleString() : '0'}</Text>
+            </View>
+            <View className="w-px h-6 bg-slate-200" />
+            <View className="items-end">
+              <Text className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Cyl Bal</Text>
+              <Text className="text-xs font-bold text-slate-700 font-mono tracking-tight">{item.cylRunBal !== undefined ? item.cylRunBal : '0'}</Text>
+            </View>
+          </View>
         </View>
-        <Text className="w-28 px-4 py-4 text-right font-mono text-sm font-medium text-slate-900">₹{item.finRunBal !== undefined ? item.finRunBal.toLocaleString() : '0'}</Text>
-        <Text className="w-24 px-4 py-4 text-right font-mono text-sm font-medium text-slate-700">{item.cylRunBal !== undefined ? item.cylRunBal : '0'}</Text>
       </View>
     );
   };
@@ -231,41 +266,31 @@ export default function BuyersScreen() {
                   {selectedBuyer.balance_pending > 0 ? `₹${selectedBuyer.balance_pending.toLocaleString()} Due` : `₹${Math.abs(selectedBuyer.balance_pending).toLocaleString()} Adv`}
                 </Text>
               </View>
-              <View className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center">
-                <Receipt size={20} color="#94a3b8" />
-              </View>
             </View>
             
-            <View className="flex-1 bg-white rounded-xl border border-gray-200 p-4">
+            <View 
+              className="flex-1 bg-white rounded-xl border border-gray-200 p-4"
+            >
               <View className="flex-row justify-between items-center mb-2">
                 <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cylinder Holding</Text>
-                <Store size={18} color="#f59e0b" />
               </View>
-              <View className="flex-row flex-wrap gap-2 mt-1">
-                {selectedBuyer.inventory && selectedBuyer.inventory.length > 0 ? (
-                  selectedBuyer.inventory.map(inv => {
-                    const itemDetails = items.find(i => i.id === inv.item_id);
-                    if (inv.cylinders_pending === 0) return null; // Don't show 0 items
-                    return (
-                      <View key={inv.item_id} className="flex-row items-center bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 shadow-sm">
-                        <Text className="text-base font-bold text-amber-700 mr-1.5">{inv.cylinders_pending}</Text>
-                        <Text className="text-xs font-bold text-amber-600 uppercase tracking-wide">{itemDetails?.name || 'Item'}</Text>
-                      </View>
-                    );
-                  })
-                ) : (
-                  <Text className="text-sm text-slate-400 font-medium">No cylinders held</Text>
-                )}
+              <View>
+                <Text className="text-xl font-mono tracking-tight font-bold text-slate-900">
+                  {selectedBuyer.inventory ? selectedBuyer.inventory.reduce((sum, inv) => sum + inv.cylinders_pending, 0) : 0} Total
+                </Text>
               </View>
             </View>
           </View>
 
           <View className="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-row items-center justify-between">
             <View>
-              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Custom Pricing Tier</Text>
+              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Price (Per KG)</Text>
               <Text className="text-lg font-bold text-slate-900">
-                {selectedBuyer.price_per_kg ? `₹${selectedBuyer.price_per_kg} / kg` : 'Standard Pricing'}
+                {selectedBuyer.price_per_kg ? `₹${selectedBuyer.price_per_kg}` : 'Not Set'}
               </Text>
+              {!selectedBuyer.price_per_kg && (
+                <Text className="text-xs text-red-500 mt-1 font-medium">Please add a price before billing</Text>
+              )}
             </View>
             <Pressable 
               onPress={() => {
@@ -274,24 +299,65 @@ export default function BuyersScreen() {
               }}
               className="bg-indigo-50 px-4 py-2 rounded-lg active:bg-indigo-100"
             >
-              <Text className="text-indigo-700 font-bold text-sm">Update Price</Text>
+              <Text className="text-indigo-700 font-bold text-sm">
+                {selectedBuyer.price_per_kg ? 'Update Price' : 'Add Price'}
+              </Text>
             </Pressable>
           </View>
 
-          <View className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
-            <View className="px-4 py-4 border-b border-gray-200 bg-gray-50 flex flex-row items-center justify-between">
-              <Text className="font-semibold text-slate-900">Ledger History</Text>
-              <Pressable className="flex flex-row items-center gap-1">
-                <Download size={14} color="#4f46e5" />
-                <Text className="text-xs font-medium text-indigo-600">Download PDF</Text>
-              </Pressable>
-            </View>
-            <ScrollView horizontal={true} showsHorizontalScrollIndicator={true}>
-              <View className="flex flex-col">
-                {renderLedgerRow({ isHeader: true })}
-                {buyerLedgerData.map((row, i) => <React.Fragment key={i}>{renderLedgerRow({item: row})}</React.Fragment>)}
+          <View className="flex flex-row gap-4 mb-6">
+            <Pressable 
+              onPress={() => setIsSalesModalOpen(true)}
+              className="flex-1 bg-white rounded-xl border border-gray-200 p-4 active:bg-gray-50"
+            >
+              <View className="mb-2">
+                <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Sales</Text>
               </View>
-            </ScrollView>
+              <View>
+                <Text className="text-xl font-mono tracking-tight font-bold text-slate-900">
+                  ₹{buyerLedgerData.filter(item => item.type === 'bill').reduce((sum, item) => sum + (item.amount || 0), 0).toLocaleString()}
+                </Text>
+              </View>
+            </Pressable>
+
+            <Pressable 
+              onPress={() => setIsCollectionsModalOpen(true)}
+              className="flex-1 bg-white rounded-xl border border-gray-200 p-4 active:bg-gray-50"
+            >
+              <View className="mb-2">
+                <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Collections</Text>
+              </View>
+              <View>
+                <Text className="text-xl font-mono tracking-tight font-bold text-slate-900">
+                  ₹{buyerLedgerData.filter(item => item.type === 'payment').reduce((sum, item) => sum + (item.paid || 0), 0).toLocaleString()}
+                </Text>
+              </View>
+            </Pressable>
+          </View>
+
+          {/* Embedded Inventory Breakdown */}
+          <View className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
+            <View className="p-4 border-b border-gray-200 bg-gray-50">
+              <Text className="text-xs font-bold text-slate-900 uppercase tracking-wider">Cylinder Holding Breakdown</Text>
+            </View>
+            <View className="p-4">
+              {selectedBuyer?.inventory && selectedBuyer.inventory.length > 0 ? (
+                <View className="flex flex-col gap-3">
+                  {selectedBuyer.inventory.map(inv => {
+                    if (inv.cylinders_pending === 0) return null;
+                    const itemDetails = items?.find(i => i.id === inv.item_id);
+                    return (
+                      <View key={inv.item_id} className="flex flex-row justify-between items-center bg-amber-50 p-3 rounded-xl border border-amber-100">
+                        <Text className="font-semibold text-slate-700 text-base">{itemDetails?.name || 'Unknown Item'}</Text>
+                        <Text className="font-mono font-bold text-lg text-amber-600">{inv.cylinders_pending} cyl</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : (
+                <Text className="text-center text-slate-500 py-4 font-medium">No cylinders currently held.</Text>
+              )}
+            </View>
           </View>
         </ScrollView>
       );
@@ -357,66 +423,61 @@ export default function BuyersScreen() {
   };
 
   const renderGlobalBills = () => (
-    <View className="flex-1 bg-white rounded-xl border border-gray-200 overflow-hidden mb-20">
-      <View className="px-4 py-4 border-b border-gray-200 bg-gray-50 flex flex-row items-center justify-between">
-        <Text className="font-semibold text-slate-900">Today's Sales Bills</Text>
-        <Text className="text-sm text-slate-500 font-medium">{format(new Date(), 'MMM dd, yyyy')}</Text>
+    <View className="flex-1 mt-2">
+      {/* Tab Selector */}
+      <View className="flex flex-row bg-slate-200 p-1 rounded-xl mb-4 w-full">
+        <Pressable 
+          className={`w-1/3 py-2 rounded-lg items-center justify-center ${globalBillsTab === 'ALL' ? 'bg-white' : ''}`}
+          onPress={() => setGlobalBillsTab('ALL')}
+        >
+          <Text numberOfLines={1} adjustsFontSizeToFit className={`text-sm font-medium px-1 ${globalBillsTab === 'ALL' ? 'text-slate-900' : 'text-slate-500'}`}>All Bills</Text>
+        </Pressable>
+        <Pressable 
+          className={`w-1/3 py-2 rounded-lg items-center justify-center ${globalBillsTab === 'SALES' ? 'bg-white' : ''}`}
+          onPress={() => setGlobalBillsTab('SALES')}
+        >
+          <Text numberOfLines={1} adjustsFontSizeToFit className={`text-sm font-medium px-1 ${globalBillsTab === 'SALES' ? 'text-slate-900' : 'text-slate-500'}`}>Sales</Text>
+        </Pressable>
+        <Pressable 
+          className={`w-1/3 py-2 rounded-lg items-center justify-center ${globalBillsTab === 'COLLECTIONS' ? 'bg-white' : ''}`}
+          onPress={() => setGlobalBillsTab('COLLECTIONS')}
+        >
+          <Text numberOfLines={1} adjustsFontSizeToFit className={`text-sm font-medium px-1 ${globalBillsTab === 'COLLECTIONS' ? 'text-slate-900' : 'text-slate-500'}`}>Collections</Text>
+        </Pressable>
       </View>
-      <ScrollView horizontal={true} showsHorizontalScrollIndicator={true}>
-        <View className="flex flex-col">
-          <View className="flex flex-row bg-white border-b border-gray-200">
-            <Text className="w-32 px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Bill No / Time</Text>
-            <Text className="w-40 px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Retailer / Buyer</Text>
-            <Text className="w-28 px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Full Given</Text>
-            <Text className="w-28 px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Empty Collected</Text>
-            <Text className="w-32 px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Bill Amount</Text>
-          </View>
-          
-          {isGlobalBillsLoading ? (
-            <View className="p-8 items-center justify-center w-full">
-              <Text className="text-slate-500">Loading bills...</Text>
-            </View>
-          ) : !Array.isArray(globalBillsData) || globalBillsData.length === 0 ? (
-            <View className="p-8 items-center justify-center w-full">
-              <Text className="text-slate-500">No bills found today.</Text>
-            </View>
-          ) : (
-            globalBillsData.map((item, index) => {
-              let formattedTime = 'N/A';
-              try {
-                if (item?.time) {
-                  formattedTime = format(new Date(item.time), 'hh:mm a');
-                }
-              } catch (e) {}
 
-              return (
-                <View key={item?.id || index} className="flex flex-row items-center border-b border-gray-100 bg-white">
-                  <View className="w-32 px-4 py-4 flex flex-col justify-center">
-                    <Text className="font-medium text-slate-900 text-sm font-mono">{item?.bill_number || (item?.id ? String(item.id).substring(0,8) : 'N/A')}</Text>
-                    <Text className="text-xs text-slate-500">{formattedTime}</Text>
-                  </View>
-                  <View className="w-40 px-4 py-4 flex justify-center">
-                    <Text className="font-medium text-indigo-600 text-sm">{item?.buyer || 'N/A'}</Text>
-                  </View>
-                  <View className="w-28 px-4 py-4 justify-center items-center">
-                    <View className="bg-emerald-50 px-2 py-1 rounded">
-                      <Text className="font-mono font-medium text-emerald-600 text-sm">+{item?.fullGiven || 0}</Text>
-                    </View>
-                  </View>
-                  <View className="w-28 px-4 py-4 justify-center items-center">
-                    <View className="bg-amber-50 px-2 py-1 rounded">
-                      <Text className="font-mono font-medium text-amber-600 text-sm">+{item?.emptyCollected || 0}</Text>
-                    </View>
-                  </View>
-                  <Text className="w-32 px-4 py-4 text-right font-mono font-semibold text-slate-900">
-                    ₹{item?.total ? Number(item.total).toLocaleString() : '0'}
-                  </Text>
-                </View>
-              );
-            })
-          )}
+      {isGlobalBillsLoading ? (
+        <View className="flex-1 items-center justify-center p-8">
+          <Text className="text-slate-500 font-medium">Loading bills...</Text>
         </View>
-      </ScrollView>
+      ) : !Array.isArray(globalBillsData) || globalBillsData.length === 0 ? (
+        <View className="flex-1 items-center justify-center p-8">
+          <Text className="text-slate-500 font-medium">No bills found.</Text>
+        </View>
+      ) : (
+        <FlatList
+          className="flex-1"
+          data={globalBillsData}
+          keyExtractor={(item, index) => item?.id ? item.id.toString() : index.toString()}
+          contentContainerStyle={{ paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+          onEndReached={() => {
+            if (hasNextPage) {
+              fetchNextPage();
+            }
+          }}
+          onEndReachedThreshold={0.5}
+          renderItem={({ item }) => (
+            <BillCard 
+              item={item} 
+              itemsCatalog={items} 
+              handlePrint={() => {
+                Alert.alert("Notice", "Printing is available in the Driver app.");
+              }} 
+            />
+          )}
+        />
+      )}
     </View>
   );
 
@@ -443,20 +504,18 @@ export default function BuyersScreen() {
             </Pressable>
           </View>
           
-          <View className="flex flex-row p-1 bg-gray-200 rounded-xl">
+          <View className="flex flex-row p-1 bg-slate-200 rounded-xl w-full">
             <Pressable
               onPress={() => { setActiveTab('crm'); setSelectedBuyer(null); }}
-              className="flex-1 py-2 items-center justify-center rounded-lg"
-              style={activeTab === 'crm' ? { backgroundColor: '#ffffff', elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2 } : {}}
+              className={`w-1/2 py-2 items-center justify-center rounded-lg ${activeTab === 'crm' ? 'bg-white' : ''}`}
             >
-              <Text className="text-sm font-medium" style={{ color: activeTab === 'crm' ? '#0f172a' : '#64748b' }}>Buyer CRM</Text>
+              <Text numberOfLines={1} adjustsFontSizeToFit className={`text-sm font-medium px-1 ${activeTab === 'crm' ? 'text-slate-900' : 'text-slate-500'}`}>Buyer CRM</Text>
             </Pressable>
             <Pressable
               onPress={() => { setActiveTab('bills'); setSelectedBuyer(null); }}
-              className="flex-1 py-2 items-center justify-center rounded-lg"
-              style={activeTab === 'bills' ? { backgroundColor: '#ffffff', elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2 } : {}}
+              className={`w-1/2 py-2 items-center justify-center rounded-lg ${activeTab === 'bills' ? 'bg-white' : ''}`}
             >
-              <Text className="text-sm font-medium" style={{ color: activeTab === 'bills' ? '#0f172a' : '#64748b' }}>Global Daily Bills</Text>
+              <Text numberOfLines={1} adjustsFontSizeToFit className={`text-sm font-medium px-1 ${activeTab === 'bills' ? 'text-slate-900' : 'text-slate-500'}`}>Global Daily Bills</Text>
             </Pressable>
           </View>
         </View>
@@ -658,6 +717,50 @@ export default function BuyersScreen() {
                 </Text>
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Sales Modal */}
+      <Modal animationType="slide" transparent={true} visible={isSalesModalOpen} onRequestClose={() => setIsSalesModalOpen(false)}>
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-3xl h-5/6 overflow-hidden">
+            <View className="p-4 border-b border-gray-200 flex flex-row items-center justify-between bg-gray-50">
+              <Text className="text-lg font-bold text-slate-900">Sales History</Text>
+              <Pressable onPress={() => setIsSalesModalOpen(false)} className="p-1.5 rounded-full bg-slate-200 active:bg-slate-300">
+                <X size={20} color="#475569" />
+              </Pressable>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={true} className="flex-1 bg-slate-50 px-4 pt-4">
+              <View className="flex flex-col pb-10">
+                {buyerLedgerData.filter(row => row.type === 'bill').map((row, i) => <React.Fragment key={i}>{renderLedgerRow({item: row})}</React.Fragment>)}
+                {buyerLedgerData.filter(row => row.type === 'bill').length === 0 && (
+                  <Text className="text-center text-slate-500 py-8">No sales history found.</Text>
+                )}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Collections Modal */}
+      <Modal animationType="slide" transparent={true} visible={isCollectionsModalOpen} onRequestClose={() => setIsCollectionsModalOpen(false)}>
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-3xl h-5/6 overflow-hidden">
+            <View className="p-4 border-b border-gray-200 flex flex-row items-center justify-between bg-gray-50">
+              <Text className="text-lg font-bold text-slate-900">Collections History</Text>
+              <Pressable onPress={() => setIsCollectionsModalOpen(false)} className="p-1.5 rounded-full bg-slate-200 active:bg-slate-300">
+                <X size={20} color="#475569" />
+              </Pressable>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={true} className="flex-1 bg-slate-50 px-4 pt-4">
+              <View className="flex flex-col pb-10">
+                {buyerLedgerData.filter(row => row.type === 'payment').map((row, i) => <React.Fragment key={i}>{renderLedgerRow({item: row})}</React.Fragment>)}
+                {buyerLedgerData.filter(row => row.type === 'payment').length === 0 && (
+                  <Text className="text-center text-slate-500 py-8">No collections history found.</Text>
+                )}
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>

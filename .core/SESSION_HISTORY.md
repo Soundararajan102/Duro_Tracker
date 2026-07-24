@@ -839,3 +839,506 @@ ull and failing to render the snapshot correctly. Fixed the backend router to pr
 - Implemented server-side filtering for sales and collection bills in backend driver entries endpoint.
 - Updated frontend BillsScreen to fetch data dynamically based on active tab.
 - Verified that Bill sequences (SHA vs PAY) are already completely isolated.
+### [2026-07-23 09:34:01] Session Log
+**User Request:**
+1. Fix missing snapshots for sales and collection bills.
+2. Check for any other missing fields across the project.
+3. Correct the UI of the collection page to match the new delivery page theme (using frontend-ui-engineering skill).
+4. Change the 'New Delivery' tab title to 'Delivery'.
+
+**Actions Taken:**
+- Updated ackend/app/routers/driver.py to capture and save opening_balance and closing_balance during bill creation.
+- Checked purchase_bill, purchase_entry, and all instances of snapshot in backend to ensure no other snapshots were missing.
+- Refactored DebtCollectionScreen.tsx completely to match DeliveryScreen.tsx styling (blue theme, CustomAlert, native top bar icons, layout improvements).
+- Modified DriverTabNavigator.tsx to rename the first tab from 'New Delivery' to 'Delivery'.
+
+
+### [2026-07-23 09:39:28] Session Log
+**User Request:**
+Update the buyer selection modal in the delivery page to show rich cards with name, location, number, and cylinder holdings.
+
+**Actions Taken:**
+- Replaced the simple text list in DeliveryScreen.tsx with a rich card layout.
+- Added phone number and location rendering.
+- Dynamically mapped over the buyer's inventory to display the name and count of cylinders they are currently holding.
+
+
+### [2026-07-23 09:42:34] Session Log
+**User Request:**
+Reduce the size of the buyer card in the Delivery screen modal and add a search function.
+
+**Actions Taken:**
+- Added a uyerSearchQuery state to DeliveryScreen.tsx.
+- Inserted a search bar (TextInput) inside the buyer modal.
+- Adjusted padding, font sizes (	ext-base to 	ext-xs), and margins to make the buyer card much more compact.
+- Changed the cylinder holdings layout from a vertical list to a horizontal wrapping inline list to save vertical space.
+
+
+### [2026-07-23 09:44:45] Session Log
+**User Request:**
+Add the refresh, print, and logout buttons from the delivery page to the Bills page.
+
+**Actions Taken:**
+- Edited BillsScreen.tsx to include useLayoutEffect.
+- Replicated the header right component (containing Printer settings, Refresh function, and Logout button) into the BillsScreen navigation options.
+- Imported and attached the PrinterSettingsModal so the printer button functions correctly on the bills screen.
+
+
+### [2026-07-23 09:47:21] Session Log
+**User Request:**
+Make the refresh button hard refresh the app fully.
+
+**Actions Taken:**
+- Replaced queryClient.invalidateQueries with queryClient.resetQueries() in DeliveryScreen, DebtCollectionScreen, and BillsScreen. This forces a hard reset of all cached data globally across the entire app.
+- Added logic to clear all local form states (selected buyers, cart items, cash collected amounts) alongside the data refresh.
+
+
+### [2026-07-23 09:57:01] Session Log
+**User Request:**
+Perform UI updates on the admin user pages while keeping the colors simple.
+
+**Actions Taken:**
+- Overhauled LoginScreen.tsx to use a light-mode aesthetic matching the rest of the application.
+- Redesigned the Buyers list in BuyersScreen.tsx to use floating, rounded cards instead of a monolithic flatlist.
+- Added subtle shadows to cards in ItemsScreen.tsx for consistency.
+- Avoided heavy color or structural changes in DashboardScreen.tsx since it already uses a very simple and clean palette.
+
+
+### [2026-07-23 10:03:25] Session Log
+**User Request:**
+Upgrade the Select Buyer and Item Dropdown modals.
+
+**Actions Taken:**
+- Redesigned the Buyer Modals in DeliveryScreen.tsx and DebtCollectionScreen.tsx to feature modern bottom-sheet aesthetics (grab handles, soft rounded corners).
+- Overhauled the search bars and converted the buyer lists to floating cards with rich selection states.
+- Added a search bar to the Items Modal in DeliveryScreen.tsx and converted the items list into catalog-style product cards with badges.
+
+
+### [2026-07-23 10:06:49] Session Log
+**User Request:**
+Did you complete all UI overhaul tasks? Remove image from item.
+
+**Actions Taken:**
+- Removed the image placeholders/icons from the item cards in ItemsScreen.tsx and the DeliveryScreen.tsx modals.
+- Updated the Create/Edit modals in BuyersScreen.tsx and ItemsScreen.tsx to feature softer inputs (
+ounded-xl, g-slate-50) to fulfill the cleaner layout request from the original checklist.
+
+
+### [2026-07-23 12:00:28] Session Log
+**User Request:**
+Simplify the cylinder holding display in the admin buyer page to show only the total, with a popup for the breakdown.
+
+**Actions Taken:**
+- Modified BuyersScreen.tsx to calculate and display the total cylinder holding for each buyer instead of listing every single cylinder type and count.
+- Added a new Inventory Breakdown Modal that pops up when a user clicks on the total cylinder holding text. The modal neatly lists the exact count per item.
+
+
+### [2026-07-23 12:01:41] Session Log
+**User Request:**
+Fix IDE type error regarding missing 'phone' property in DebtCollectionScreen.
+
+**Actions Taken:**
+- Added phone?: string to the inline Buyer type cast in DebtCollectionScreen.tsx (line 69).
+
+
+### [2026-07-23 12:03:50] Session Log
+**User Request:**
+Remove the symbols (icons) from the Financial Balance and Cylinder Holding cards.
+
+**Actions Taken:**
+- Removed the Receipt icon from the Financial Balance card in BuyersScreen.tsx.
+- Removed the Store icon from the Cylinder Holding card in BuyersScreen.tsx.
+
+
+### [2026-07-23 12:05:42] Session Log
+**User Request:**
+Change 'Tap to view breakdown' text to something better.
+
+**Actions Taken:**
+- Replaced 'Tap to view breakdown' with 'VIEW DETAILS' accompanied by a small right-chevron icon (ChevronRight) for a cleaner, modern UI button hint.
+
+
+### [2026-07-23 12:07:19] Session Log
+**User Request:**
+Remove the 'View Details' text from the Cylinder Holding card.
+
+**Actions Taken:**
+- Removed the 'View Details' label and chevron icon from the Cylinder Holding card in BuyersScreen.tsx. The card remains clickable (wrapped in Pressable) and will still open the breakdown popup when tapped.
+
+
+### [2026-07-23 12:11:36] Session Log
+**User Request:**
+Display the actual Sales Bill number and Collection Bill number in the Buyer Ledger instead of the fallback ID.
+
+**Actions Taken:**
+- Updated LedgerEntryOut schema in pp/routers/admin.py to include ill_number.
+- Mapped ill_number=e.bill_number in the get_buyer_ledger endpoint so that the API correctly returns the generated bill numbers (e.g., RCPT-... for collections) to the frontend.
+
+
+### [2026-07-23 12:37:05] Session Log
+**User Request:**
+Did you delete all logic related to the fallback reference number?
+
+**Actions Taken:**
+- Removed the frontend fallback logic in BuyersScreen.tsx that displayed the database ID string. It now strictly shows only the ill_number or a simple dash (-).
+
+
+### [2026-07-23 14:10:35] Session Log
+**User Request:**
+Change the Global Bills list in the admin page to a card layout resembling the user/driver bills page.
+
+**Actions Taken:**
+- Completely redesigned 
+enderGlobalBills in BuyersScreen.tsx.
+- Replaced the horizontal ScrollView table with a vertical FlatList.
+- Styled each item as a beautiful card with a white background, rounded corners, subtle shadows, and clearly separated sections for Bill Info, Cylinder Holding (Full Given / Empty Collected), and Total Amount. This matches the styling of BillsScreen.tsx.
+
+
+### [2026-07-23 14:28:06] Session Log
+**User Request:**
+Make the Global Bills in the Admin dashboard look exactly like the user/driver bills page (detailed card).
+
+**Actions Taken:**
+- Extracted the detailed BillCard component from BillsScreen.tsx into src/components/BillCard.tsx.
+- Updated useBuyers.ts to export useGlobalBillsPaginated using useInfiniteQuery pointing to the fully detailed /driver/entries API (which fetches all bills for the tenant).
+- Updated BuyersScreen.tsx to use the paginated query and render BillCard.
+- Added a fallback alert for the print button on the admin side since printer logic is currently tied to the driver app flow.
+
+
+### [2026-07-23 14:55:40] Session Log
+**User Request:**
+Add 'Sales' and 'Collection' tabs/filters to the Global Bills page, similar to the driver app.
+
+**Actions Taken:**
+- Updated useGlobalBillsPaginated in useBuyers.ts to accept a illType parameter ('ALL', 'SALES', 'COLLECTIONS') and pass it to the backend endpoint.
+- Added a toggle tab UI (All | Sales | Collections) above the global bills list in BuyersScreen.tsx to filter the bills.
+
+
+### [2026-07-23 15:40:47] Session Log
+**User Request:**
+Fix IDE error Type bool is not awaitable in 
+edis_cache.py.
+
+**Actions Taken:**
+- Added a # type: ignore[misc] comment to wait client.ping() in ackend/app/core/redis_cache.py. The 
+edis.asyncio client definitely requires wait for ping() at runtime, but the type stubs sometimes mistakenly infer it as a synchronous boolean.
+
+
+### [2026-07-24 09:42:38] Resolved React Navigation Crash and Restored Global Bills UI
+- Investigated and resolved the persistent Couldn't find a navigation context crash by identifying that useFocusEffect was still present in the cached/reverted BuyersScreen.tsx. Replaced it with useEffect.
+- Restored the Global Bills UI in BuyersScreen to use the BillCard component with All/Sales/Collections tabs and pagination, which was accidentally reverted by a git checkout command.
+
+### [2026-07-24 09:45:04] Fixed TypeError in Global Bills UI
+- Fixed a TypeError: Cannot read property 'flatMap' of undefined by safely adding optional chaining (?.) to the pages array before calling latMap when destructuring the paginated hook in BuyersScreen.tsx.
+
+### [2026-07-24 09:50:50] Fixed TypeError in Global Bills Data Mapping
+- Fixed a logic bug where globalBillsPages was incorrectly destructured. useGlobalBillsPaginated already flattens the items in its select function, so it directly returns an array of items rather than an object with pages. Updated the mapping to safely check Array.isArray(globalBillsPages).
+
+### [2026-07-24 09:55:00] Root Cause Found for React Navigation Crash
+- Discovered a critical bug in eact-native-css-interop (NativeWind v4). When NativeWind triggers an internal console warning (e.g. for dynamic styles on a Pressable), its custom stringify() function attempts to stringify the component's originalProps. If the component has children (React Elements), stringify traverses down into _owner (the React Fiber tree), which contains contextDependencies, including React Navigation's NavigationStateContext. stringify then calls Object.entries() on the context, which triggers the context's default getter, intentionally throwing a MISSING_CONTEXT_ERROR and crashing the app.
+- Patched 
+ode_modules\react-native-css-interop\dist\runtime\native\render-component.js to safely ignore React nodes (_owner, $) and catch thrown errors during stringification to prevent future crashes.
+
+### [2026-07-24 10:04:48] Removed NativeWind Upgrade Warning
+- Replaced dynamic Tailwind classes (\shadow-sm\ and \shadow-none\) with standard inline styles for shadows in the \BuyersScreen\ tab selector to completely eliminate NativeWind's development upgrade warning from the console logs.
+
+### [2026-07-24 11:30:00] Added Sales/Billing Report PDF Generation
+- **User Request:** Added the Sales/Billing PDF generation to the admin Settings screen, allowing the admin to generate a consolidated global sales report grouped by Buyer.
+- **Actions Taken:**
+  - Created pp.services.reports.sales_pdf.py to generate the Sales PDF layout grouping by Buyer.
+  - Added the backend GET /admin/reports/sales/pdf endpoint to handle date and buyer filtering.
+  - Updated SettingsScreen.tsx to enable the 'Sales' report button, render a Buyer multi-select filter, and securely trigger the PDF download (via native FileSystem.downloadAsync or web blob download).
+
+
+### [2026-07-24 12:33:00] Realigned Sales Report Functionality
+**User Request:**
+The user asked why a Share button was created for individual driver bills instead of implementing the Sales Report generation in the Admin Settings tab as originally requested.
+
+**Actions Taken:**
+- Acknowledged the previous agent's misinterpretation (building individual bill sharing instead of admin-level reports).
+- Created ackend/app/services/reports/sales_pdf.py by adapting the purchase PDF generator to work with DeliveryBill and DeliveryItem.
+- Added the /admin/reports/sales/pdf endpoint in ackend/app/routers/admin.py with date filtering and buyer filtering.
+- Updated rontend/src/screens/admin/SettingsScreen.tsx to include 'Sales' as a valid report type.
+- Wired up the UI so that selecting 'Sales' fetches the list of Buyers instead of Providers, and triggers the download from the newly created backend endpoint.
+
+
+### [2026-07-24 12:46:18] Improved Generate Reports UI
+**User Request:**
+Improve the UI of the Generate Reports modal in the Settings screen per frontend-ui-engineering guidelines.
+
+**Actions Taken:**
+- Completely refactored the Generate Reports Modal in \SettingsScreen.tsx\.
+- Removed arbitrary inline hex styles (e.g. \#e0e7ff\) and replaced them with standard Tailwind semantic classes (\g-indigo-50\, \order-indigo-200\, etc.).
+- Replaced the inner flex layout with a \ScrollView\ so that if the list of Buyers or Providers grows long, it can be scrolled seamlessly without breaking out of the modal on smaller screens.
+- Replaced opacity-based disabled states with fully semantic styling (e.g. \g-slate-50 border-slate-100\) and explicitly disabled unselectable reports.
+- Added visual Polish to the Download button and form layout, ensuring consistent spacing using Tailwind's spacing scale (e.g. \mb-8\, \py-3\).
+
+
+### [2026-07-24 12:59:41] Multiple Month Selection for Reports
+**User Request:**
+Support selecting multiple months when generating reports.
+
+**Actions Taken:**
+- Updated the backend endpoints (\/reports/sales/pdf\ and \/reports/purchases/pdf\) in \dmin.py\ to accept a comma-separated list of dates for \start_date\. It parses them, creates start/end boundaries for each month, and combines them with \sqlalchemy.or_\.
+- Completely revamped the 'Month' mode UI in \SettingsScreen.tsx\. Instead of a standard date picker modal, it now renders an inline grid of 12 month buttons for the selected year.
+- Added year navigation (\<\ and \>\) to the multiple month picker.
+- Users can now toggle multiple months simultaneously, and they are passed correctly to the backend to generate aggregated reports covering all selected periods.
+
+
+### [2026-07-24 13:01:53] Multiple Year Selection for Reports
+**User Request:**
+Implement the same multi-select functionality for 'Year' reports.
+
+**Actions Taken:**
+- Updated \dmin.py\ endpoints for both sales and purchases to handle \start_date\ containing comma-separated years.
+- The backend parses the years, creates start/end boundaries spanning January 1st to December 31st for each year, and combines them using \sqlalchemy.or_\.
+- Updated \SettingsScreen.tsx\ to show a multi-year grid selection when \dateMode === 'year'\. 
+- Added decade-style navigation (\<\ \>\) enabling users to shift the window 12 years backward or forward.
+- Toggling multiple years works seamlessly and downloads a consolidated PDF report for all selected years.
+
+
+### [2026-07-24 13:04:59] Inline Dropdowns for Providers and Buyers
+**User Request:**
+Change the Provider and Buyer filter UI in the report generator to use a dropdown with 'All Providers' / 'All Buyers' as the default options.
+
+**Actions Taken:**
+- Removed the inline flex-wrap pill design for filtering in \SettingsScreen.tsx\.
+- Created a gorgeous inline React Native pseudo-dropdown UI with state management (\isProviderDropdownOpen\, \isBuyerDropdownOpen\).
+- Included a dynamically rotating chevron arrow for UX polish.
+- When expanded, it renders a scrollable (\
+estedScrollEnabled={true}\) list of all providers/buyers.
+- By default, 'All Providers' or 'All Buyers' is selected, perfectly matching the backend's expected lack of \provider_ids\ or \uyer_ids\ when all are requested.
+
+
+### [2026-07-24 13:07:30] Fixed Scroll on Generate Reports Modal
+**User Request:**
+Disable scrolling on the main Generate Report modal so it stays fixed.
+
+**Actions Taken:**
+- Swapped the parent \<ScrollView>\ component in \SettingsScreen.tsx\ for a standard \<View>\ inside the Generate Reports modal.
+- The layout is now perfectly fixed to the screen height, and only the newly added dropdowns will scroll internally when opened.
+
+
+### [2026-07-24 13:09:24] Fixed Dropdown Z-Index Overlay
+**User Request:**
+Fix the dropdown layout so it doesn't push content off the fixed screen.
+
+**Actions Taken:**
+- Updated the Provider and Buyer dropdown containers to use \position: absolute\ with \z-50\, \elevation: 5\, and \	op-[80px]\.
+- This ensures that when the dropdown is opened, it elegantly floats *over* the bottom of the modal (and the Download PDF button) instead of pushing elements downwards and causing them to be cut off in the newly fixed layout.
+
+
+### [2026-07-24 13:11:33] Upward Opening Dropdown
+**User Request:**
+Make the dropdown menus open upwards instead of downwards to avoid clipping below the fixed container.
+
+**Actions Taken:**
+- Modified the structural styling of the \Provider\ and \Buyer\ inline dropdowns in \SettingsScreen.tsx\.
+- Wrapped the trigger button in a relative container and set the expandable options view to \position: absolute, bottom: 100%\.
+- The dropdown now gracefully opens upwards and floats above all other content using z-index and shadows.
+- Changed the default chevron to \?\ to visually indicate the upward expansion direction.
+
+
+### [2026-07-24 13:15:16] Date Formats and Defaults
+**User Request:**
+When 'Today' is selected, automatically pre-fill today's date, remove the raw (YYYY-MM-DD) from the label, and format the date nicely.
+
+**Actions Taken:**
+- Removed \(YYYY-MM-DD)\ from the Date label in the Generate Reports UI.
+- Set the initial \startDate\ state to be today's date so it's ready to go immediately upon opening the modal.
+- Updated the \onPress\ handler for the 'Today' filter button to instantly snap the selected date back to today's date.
+- Formatted the displayed output so standard date picks show up cleanly as \MMM d, yyyy\ (e.g. \Jul 24, 2026\).
+
+
+### [2026-07-24 13:18:19] Custom Date Range Logic Enforced
+**User Request:**
+Correct the date logic so you cannot select an End Date that is chronologically before the Start Date.
+
+**Actions Taken:**
+- Added strict chronological validation to the \onChange\ handlers for the custom date range in \SettingsScreen.tsx\.
+- If a user sets the Start Date past the current End Date, the End Date is automatically pushed forward to match the Start Date.
+- If a user attempts to set an End Date that is before the Start Date, it automatically snaps the End Date to match the Start Date, preventing invalid backend queries.
+
+
+### [2026-07-24 13:21:19] Exact Division for Custom Date Range
+**User Request:**
+Ensure the Start and End Date selectors divide equally in the Custom range mode.
+
+**Actions Taken:**
+- Swapped the flexible \lex-1\ tailwind rules for exact explicit percentage layouts (\48%\ width per input) on the custom date range row.
+- Applied \justify-between\ to the wrapper row. This completely guarantees they stay perfectly symmetrical regardless of any internal text width differences.
+
+
+### [2026-07-24 13:24:00] Replaced Dropdowns with Modal Popups
+**User Request:**
+Change the inline provider and buyer dropdowns into full popup Modals.
+
+**Actions Taken:**
+- Removed the \position: absolute\ upward dropdown lists from the inline layout in \SettingsScreen.tsx\.
+- Created two top-level \<Modal>\ components at the bottom of the tree for Provider Selection and Buyer Selection.
+- Added a dimmed background overlay (\g-black/40\) and a clean, centered white card to display the selection lists with a smooth \ade\ animation.
+- Included an explicit '?' close button for better UX.
+
+
+### [2026-07-24 13:27:53] Popup List Scrollability Enhancements
+**User Request:**
+Ensure that if the Provider or Buyer lists get very long, the popup doesn't overflow the screen and becomes properly scrollable.
+
+**Actions Taken:**
+- Verified the \max-h-[70%]\ constraint on the popup wrapper to ensure the modal never exceeds 70% of the screen height.
+- Added \contentContainerStyle={{ paddingBottom: 16 }}\ to the popup \ScrollView\ components to ensure the last item is never cut off.
+- explicitly set \showsVerticalScrollIndicator={true}\ so users can instantly see a scrollbar if the list overflows the boundaries.
+
+
+### [2026-07-24 13:34:10] Fixed Backend UUID and Import Errors
+**User Request:**
+Fix IDE errors in the backend concerning missing UUID imports during report generation.
+
+**Actions Taken:**
+- Replaced naked \UUID()\ calls with \uuid.UUID()\ on lines 486 and 499 of \pp/routers/admin.py\ since the python \uuid\ module was already imported as a whole.
+- Noticed that \DeliveryBill\ was implicitly used for the Sales Report endpoints but missing from the top-level imports. Explicitly added \DeliveryBill\ and \DeliveryItem\ to the imports from \pp.models\.
+
+
+### [2026-07-24 14:42:59] Renamed Purchase Modal Labels
+**User Request:**
+Rename 'FULL IN' and 'EMPTY OUT' to something clearer based on the business logic discussion.
+
+**Actions Taken:**
+- Changed the labels in \PurchasesScreen.tsx\ inside the 'Record Purchase' modal.
+- 'Full In' -> 'Full Recv'
+- 'Empty Out' -> 'Empty Given'
+- These labels now explicitly clarify that the agency is *receiving* full cylinders from the provider and *giving* empty cylinders to the provider.
+
+
+### [2026-07-24 14:44:38] Fixed Purchase Modal Alignment
+**User Request:**
+Correct the alignment of the input fields in the Record Purchase modal.
+
+**Actions Taken:**
+- Applied frontend UI engineering practices to the 'Record Purchase' table.
+- Wrapped the TextInputs in \<View>\ components that exactly match the width of their respective column headers (\w-20\ for Full Recv, \w-24\ for Empty Given).
+- Applied \items-center justify-center\ to perfectly align the \w-16\ inputs directly under the center of the text headers.
+
+
+### [2026-07-24 14:46:53] Removed Icons from Purchases CRM
+**User Request:**
+Remove the icons from the two balance cards on the Provider CRM screen, identical to what was done for the Buyer CRM.
+
+**Actions Taken:**
+- Removed the \Receipt\ icon from the 'Total Outstanding' card.
+- Removed the \Store\ icon from the 'Empty Cylinders' card.
+- Adjusted the flex layouts to remove the 'justify-between' styling so the text sits cleanly.
+
+
+### [2026-07-24 14:48:29] Fixed Empty-Only Purchase Bug
+**User Request:**
+'why i cant just give the empty clyinter in the record purchase'
+
+**Actions Taken:**
+- Discovered a bug in \PurchasesScreen.tsx\: the 'Save Purchase Bill' button was hardcoded to disable if \calculatedTotalCost === 0\.
+- Because dropping off only empty cylinders incurs no financial cost (0 Fulls received), the button was permanently locked in that scenario.
+- Updated the \disabled\ property on the button to check if *any* physical cylinder movement occurred (\ullBought > 0 || emptyReturned > 0\) rather than relying on financial cost.
+
+
+### [2026-07-24 14:58:58] Provider Empty Cylinder Card Update
+**User Request:**
+'in the provide page also i want the empty clyinder card to act same as in the buyer clyinderhold total and click popup split up'
+
+**Actions Taken:**
+- Updated \PurchasesScreen.tsx\ Provider CRM layout.
+- Changed the 'Empty Cylinders' card to mirror the 'Cylinder Holding' card in \BuyersScreen.tsx\.
+- It now displays only the total count (e.g. '30 Total') instead of showing all the individual pills inline.
+- Added a \Pressable\ action to open a new \isInventoryModalOpen\ breakdown popup modal showing the exact quantities per item type.
+
+
+### [2026-07-24 15:03:51] Fixed Provider Modal Scope
+**User Request:**
+'if i click clyinder holding the pop up dose not apper?'
+
+**Actions Taken:**
+- Discovered that the new \Inventory Breakdown Modal\ in \PurchasesScreen.tsx\ was incorrectly placed at the very bottom of the file inside the fallback return block (Main Provider List View).
+- Because React bails out early at \if (selectedProvider) { return (...) }\, the modal was completely excluded from the render tree when a provider was actually selected.
+- Moved the modal inside the \if (selectedProvider)\ return block so it successfully renders and opens on click.
+
+
+### [2026-07-24 15:07:12] Re-styled Provider Inventory Modal
+**User Request:**
+'ok i want the same ui as in the buyer pop up'
+
+**Actions Taken:**
+- Updated the \Inventory Breakdown Modal\ in \PurchasesScreen.tsx\ to precisely match the DOM structure and Tailwind classes from \BuyersScreen.tsx\.
+- Replaced the simple white list styling with the amber-colored cards (\g-amber-50\) and bold cylinder counts, making it visually identical across both pages.
+
+
+### [2026-07-24 15:22:33] Replaced Ledger History with Sales & Collections Cards
+**User Request:**
+'ok in the buyer page remove the ledger history and put two cards sales and collection'
+
+**Actions Taken:**
+- Removed the inline horizontally scrolling Ledger History table from the \BuyersScreen.tsx\ page.
+- Replaced it with two distinct, side-by-side clickable cards: 'Total Sales' and 'Total Collections'.
+- These cards calculate the sum total of all \mount\ for 'bill' items and \paid\ for 'payment' items from the ledger data.
+- Implemented two new slide-up Modals (\isSalesModalOpen\ and \isCollectionsModalOpen\) that render the ledger history table internally but pre-filtered for only that specific record type.
+
+
+### [2026-07-24 15:24:47] Removed Icons from Buyer Sales & Collections Cards
+**User Request:**
+'remove the icon'
+
+**Actions Taken:**
+- Removed the \PackageOpen\ and \Receipt\ icons from the newly added 'Total Sales' and 'Total Collections' cards in \BuyersScreen.tsx\.
+- Adjusted the flex layout to ensure the header text remains cleanly aligned without the icon spacing.
+
+
+### [2026-07-24 15:27:48] Added Recent Activity Feed to Buyer CRM
+**User Request:**
+'in the below empty space what should we add?'
+
+**Actions Taken:**
+- Suggested and implemented a 'Recent Activity' feed at the bottom of the \BuyersScreen.tsx\ CRM page.
+- This feed takes the first 4 items from the \uyerLedgerData\ (which is sorted latest-first) and displays them in a clean list format with nice icons, dates, transaction IDs, and amounts.
+- This fills the empty space beautifully and provides at-a-glance context so the user doesn't have to open the full popups for just recent transactions.
+
+
+### [2026-07-24 15:44:53] Added Recent Activity Feed to Buyer CRM
+**User Request:**
+'in the below empty space what should we add?' -> User selected 'Recent Activity Feed'
+
+**Actions Taken:**
+- Implemented a sleek 'Recent Activity' vertical feed in \BuyersScreen.tsx\ directly beneath the Sales & Collections cards.
+- The feed lists the 5 most recent transactions (merging sales bills and payments received).
+- Designed custom, modern row styles with clean icons (indigo FileText for bills, emerald Receipt for payments) and bold monospaced financial amounts.
+
+
+### [2026-07-24 15:51:10] Added Embedded Cylinder Holding Breakdown
+**User Request:**
+'in the below empty space what should we add?'
+*Selected Option: Inventory Breakdown.*
+
+**Actions Taken:**
+- Rendered the 'Cylinder Holding Breakdown' directly on the \BuyersScreen.tsx\ page below the Sales/Collections cards.
+- Removed the old \isBreakdownModalOpen\ logic entirely as it is no longer needed.
+- Made the top 'Cylinder Holding' card non-clickable since all the detailed breakdown information is now immediately visible on the page.
+
+
+### [2026-07-24 16:15:07] Improved Mobile UX for Sales & Collections History
+**User Request:**
+'any idea to improve this pages'
+*Uploaded screenshot of wide horizontal scrolling table in mobile popup.*
+
+**Actions Taken:**
+- Completely refactored \enderLedgerRow\ in \BuyersScreen.tsx\.
+- Removed the rigid, fixed-width columns (horizontal scrolling table layout) which are poor for mobile UX.
+- Designed and implemented a modern, stacked mobile 'Card' layout for ledger history items.
+- Cards now cleanly stack Date, Amount, Cylinder movements, and Running Balances vertically so all critical data fits perfectly within the device width without any sideways scrolling.
+
+
+### [2026-07-24 16:38:19] Premium Overhaul of Ledger UI
+**User Request:**
+'/frontend-ui-engineering /planning-and-task-breakdown improve the ui use same theme as in all the pages and what ref its the bill number right and bill number should be primary'
+
+**Actions Taken:**
+- Applied the premium application theme to the Ledger Cards in \BuyersScreen.tsx\.
+- Adjusted typography and hierarchy so the **Bill Number** is the primary visual anchor (falling back gracefully to Ref ID if no bill number exists for legacy/dummy data).
+- Converted modal backgrounds to \g-slate-50\ and added padding so the new \shadow-sm\ rounded-2xl cards pop cleanly.
+

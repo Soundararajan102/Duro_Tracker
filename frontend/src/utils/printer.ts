@@ -57,7 +57,7 @@ export type DeliveryReceiptData = {
   buyer_name: string;
   buyer_address: string;
 
-  receipt_type?: 'DELIVERY' | 'PAYMENT';
+  receipt_type?: 'DELIVERY' | 'PAYMENT' | 'TEST';
   opening_balance: number;
 
   items: DeliveryReceiptItem[];
@@ -305,12 +305,15 @@ function buildTestReceipt(device: PrinterDevice) {
   const COMMAND_TEXT = getCommandText();
 
   return [
-    `${COMMAND_TEXT.CENTER}${COMMAND_TEXT.BOLD_ON}PRINTER LINKED${COMMAND_TEXT.BOLD_OFF}`,
-    `${COMMAND_TEXT.LEFT}${getSavedPrinterLabel(device)}`,
+    `${COMMAND_TEXT.CENTER}${COMMAND_TEXT.BOLD_ON}PRINTER CONNECTED${COMMAND_TEXT.BOLD_OFF}`,
+    `${COMMAND_TEXT.LEFT}Name: ${device.name || "Unknown Printer"}`,
     device.address ? `Address: ${device.address}` : "",
-    `Checked: ${formatDateTime(new Date().toISOString())}`,
+    `Date & Time: ${formatDateForReceipt(new Date().toISOString())}`,
     COMMAND_TEXT.DIVIDER,
-    "Ready for live receipts.",
+    `${COMMAND_TEXT.LEFT}                    ${COMMAND_TEXT.BOLD_ON}Thank You${COMMAND_TEXT.BOLD_OFF}`,
+    "            Software Provided By",
+    "       Durozen Technologies Pvt. Ltd.",
+    "",
     "",
     "",
   ]

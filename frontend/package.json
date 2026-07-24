@@ -102,12 +102,5 @@
     "typescript": "~5.9.2"
   },
   "private": true,
-  "packageManager": "nub@0.1.14",
-  "devEngines": {
-    "packageManager": {
-      "name": "nub",
-      "version": "^0.1.14",
-      "onFail": "warn"
-    }
-  }
+  "packageManager": "npm@10.8.1"
 }

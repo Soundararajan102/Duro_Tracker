@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, Pressable, FlatList, ActivityIndicator, Modal, TextInput, Platform } from 'react-native';
+import { View, Text, Pressable, FlatList, ActivityIndicator, Modal, TextInput, Platform, ScrollView } from 'react-native';
 import { LogOut, Plus, FileSpreadsheet, Info, CheckCircle, PauseCircle, Edit } from 'lucide-react-native';
 import { useDrivers, useToggleDriver, useCreateDriver, useOrganization } from '../../hooks/useDrivers';
 import { useProviders } from '../../hooks/usePurchases';
+import { useBuyers } from '../../hooks/useBuyers';
 import { adminReportsApi } from '../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -89,14 +90,33 @@ export default function SettingsScreen() {
   const [isReportModalOpen, setIsReportModalOpen] = React.useState(false);
   const [reportTypes, setReportTypes] = React.useState<string[]>(['Purchase']);
   const [dateMode, setDateMode] = React.useState('single');
-  const [startDate, setStartDate] = React.useState('');
+  const [startDate, setStartDate] = React.useState(format(new Date(), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = React.useState('');
+  const [selectedMonths, setSelectedMonths] = React.useState<string[]>([]);
+  const [selectedYears, setSelectedYears] = React.useState<string[]>([]);
+  const [monthPickerYear, setMonthPickerYear] = React.useState(new Date().getFullYear());
+  const [yearPickerStart, setYearPickerStart] = React.useState(new Date().getFullYear() - 5);
   const [selectedProviders, setSelectedProviders] = React.useState<string[]>([]);
+  const [selectedBuyers, setSelectedBuyers] = React.useState<string[]>([]);
   const [showStartPicker, setShowStartPicker] = React.useState(false);
   const [showEndPicker, setShowEndPicker] = React.useState(false);
+  const [isProviderDropdownOpen, setIsProviderDropdownOpen] = React.useState(false);
+  const [isBuyerDropdownOpen, setIsBuyerDropdownOpen] = React.useState(false);
   const { data: providers = [] } = useProviders();
+  const { data: buyers = [] } = useBuyers();
 
 const renderDatePicker = (value: string, onChange: (val: string) => void, placeholder: string, isEnd = false) => {
+    let displayValue = value;
+    if (value && Platform.OS !== 'web') {
+      try {
+        if (dateMode === 'month') displayValue = format(parseISO(value), 'MMMM yyyy');
+        else if (dateMode === 'year') displayValue = format(parseISO(value), 'yyyy');
+        else displayValue = format(parseISO(value), 'MMM d, yyyy');
+      } catch (e) {
+        // fallback
+      }
+    }
+
     if (Platform.OS === 'web') {
       return (
         <input
@@ -118,8 +138,8 @@ const renderDatePicker = (value: string, onChange: (val: string) => void, placeh
           onPress={() => setShowPicker(true)}
           className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3"
         >
-          <Text className={value ? "text-slate-900" : "text-slate-400"}>
-            {value || placeholder}
+          <Text className={value ? "text-slate-900 font-medium" : "text-slate-400"}>
+            {displayValue || placeholder}
           </Text>
         </Pressable>
         <CustomDatePickerModal 
@@ -139,8 +159,18 @@ const renderDatePicker = (value: string, onChange: (val: string) => void, placeh
         const providerStr = selectedProviders.length > 0 ? selectedProviders.join(',') : undefined;
         const params = new URLSearchParams();
         params.append('date_mode', dateMode);
-        if (startDate) params.append('start_date', startDate);
-        if (endDate) params.append('end_date', endDate);
+        
+        if (dateMode === 'month') {
+          if (selectedMonths.length === 0) return;
+          params.append('start_date', selectedMonths.join(','));
+        } else if (dateMode === 'year') {
+          if (selectedYears.length === 0) return;
+          params.append('start_date', selectedYears.join(','));
+        } else {
+          if (startDate) params.append('start_date', startDate);
+          if (endDate) params.append('end_date', endDate);
+        }
+        
         if (providerStr) params.append('provider_ids', providerStr);
         
         const urlSuffix = `/admin/reports/purchases/pdf?${params.toString()}`;
@@ -175,16 +205,61 @@ const renderDatePicker = (value: string, onChange: (val: string) => void, placeh
       } catch (error) {
         console.error('Download failed', error);
       }
+    } else if (reportTypes.includes('Sales')) {
+      try {
+        const buyerStr = selectedBuyers.length > 0 ? selectedBuyers.join(',') : undefined;
+        const params = new URLSearchParams();
+        params.append('date_mode', dateMode);
+        
+        if (dateMode === 'month') {
+          if (selectedMonths.length === 0) return;
+          params.append('start_date', selectedMonths.join(','));
+        } else if (dateMode === 'year') {
+          if (selectedYears.length === 0) return;
+          params.append('start_date', selectedYears.join(','));
+        } else {
+          if (startDate) params.append('start_date', startDate);
+          if (endDate) params.append('end_date', endDate);
+        }
+        
+        if (buyerStr) params.append('buyer_ids', buyerStr);
+        
+        const urlSuffix = `/admin/reports/sales/pdf?${params.toString()}`;
+        
+        if (Platform.OS === 'web') {
+          const response = await api.get(urlSuffix, { responseType: 'blob' });
+          const blob = new Blob([response.data], { type: 'application/pdf' });
+          const blobUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = `Sales_Report_${Date.now()}.pdf`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          window.URL.revokeObjectURL(blobUrl);
+        } else {
+          const token = await AsyncStorage.getItem('@auth_token');
+          const uri = `${API_BASE_URL}${urlSuffix}`;
+          const fileUri = `${FileSystem.documentDirectory}Sales_Report_${Date.now()}.pdf`;
+          const result = await FileSystem.downloadAsync(uri, fileUri, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+          
+          if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(result.uri);
+          }
+        }
+      } catch (error) {
+        console.error('Download failed', error);
+      }
     }
   };
 
   const toggleReportType = (type: string) => {
-    if (type !== 'Purchase') return; // only purchase enabled for now
-    if (reportTypes.includes(type)) {
-      setReportTypes(reportTypes.filter(t => t !== type));
-    } else {
-      setReportTypes([...reportTypes, type]);
-    }
+    if (type !== 'Purchase' && type !== 'Sales') return; 
+    setReportTypes([type]); 
   };
 
   const toggleProvider = (id: string) => {
@@ -192,6 +267,14 @@ const renderDatePicker = (value: string, onChange: (val: string) => void, placeh
       setSelectedProviders(selectedProviders.filter(p => p !== id));
     } else {
       setSelectedProviders([...selectedProviders, id]);
+    }
+  };
+
+  const toggleBuyer = (id: string) => {
+    if (selectedBuyers.includes(id)) {
+      setSelectedBuyers(selectedBuyers.filter(b => b !== id));
+    } else {
+      setSelectedBuyers([...selectedBuyers, id]);
     }
   };
 
@@ -275,6 +358,7 @@ const renderDatePicker = (value: string, onChange: (val: string) => void, placeh
   };
 
   return (
+    <>
     <View className="flex-1 bg-gray-50 p-4 pt-12">
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
@@ -385,127 +469,298 @@ const renderDatePicker = (value: string, onChange: (val: string) => void, placeh
 
       {/* Generate Reports Modal */}
       <Modal visible={isReportModalOpen} animationType="slide" transparent={true}>
-        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <View className="bg-white rounded-t-3xl p-6 h-[85%]">
-            <View className="flex flex-row justify-between items-center mb-6">
+        <View className="flex-1 justify-end bg-black/50">
+          <View className="bg-white rounded-t-3xl h-[90%]">
+            <View className="flex flex-row justify-between items-center p-6 pb-4 border-b border-slate-100">
               <Text className="text-xl font-bold text-slate-900">Generate Reports</Text>
-              <Pressable onPress={() => setIsReportModalOpen(false)} className="p-2 bg-slate-100 rounded-full">
+              <Pressable onPress={() => setIsReportModalOpen(false)} className="p-2 bg-slate-100 rounded-full active:bg-slate-200">
                 <Text className="text-slate-600 font-bold">✕</Text>
               </Pressable>
             </View>
 
-            <View className="flex-1">
+            <View className="flex-1 p-6 pb-10">
               {/* Report Types */}
-              <Text className="text-sm font-bold text-slate-700 mb-3 ml-1">Report Types</Text>
-              <View className="flex flex-row flex-wrap gap-2 mb-6">
-                {['Purchase', 'Inventory', 'Sales', 'Billing'].map(type => (
-                  <Pressable
-                    key={type}
-                    onPress={() => toggleReportType(type)}
-                    className="flex flex-row items-center gap-2 px-4 py-2.5 rounded-xl border"
-                    style={{ 
-                      backgroundColor: reportTypes.includes(type) ? '#e0e7ff' : '#f8fafc',
-                      borderColor: reportTypes.includes(type) ? '#4f46e5' : '#e2e8f0',
-                      opacity: type === 'Purchase' ? 1 : 0.5
-                    }}
-                  >
-                    <View className="w-4 h-4 rounded-full border items-center justify-center" style={{ borderColor: reportTypes.includes(type) ? '#4f46e5' : '#cbd5e1' }}>
-                      {reportTypes.includes(type) && <View className="w-2.5 h-2.5 rounded-full bg-indigo-600" />}
-                    </View>
-                    <Text className="font-bold text-sm" style={{ color: reportTypes.includes(type) ? '#4338ca' : '#64748b' }}>
-                      {type}
-                    </Text>
-                  </Pressable>
-                ))}
+              <Text className="text-sm font-bold text-slate-700 mb-3 ml-1">Report Category</Text>
+              <View className="flex flex-row gap-3 mb-8">
+                {['Purchase', 'Inventory', 'Sales'].map(type => {
+                  const isEnabled = type === 'Purchase' || type === 'Sales';
+                  const isSelected = reportTypes.includes(type);
+                  return (
+                    <Pressable
+                      key={type}
+                      onPress={() => isEnabled && toggleReportType(type)}
+                      disabled={!isEnabled}
+                      className={`flex-1 flex flex-row justify-center items-center gap-1.5 py-3 rounded-xl border ${isSelected ? 'bg-indigo-50 border-indigo-200' : isEnabled ? 'bg-white border-slate-200 active:bg-slate-50' : 'bg-slate-50 border-slate-100 opacity-50'}`}
+                    >
+                      <View className={`w-3.5 h-3.5 rounded-full border items-center justify-center ${isSelected ? 'border-indigo-600' : 'border-slate-300'}`}>
+                        {isSelected && <View className="w-2 h-2 rounded-full bg-indigo-600" />}
+                      </View>
+                      <Text className={`font-bold text-[13px] ${isSelected ? 'text-indigo-700' : 'text-slate-700'}`} numberOfLines={1}>
+                        {type}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
 
               {/* Date Filters */}
               <Text className="text-sm font-bold text-slate-700 mb-3 ml-1">Date Range</Text>
-              <View className="flex flex-row flex-wrap gap-2 mb-4">
-                {['single', 'range', 'month', 'year'].map(mode => (
-                  <Pressable
-                    key={mode}
-                    onPress={() => setDateMode(mode)}
-                    className="px-4 py-2 rounded-xl border"
-                    style={{
-                      backgroundColor: dateMode === mode ? '#fef3c7' : '#f8fafc',
-                      borderColor: dateMode === mode ? '#d97706' : '#e2e8f0'
-                    }}
-                  >
-                    <Text className="font-bold text-[13px] capitalize" style={{ color: dateMode === mode ? '#b45309' : '#64748b' }}>
-                      {mode}
-                    </Text>
-                  </Pressable>
-                ))}
+              <View className="flex flex-row gap-2 mb-4">
+                {[
+                  { value: 'single', label: 'Today' },
+                  { value: 'month', label: 'Month' },
+                  { value: 'year', label: 'Year' },
+                  { value: 'range', label: 'Custom' }
+                ].map(mode => {
+                  const isSelected = dateMode === mode.value;
+                  return (
+                    <Pressable
+                      key={mode.value}
+                      onPress={() => {
+                        setDateMode(mode.value);
+                        if (mode.value === 'single') {
+                          setStartDate(format(new Date(), 'yyyy-MM-dd'));
+                          setEndDate('');
+                        }
+                      }}
+                      className={`flex-1 flex items-center justify-center py-2.5 rounded-xl border ${isSelected ? 'bg-amber-50 border-amber-300' : 'bg-white border-slate-200 active:bg-slate-50'}`}
+                    >
+                      <Text className={`font-bold text-[13px] ${isSelected ? 'text-amber-800' : 'text-slate-600'}`} numberOfLines={1}>
+                        {mode.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
 
-              <View className="flex flex-row gap-3 mb-6">
-                <View className="flex-1">
-                  <Text className="text-xs font-bold text-slate-500 mb-1 ml-1">
-                    {dateMode === 'range' ? 'Start Date' : 'Date'} (YYYY-MM-DD)
-                  </Text>
-                  {renderDatePicker(startDate, setStartDate, "2026-07-17")}
-                </View>
-                {dateMode === 'range' && (
-                  <View className="flex-1">
-                    <Text className="text-xs font-bold text-slate-500 mb-1 ml-1">End Date (YYYY-MM-DD)</Text>
-                    {renderDatePicker(endDate, setEndDate, "2026-07-18", true)}
+              <View className="mb-8">
+                {dateMode === 'month' ? (
+                  <View>
+                    <View className="flex flex-row items-center justify-between mb-4 px-2">
+                      <Pressable onPress={() => setMonthPickerYear(y => y - 1)} className="p-2 bg-slate-100 rounded-full">
+                        <Text className="font-bold text-slate-600">{'<'}</Text>
+                      </Pressable>
+                      <Text className="text-base font-bold text-slate-800">{monthPickerYear}</Text>
+                      <Pressable onPress={() => setMonthPickerYear(y => y + 1)} className="p-2 bg-slate-100 rounded-full">
+                        <Text className="font-bold text-slate-600">{'>'}</Text>
+                      </Pressable>
+                    </View>
+                    <View className="flex flex-row flex-wrap justify-between gap-y-3">
+                      {Array.from({ length: 12 }).map((_, i) => {
+                        const monthStr = `${monthPickerYear}-${String(i + 1).padStart(2, '0')}-01`;
+                        const isSelected = selectedMonths.includes(monthStr);
+                        const monthName = format(new Date(monthPickerYear, i, 1), 'MMM');
+                        return (
+                          <Pressable
+                            key={i}
+                            onPress={() => {
+                              if (isSelected) {
+                                setSelectedMonths(prev => prev.filter(m => m !== monthStr));
+                              } else {
+                                setSelectedMonths(prev => [...prev, monthStr]);
+                              }
+                            }}
+                            className={`py-3 rounded-xl border flex items-center justify-center`}
+                            style={{ width: '31%', backgroundColor: isSelected ? '#eef2ff' : '#ffffff', borderColor: isSelected ? '#a5b4fc' : '#e2e8f0' }}
+                          >
+                            <Text className={`font-bold text-[13px] ${isSelected ? 'text-indigo-800' : 'text-slate-600'}`}>{monthName}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ) : dateMode === 'year' ? (
+                  <View>
+                    <View className="flex flex-row items-center justify-between mb-4 px-2">
+                      <Pressable onPress={() => setYearPickerStart(y => y - 12)} className="p-2 bg-slate-100 rounded-full">
+                        <Text className="font-bold text-slate-600">{'<'}</Text>
+                      </Pressable>
+                      <Text className="text-base font-bold text-slate-800">{yearPickerStart} - {yearPickerStart + 11}</Text>
+                      <Pressable onPress={() => setYearPickerStart(y => y + 12)} className="p-2 bg-slate-100 rounded-full">
+                        <Text className="font-bold text-slate-600">{'>'}</Text>
+                      </Pressable>
+                    </View>
+                    <View className="flex flex-row flex-wrap justify-between gap-y-3">
+                      {Array.from({ length: 12 }).map((_, i) => {
+                        const yr = yearPickerStart + i;
+                        const yearStr = `${yr}-01-01`;
+                        const isSelected = selectedYears.includes(yearStr);
+                        return (
+                          <Pressable
+                            key={i}
+                            onPress={() => {
+                              if (isSelected) {
+                                setSelectedYears(prev => prev.filter(y => y !== yearStr));
+                              } else {
+                                setSelectedYears(prev => [...prev, yearStr]);
+                              }
+                            }}
+                            className={`py-3 rounded-xl border flex items-center justify-center`}
+                            style={{ width: '31%', backgroundColor: isSelected ? '#eef2ff' : '#ffffff', borderColor: isSelected ? '#a5b4fc' : '#e2e8f0' }}
+                          >
+                            <Text className={`font-bold text-[13px] ${isSelected ? 'text-indigo-800' : 'text-slate-600'}`}>{yr}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ) : (
+                  <View className="flex flex-row justify-between">
+                    <View style={{ width: dateMode === 'range' ? '48%' : '100%' }}>
+                      <Text className="text-xs font-bold text-slate-500 mb-2 ml-1">
+                        {dateMode === 'range' ? 'Start Date' : 'Date'}
+                      </Text>
+                      {renderDatePicker(startDate, (d) => {
+                        setStartDate(d);
+                        if (dateMode === 'range' && endDate && d > endDate) {
+                          setEndDate(d);
+                        }
+                      }, "Select Date")}
+                    </View>
+                    {dateMode === 'range' && (
+                      <View style={{ width: '48%' }}>
+                        <Text className="text-xs font-bold text-slate-500 mb-2 ml-1">End Date</Text>
+                        {renderDatePicker(endDate, (d) => {
+                          if (startDate && d < startDate) {
+                            setEndDate(startDate);
+                          } else {
+                            setEndDate(d);
+                          }
+                        }, "Select Date", true)}
+                      </View>
+                    )}
                   </View>
                 )}
               </View>
 
-              {/* Provider Selection (only if Purchase selected) */}
+              {/* Provider Selection */}
               {reportTypes.includes('Purchase') && (
-                <View className="mb-6">
-                  <Text className="text-sm font-bold text-slate-700 mb-3 ml-1">Providers</Text>
-                  <View className="flex flex-row flex-wrap gap-2">
-                    <Pressable
-                      onPress={() => setSelectedProviders([])}
-                      className="px-4 py-2 rounded-xl border"
-                      style={{
-                        backgroundColor: selectedProviders.length === 0 ? '#ecfccb' : '#f8fafc',
-                        borderColor: selectedProviders.length === 0 ? '#65a30d' : '#e2e8f0'
-                      }}
+                <View className="mb-8 z-10">
+                  <Text className="text-sm font-bold text-slate-700 mb-3 ml-1">Filter by Provider</Text>
+                  
+                  <View className="relative z-20">
+                    <Pressable 
+                      onPress={() => setIsProviderDropdownOpen(true)}
+                      className="bg-white border border-slate-200 rounded-xl px-4 py-3.5 flex-row justify-between items-center active:bg-slate-50"
                     >
-                      <Text className="font-bold text-[13px]" style={{ color: selectedProviders.length === 0 ? '#4d7c0f' : '#64748b' }}>
-                        All Providers
+                      <Text className="text-slate-900 font-medium">
+                        {selectedProviders.length === 0 ? "All Providers" : providers.find(p => p.id === selectedProviders[0])?.name || "All Providers"}
                       </Text>
+                      <Text className="text-slate-400 font-bold">▼</Text>
                     </Pressable>
-                    
-                    {providers.map(p => (
-                      <Pressable
-                        key={p.id}
-                        onPress={() => toggleProvider(p.id)}
-                        className="px-4 py-2 rounded-xl border"
-                        style={{
-                          backgroundColor: selectedProviders.includes(p.id) ? '#ecfccb' : '#f8fafc',
-                          borderColor: selectedProviders.includes(p.id) ? '#65a30d' : '#e2e8f0'
-                        }}
-                      >
-                        <Text className="font-bold text-[13px]" style={{ color: selectedProviders.includes(p.id) ? '#4d7c0f' : '#64748b' }}>
-                          {p.name}
-                        </Text>
-                      </Pressable>
-                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Buyer Selection */}
+              {reportTypes.includes('Sales') && (
+                <View className="mb-8 z-10">
+                  <Text className="text-sm font-bold text-slate-700 mb-3 ml-1">Filter by Buyer</Text>
+                  
+                  <View className="relative z-20">
+                    <Pressable 
+                      onPress={() => setIsBuyerDropdownOpen(true)}
+                      className="bg-white border border-slate-200 rounded-xl px-4 py-3.5 flex-row justify-between items-center active:bg-slate-50"
+                    >
+                      <Text className="text-slate-900 font-medium">
+                        {selectedBuyers.length === 0 ? "All Buyers" : buyers.find(b => b.id === selectedBuyers[0])?.name || "All Buyers"}
+                      </Text>
+                      <Text className="text-slate-400 font-bold">▼</Text>
+                    </Pressable>
                   </View>
                 </View>
               )}
             </View>
 
-            <Pressable
-              onPress={handleGenerateReport}
-              disabled={reportTypes.length === 0 || !startDate.trim()}
-              className="w-full rounded-2xl py-4 items-center mt-4"
-              style={{ backgroundColor: (reportTypes.length === 0 || !startDate.trim()) ? '#e2e8f0' : '#4f46e5' }}
-            >
-              <Text className="font-bold text-base" style={{ color: (reportTypes.length === 0 || !startDate.trim()) ? '#94a3b8' : '#ffffff' }}>
-                Download PDF
-              </Text>
-            </Pressable>
+            <View className="p-6 border-t border-slate-100 bg-white pb-8">
+              <Pressable
+                onPress={handleGenerateReport}
+                disabled={reportTypes.length === 0 || (dateMode === 'month' ? selectedMonths.length === 0 : dateMode === 'year' ? selectedYears.length === 0 : !startDate.trim())}
+                className={`w-full rounded-2xl py-4 items-center flex-row justify-center gap-2 ${(reportTypes.length === 0 || (dateMode === 'month' ? selectedMonths.length === 0 : dateMode === 'year' ? selectedYears.length === 0 : !startDate.trim())) ? 'bg-slate-200' : 'bg-indigo-600 active:bg-indigo-700'}`}
+              >
+                <FileSpreadsheet size={20} color={(reportTypes.length === 0 || (dateMode === 'month' ? selectedMonths.length === 0 : dateMode === 'year' ? selectedYears.length === 0 : !startDate.trim())) ? '#94a3b8' : '#ffffff'} />
+                <Text className={`font-bold text-[15px] ${(reportTypes.length === 0 || (dateMode === 'month' ? selectedMonths.length === 0 : dateMode === 'year' ? selectedYears.length === 0 : !startDate.trim())) ? 'text-slate-400' : 'text-white'}`}>
+                  Download PDF Report
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>
 
     </View>
+
+      {/* Provider Popup */}
+      <Modal visible={isProviderDropdownOpen} transparent animationType="fade">
+        <Pressable className="flex-1 bg-black/40 justify-center items-center p-6" onPress={() => setIsProviderDropdownOpen(false)}>
+          <Pressable className="bg-white w-full rounded-2xl overflow-hidden max-h-[70%]">
+            <View className="flex flex-row justify-between items-center p-4 border-b border-slate-100">
+              <Text className="text-lg font-bold text-slate-900">Select Provider</Text>
+              <Pressable onPress={() => setIsProviderDropdownOpen(false)} className="p-2 bg-slate-100 rounded-full active:bg-slate-200">
+                <Text className="text-slate-600 font-bold">✕</Text>
+              </Pressable>
+            </View>
+            <ScrollView className="w-full" contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={true}>
+              <Pressable 
+                className="px-4 py-4 border-b border-slate-100 active:bg-indigo-50"
+                style={{ backgroundColor: selectedProviders.length === 0 ? '#eef2ff' : 'transparent' }}
+                onPress={() => { setSelectedProviders([]); setIsProviderDropdownOpen(false); }}
+              >
+                <Text className={`font-medium text-[15px] ${selectedProviders.length === 0 ? 'text-indigo-700' : 'text-slate-700'}`}>All Providers</Text>
+              </Pressable>
+              {providers.map((p, index) => {
+                const isSelected = selectedProviders.includes(p.id);
+                return (
+                  <Pressable 
+                    key={p.id}
+                    className={`px-4 py-4 active:bg-indigo-50 ${index !== providers.length - 1 ? 'border-b border-slate-100' : ''}`}
+                    style={{ backgroundColor: isSelected ? '#eef2ff' : 'transparent' }}
+                    onPress={() => { setSelectedProviders([p.id]); setIsProviderDropdownOpen(false); }}
+                  >
+                    <Text className={`font-medium text-[15px] ${isSelected ? 'text-indigo-700' : 'text-slate-700'}`}>{p.name}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Buyer Popup */}
+      <Modal visible={isBuyerDropdownOpen} transparent animationType="fade">
+        <Pressable className="flex-1 bg-black/40 justify-center items-center p-6" onPress={() => setIsBuyerDropdownOpen(false)}>
+          <Pressable className="bg-white w-full rounded-2xl overflow-hidden max-h-[70%]">
+            <View className="flex flex-row justify-between items-center p-4 border-b border-slate-100">
+              <Text className="text-lg font-bold text-slate-900">Select Buyer</Text>
+              <Pressable onPress={() => setIsBuyerDropdownOpen(false)} className="p-2 bg-slate-100 rounded-full active:bg-slate-200">
+                <Text className="text-slate-600 font-bold">✕</Text>
+              </Pressable>
+            </View>
+            <ScrollView className="w-full" contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={true}>
+              <Pressable 
+                className="px-4 py-4 border-b border-slate-100 active:bg-indigo-50"
+                style={{ backgroundColor: selectedBuyers.length === 0 ? '#eef2ff' : 'transparent' }}
+                onPress={() => { setSelectedBuyers([]); setIsBuyerDropdownOpen(false); }}
+              >
+                <Text className={`font-medium text-[15px] ${selectedBuyers.length === 0 ? 'text-indigo-700' : 'text-slate-700'}`}>All Buyers</Text>
+              </Pressable>
+              {buyers.map((b, index) => {
+                const isSelected = selectedBuyers.includes(b.id);
+                return (
+                  <Pressable 
+                    key={b.id}
+                    className={`px-4 py-4 active:bg-indigo-50 ${index !== buyers.length - 1 ? 'border-b border-slate-100' : ''}`}
+                    style={{ backgroundColor: isSelected ? '#eef2ff' : 'transparent' }}
+                    onPress={() => { setSelectedBuyers([b.id]); setIsBuyerDropdownOpen(false); }}
+                  >
+                    <Text className={`font-medium text-[15px] ${isSelected ? 'text-indigo-700' : 'text-slate-700'}`}>{b.name}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
   );
 }

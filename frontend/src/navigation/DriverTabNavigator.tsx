@@ -50,7 +50,7 @@ export default function DriverTabNavigator() {
         name="Delivery" 
         component={DeliveryScreen} 
         options={{
-          title: 'New Delivery',
+          title: 'Delivery',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="navigate-circle-outline" size={size} color={color} />
           ),

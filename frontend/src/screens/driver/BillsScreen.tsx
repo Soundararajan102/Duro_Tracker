@@ -1,155 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect, useCallback } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../services/api';
+import { useNavigation } from '@react-navigation/native';
+import { api, API_BASE_URL } from '../../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { useReceiptImagePrintJob } from '../../hooks/use-receipt-image-print-job';
 import { usePrinterStore } from '../../store/printer-store';
 import { DeliveryReceiptData, DeliveryReceiptItem } from '../../utils/printer';
 import { format } from 'date-fns';
 import { useDriverItems } from '../../hooks/useItems';
-function BillCard({ item, handlePrint, itemsCatalog }: { item: any; handlePrint: (item: any) => void; itemsCatalog?: any[] }) {
-  const isCollection = !item.items || item.items.length === 0;
-  const currentBalance = item.buyer?.balance_pending || 0;
-  // Use snapshot if available, otherwise fallback to approximation
-  const openingBalance = item.opening_balance != null ? item.opening_balance : (currentBalance - item.total_bill_amount + item.cash_collected + item.upi_collected);
-  const closingBalance = item.closing_balance != null ? item.closing_balance : currentBalance;
+import { useAuth } from '../../context/AuthContext';
+import PrinterSettingsModal from '../../components/PrinterSettingsModal';
+import { BillCard } from '../../components/BillCard';
 
-  const receiptNumber = item.bill_number || (item.id ? String(item.id).split('-')[0].toUpperCase() : '-');
-  const currentBillBal = item.total_bill_amount - item.cash_collected - item.upi_collected;
-
-  return (
-    <View className="bg-white p-4 rounded-2xl mb-4 shadow-sm border border-zinc-200">
-      {/* Header */}
-      <View className="flex-row justify-between items-start mb-4 border-b border-zinc-100 pb-3">
-        <View className="flex-1">
-          <Text className="text-zinc-500 text-xs font-semibold mb-1 uppercase tracking-wider">Bill No: {receiptNumber}</Text>
-          <Text className="text-xl font-bold text-zinc-900">
-            {item.buyer?.name || item.adhoc_buyer_name || 'Unknown Buyer'}
-          </Text>
-          <Text className="text-zinc-500 text-sm mt-0.5">
-            {item.timestamp ? format(new Date(item.timestamp), 'dd MMM yyyy, hh:mm a') : 'Unknown Date'}
-          </Text>
-          {item.buyer?.address ? (
-            <Text className="text-zinc-400 text-xs mt-1">{item.buyer.address}</Text>
-          ) : null}
-        </View>
-        <TouchableOpacity onPress={() => handlePrint(item)} className="p-2.5 bg-blue-50 rounded-xl border border-blue-100 active:bg-blue-100 ml-2">
-          <Ionicons name="print" size={20} color="#2563eb" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Opening Balance */}
-      <View className="flex-row justify-between items-center mb-4 px-1">
-        <Text className="text-zinc-500 text-sm font-medium">Opening Balance</Text>
-        <Text className="text-zinc-800 text-sm font-bold">₹{openingBalance.toFixed(2)}</Text>
-      </View>
-
-      {/* Items Table - Only for Sales */}
-      {!isCollection && (
-        <View className="mb-4 bg-zinc-50 rounded-xl overflow-hidden border border-zinc-100">
-          <View className="flex-row border-b border-zinc-200 px-3 py-2 bg-zinc-100/50">
-            <Text className="flex-1 text-zinc-500 text-xs font-bold uppercase tracking-wider">Item</Text>
-            <Text className="w-12 text-center text-zinc-500 text-xs font-bold uppercase tracking-wider">Qty</Text>
-            <Text className="w-16 text-center text-zinc-500 text-xs font-bold uppercase tracking-wider">Rate</Text>
-            <Text className="w-20 text-right text-zinc-500 text-xs font-bold uppercase tracking-wider">Total</Text>
-          </View>
-          {item.items && item.items.length > 0 ? (
-            item.items.map((i: any, idx: number) => (
-              <View key={idx} className="flex-row px-3 py-2.5 border-b border-zinc-100 last:border-0 items-center">
-                <View className="flex-1 pr-2">
-                  <Text className="text-zinc-800 font-medium text-sm">{i.item?.name || 'Unknown'}</Text>
-                  {i.empty_received > 0 && (
-                    <Text className="text-orange-500 text-xs mt-0.5">{i.empty_received} Empty Returned</Text>
-                  )}
-                </View>
-                <Text className="w-12 text-center text-zinc-800 font-semibold">{i.full_delivered}</Text>
-                <Text className="w-16 text-center text-zinc-600 text-xs font-medium">₹{i.unit_price_at_delivery}</Text>
-                <Text className="w-20 text-right text-zinc-800 font-bold">₹{i.line_total_amount}</Text>
-              </View>
-            ))
-          ) : (
-            <View className="px-3 py-4 items-center">
-               <Text className="text-zinc-400 text-sm font-medium">No items in this bill</Text>
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* Summary Section */}
-      <View className="mb-4 px-1">
-        {!isCollection && (
-          <View className="flex-row justify-between items-center py-1.5">
-            <Text className="text-zinc-600 font-medium">Total Bill Amount</Text>
-            <Text className="text-zinc-900 font-bold text-base">₹{item.total_bill_amount.toFixed(2)}</Text>
-          </View>
-        )}
-        <View className="flex-row justify-between items-center py-1.5">
-          <Text className="text-emerald-600 font-medium">{isCollection ? 'Cash Received' : 'Cash Paid'}</Text>
-          <Text className="text-emerald-600 font-semibold">{!isCollection && '- '}₹{item.cash_collected.toFixed(2)}</Text>
-        </View>
-        <View className="flex-row justify-between items-center py-1.5">
-          <Text className="text-blue-600 font-medium">{isCollection ? 'UPI Received' : 'UPI Paid'}</Text>
-          <Text className="text-blue-600 font-semibold">{!isCollection && '- '}₹{item.upi_collected.toFixed(2)}</Text>
-        </View>
-        
-        {isCollection && (
-          <View className="flex-row justify-between items-center pt-3 pb-1 border-t border-zinc-100 mt-1.5">
-            <Text className="text-zinc-800 font-semibold">Total Amount Received</Text>
-            <Text className="text-zinc-900 font-bold text-base text-emerald-600">₹{(item.cash_collected + item.upi_collected).toFixed(2)}</Text>
-          </View>
-        )}
-        {!isCollection && (
-          <View className="flex-row justify-between items-center pt-3 pb-1 border-t border-zinc-100 mt-1.5">
-            <Text className="text-zinc-800 font-semibold">Balance Amount</Text>
-            <Text className="text-zinc-900 font-bold text-base">₹{currentBillBal.toFixed(2)}</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Closing Balance */}
-      <View className="flex-row justify-between items-center p-3 bg-zinc-800 rounded-xl mb-4 shadow-sm">
-        <Text className="text-zinc-100 font-semibold">Closing Balance</Text>
-        <Text className="text-white font-bold text-lg tracking-tight">₹{closingBalance.toFixed(2)}</Text>
-      </View>
-
-      {/* Cylinders Holding */}
-      {item.items && item.items.filter((bi: any) => bi.buyer_holding_snapshot != null).length > 0 && (
-        <View className="border border-zinc-200 rounded-xl overflow-hidden">
-          <View className="bg-zinc-50 px-3 py-2 border-b border-zinc-200">
-            <Text className="text-zinc-600 font-bold text-xs uppercase tracking-wider text-center">
-              Cylinders Holding
-            </Text>
-          </View>
-          <View className="p-3 gap-2 bg-white">
-            {item.items
-              .filter((bi: any) => bi.buyer_holding_snapshot != null)
-              .map((bi: any, idx: number) => {
-                const itemName = bi.item?.name || itemsCatalog?.find((i: any) => i.id === bi.item_id)?.name || 'Cyl';
-                const given = bi.full_delivered || 0;
-                const taken = bi.empty_received || 0;
-                const hold = bi.buyer_holding_snapshot;
-                
-                return (
-                  <View key={idx} className="bg-orange-50 border border-orange-200 px-3 py-2 rounded-lg flex-row justify-center items-center shadow-sm">
-                    <Text className="text-orange-900 font-semibold text-xs text-center">
-                      {itemName} - Given: {given}  Taken: {taken}  Hold: {hold}
-                    </Text>
-                  </View>
-                );
-            })}
-          </View>
-        </View>
-      )}
-    </View>
-  );
-}
 
 export default function BillsScreen() {
+  const navigation = useNavigation();
+  const { logout } = useAuth();
+  const queryClient = useQueryClient();
+  const [printerModalVisible, setPrinterModalVisible] = useState(false);
+
   const [activeTab, setActiveTab] = useState<'SALES' | 'COLLECTIONS'>('SALES');
   const { receiptImagePrintBridge, startReceiptImagePrintJob } = useReceiptImagePrintJob();
   const preferredPrinter = usePrinterStore((state) => state.preferredPrinter);
   const { data: itemsCatalog = [] } = useDriverItems();
+
+  const handleRefresh = useCallback(() => {
+    queryClient.resetQueries();
+  }, [queryClient]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <View className="flex-row items-center">
+          <TouchableOpacity onPress={() => setPrinterModalVisible(true)} className="mr-4 p-2 bg-zinc-100 rounded-full">
+            <Ionicons name="print-outline" size={20} color="#52525b" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleRefresh} className="mr-4 p-2 bg-zinc-100 rounded-full">
+            <Ionicons name="refresh-outline" size={20} color="#3b82f6" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={logout} className="mr-4 p-2">
+            <Ionicons name="log-out-outline" size={24} color="#ef4444" />
+          </TouchableOpacity>
+        </View>
+      ),
+    });
+  }, [navigation, logout, handleRefresh]);
   const { 
     data: historyData, 
     isLoading, 
@@ -245,6 +144,28 @@ export default function BillsScreen() {
     });
   };
 
+  const handleSharePDF = async (item: any) => {
+    try {
+      const url = `${API_BASE_URL}/driver/entries/${item.id}/pdf`;
+      const fileUri = `${FileSystem.cacheDirectory}Bill_${item.bill_number || item.id}.pdf`;
+      
+      const token = await AsyncStorage.getItem('@auth_token');
+      
+      const { uri } = await FileSystem.downloadAsync(url, fileUri, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+      } else {
+        Alert.alert("Sharing not available", "Sharing is not supported on this device.");
+      }
+    } catch (e) {
+      Alert.alert("Error", "Could not download or share the PDF.");
+      console.error(e);
+    }
+  };
+
   return (
     <View className="flex-1 bg-zinc-100">
       <View className="flex-row bg-white p-2 mb-2">
@@ -265,7 +186,7 @@ export default function BillsScreen() {
       <FlatList
         data={displayedHistory}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <BillCard item={item} handlePrint={handlePrint} itemsCatalog={itemsCatalog} />}
+        renderItem={({ item }) => <BillCard item={item} handlePrint={handlePrint} handleSharePDF={handleSharePDF} itemsCatalog={itemsCatalog} />}
         contentContainerStyle={{ padding: 16 }}
         ListEmptyComponent={
           <View className="py-10 items-center">
@@ -283,7 +204,13 @@ export default function BillsScreen() {
         onEndReachedThreshold={0.5}
         ListFooterComponent={isFetchingNextPage ? <ActivityIndicator className="my-4" /> : null}
       />
+      
+      <PrinterSettingsModal 
+        visible={printerModalVisible} 
+        onClose={() => setPrinterModalVisible(false)} 
+      />
       {receiptImagePrintBridge}
     </View>
   );
-}
+  
+};

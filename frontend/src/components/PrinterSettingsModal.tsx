@@ -8,8 +8,9 @@ import {
   getPrinterSupportState,
   loadBluetoothPrinters,
   connectPrinterDevice,
-  printTestReceipt
+  DeliveryReceiptData
 } from '../utils/printer';
+import { useReceiptImagePrintJob } from '../hooks/use-receipt-image-print-job';
 
 interface Props {
   visible: boolean;
@@ -21,6 +22,8 @@ export default function PrinterSettingsModal({ visible, onClose }: Props) {
   const [devices, setDevices] = useState<PrinterDevice[]>([]);
   const [loading, setLoading] = useState(false);
   const [connectingId, setConnectingId] = useState<string | null>(null);
+
+  const { receiptImagePrintBridge, startReceiptImagePrintJob } = useReceiptImagePrintJob();
 
   const supportState = getPrinterSupportState();
 
@@ -59,10 +62,39 @@ export default function PrinterSettingsModal({ visible, onClose }: Props) {
     }
   };
 
+  const handleReconnect = async () => {
+    if (!preferredPrinter) return;
+    try {
+      setConnectingId('reconnect');
+      await connectPrinterDevice(preferredPrinter);
+      Alert.alert("Success", `Reconnected to ${preferredPrinter.name}`);
+    } catch (e: any) {
+      Alert.alert("Connection Failed", e.message || "Could not connect to printer");
+    } finally {
+      setConnectingId(null);
+    }
+  };
+
   const handleTestPrint = async () => {
     if (!preferredPrinter) return;
     try {
-      await printTestReceipt(preferredPrinter);
+      const dummyData: DeliveryReceiptData = {
+        receipt_number: "TEST",
+        receipt_type: "TEST",
+        date: new Date().toISOString(),
+        agency_name: "PRINTER CONNECTED",
+        agency_address: `Name: ${preferredPrinter.name || "Unknown"}`,
+        agency_mobile: preferredPrinter.address ? `Address: ${preferredPrinter.address}` : "",
+        buyer_name: "",
+        buyer_address: "",
+        items: [],
+        total_bill: 0,
+        cash_collected: 0,
+        upi_collected: 0,
+        opening_balance: 0,
+        closing_balance: 0,
+      };
+      await startReceiptImagePrintJob([dummyData], preferredPrinter);
       Alert.alert("Success", "Test receipt sent!");
     } catch (e: any) {
       Alert.alert("Print Failed", e.message || "Could not print test receipt");
@@ -71,6 +103,7 @@ export default function PrinterSettingsModal({ visible, onClose }: Props) {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+      {receiptImagePrintBridge}
       <SafeAreaView className="flex-1 bg-zinc-50">
         <View className="flex-row items-center justify-between p-4 border-b border-zinc-200 bg-white">
           <Text className="text-lg font-bold text-zinc-900">Printer Settings</Text>
@@ -84,18 +117,31 @@ export default function PrinterSettingsModal({ visible, onClose }: Props) {
             <Text className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Saved Printer</Text>
             {preferredPrinter ? (
               <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center gap-3">
+                <View className="flex-row items-center gap-3 shrink mr-2">
                   <View className="bg-green-100 p-2 rounded-lg">
                     <Ionicons name="checkmark-circle" size={24} color="#16a34a" />
                   </View>
-                  <View>
-                    <Text className="text-zinc-900 font-bold">{preferredPrinter.name}</Text>
-                    <Text className="text-zinc-500 text-xs">{preferredPrinter.address}</Text>
+                  <View className="shrink">
+                    <Text className="text-zinc-900 font-bold" numberOfLines={1}>{preferredPrinter.name}</Text>
+                    <Text className="text-zinc-500 text-xs" numberOfLines={1}>{preferredPrinter.address}</Text>
                   </View>
                 </View>
-                <TouchableOpacity onPress={handleTestPrint} className="bg-zinc-100 px-3 py-2 rounded-lg">
-                  <Text className="text-blue-600 font-bold text-xs">Test Print</Text>
-                </TouchableOpacity>
+                <View className="flex-row gap-2">
+                  <TouchableOpacity 
+                    onPress={handleReconnect} 
+                    disabled={connectingId === 'reconnect'}
+                    className="bg-blue-100 px-3 py-2 rounded-lg items-center justify-center min-w-[80px]"
+                  >
+                    {connectingId === 'reconnect' ? (
+                      <ActivityIndicator size="small" color="#2563eb" />
+                    ) : (
+                      <Text className="text-blue-700 font-bold text-xs">Reconnect</Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleTestPrint} className="bg-zinc-100 px-3 py-2 rounded-lg items-center justify-center">
+                    <Text className="text-zinc-700 font-bold text-xs">Test Print</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ) : (
               <Text className="text-zinc-500">No printer configured yet.</Text>

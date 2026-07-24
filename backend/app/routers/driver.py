@@ -89,6 +89,8 @@ async def create_delivery_entry(
             upi_collected=bill_in.upi_collected,
             timestamp=bill_timestamp,
             idempotency_key=x_idempotency_key,
+            opening_balance=float(buyer.balance_pending) if buyer else 0.0,
+            closing_balance=0.0,
         )
         db.add(bill)
         
@@ -153,6 +155,9 @@ async def create_delivery_entry(
         if buyer:
             buyer.balance_pending = float(buyer.balance_pending) + total_bill
             buyer.balance_pending = float(buyer.balance_pending) - (bill_in.cash_collected + bill_in.upi_collected)
+            bill.closing_balance = float(buyer.balance_pending)
+        else:
+            bill.closing_balance = 0.0
             
     await db.flush()
     # Capture ID before commit
@@ -275,11 +280,14 @@ async def create_debt_collection(
             upi_collected=collection_in.upi_collected,
             timestamp=bill_timestamp,
             idempotency_key=x_idempotency_key,
+            opening_balance=float(buyer.balance_pending),
+            closing_balance=0.0,
         )
         db.add(bill)
 
         # Update Buyer Balances
         buyer.balance_pending = float(buyer.balance_pending) - (collection_in.cash_collected + collection_in.upi_collected)
+        bill.closing_balance = float(buyer.balance_pending)
 
     await db.flush()
     bill_id = bill.id
@@ -291,3 +299,69 @@ async def create_debt_collection(
         .where(DeliveryBill.id == bill_id)
     )
     return final_bill
+
+
+@router.get("/entries/{bill_id}/pdf")
+async def generate_delivery_pdf_endpoint(
+    bill_id: int,
+    db: AsyncSession = Depends(get_tenant_db),
+    # Note: Drivers can access their own PDFs, or admins can access all. For now, basic auth is enough.
+):
+    from fastapi.responses import StreamingResponse
+    from app.services.reports.delivery_pdf import generate_delivery_pdf, DeliveryPdfData, DeliveryPdfItemData
+    
+    bill = await db.scalar(
+        select(DeliveryBill)
+        .options(
+            joinedload(DeliveryBill.buyer), 
+            selectinload(DeliveryBill.items).joinedload(DeliveryItem.item)
+        )
+        .where(DeliveryBill.id == bill_id)
+    )
+    
+    if not bill:
+        raise HTTPException(status_code=404, detail="Bill not found")
+        
+    buyer_name = bill.buyer.name if bill.buyer else (bill.adhoc_buyer_name or "Cash Sale")
+    buyer_address = bill.buyer.address if bill.buyer and bill.buyer.address else "-"
+    buyer_phone = bill.buyer.phone if bill.buyer and bill.buyer.phone else "-"
+    
+    date_display_text = bill.timestamp.strftime("%d-%m-%Y %I:%M %p")
+    bill_no = bill.bill_number or str(bill.id)
+    
+    pdf_items = []
+    for entry in bill.items:
+        pdf_items.append(DeliveryPdfItemData(
+            item_name=entry.item.name,
+            full_qty=entry.full_delivered,
+            empty_qty=entry.empty_received,
+            rate=float(entry.unit_price_at_delivery),
+            amount=float(entry.line_total_amount)
+        ))
+        
+    data = DeliveryPdfData(
+        org_name="Sree Hari Agencies",
+        org_gstin="33XXXXX1234X1Z5",
+        org_address="123, Main Road, City - 600000",
+        org_phone="+91 9876543210",
+        buyer_name=buyer_name,
+        buyer_address=buyer_address,
+        buyer_phone=buyer_phone,
+        date_display_text=date_display_text,
+        bill_no=bill_no,
+        items=pdf_items,
+        total_bill_amount=float(bill.total_bill_amount),
+        cash_collected=float(bill.cash_collected),
+        upi_collected=float(bill.upi_collected),
+        opening_balance=float(bill.opening_balance),
+        closing_balance=float(bill.closing_balance)
+    )
+    
+    pdf_buffer = generate_delivery_pdf(data)
+    
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=Bill_{bill_no}.pdf"}
+    )
+

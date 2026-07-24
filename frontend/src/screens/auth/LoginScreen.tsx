@@ -41,21 +41,24 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-zinc-900 justify-center items-center px-6"
+      className="flex-1 bg-zinc-50 justify-center items-center px-4"
     >
-      <View className="w-full max-w-sm space-y-6">
+      <View className="w-full max-w-sm bg-white p-8 rounded-[32px] shadow-sm border border-zinc-100">
         <View className="items-center mb-8">
-          <Text className="text-4xl font-bold text-white mb-2 tracking-tight">Duro Tracker</Text>
-          <Text className="text-zinc-400 text-base">Sign in to your account</Text>
+          <View className="w-16 h-16 bg-blue-50 rounded-2xl items-center justify-center mb-4 border border-blue-100">
+            <Text className="text-blue-600 text-2xl font-bold">DT</Text>
+          </View>
+          <Text className="text-3xl font-bold text-zinc-900 mb-2 tracking-tight">Duro Tracker</Text>
+          <Text className="text-zinc-500 text-sm font-medium">Sign in to continue</Text>
         </View>
 
         <View className="space-y-4">
           <View>
-            <Text className="text-zinc-400 text-sm mb-1.5 font-medium">Username</Text>
+            <Text className="text-zinc-700 text-xs mb-1.5 font-bold uppercase tracking-wider pl-1">Username</Text>
             <TextInput
-              className="bg-zinc-800 text-white px-4 py-3.5 rounded-xl border border-zinc-700 focus:border-blue-500"
+              className="bg-zinc-50 text-zinc-900 px-4 py-3.5 rounded-xl border border-zinc-200 focus:border-blue-500 focus:bg-white"
               placeholder="Enter your username"
-              placeholderTextColor="#71717a"
+              placeholderTextColor="#a1a1aa"
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
@@ -64,11 +67,11 @@ export default function LoginScreen() {
           </View>
 
           <View>
-            <Text className="text-zinc-400 text-sm mb-1.5 font-medium">Password</Text>
+            <Text className="text-zinc-700 text-xs mb-1.5 font-bold uppercase tracking-wider pl-1 mt-3">Password</Text>
             <TextInput
-              className="bg-zinc-800 text-white px-4 py-3.5 rounded-xl border border-zinc-700 focus:border-blue-500"
+              className="bg-zinc-50 text-zinc-900 px-4 py-3.5 rounded-xl border border-zinc-200 focus:border-blue-500 focus:bg-white"
               placeholder="Enter your password"
-              placeholderTextColor="#71717a"
+              placeholderTextColor="#a1a1aa"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -77,7 +80,7 @@ export default function LoginScreen() {
         </View>
 
         <TouchableOpacity 
-          className="w-full py-4 rounded-xl items-center mt-6"
+          className="w-full py-4 rounded-xl items-center mt-8 active:opacity-80"
           style={{ backgroundColor: isLoading ? 'rgba(37, 99, 235, 0.5)' : '#2563eb' }}
           onPress={handleLogin}
           disabled={isLoading}
@@ -85,7 +88,7 @@ export default function LoginScreen() {
           {isLoading ? (
             <ActivityIndicator color="white" />
           ) : (
-            <Text className="text-white font-semibold text-lg">Sign In</Text>
+            <Text className="text-white font-bold text-base tracking-wide">Sign In</Text>
           )}
         </TouchableOpacity>
       </View>

@@ -14,7 +14,7 @@ import { useReceiptImagePrintJob } from '../../hooks/use-receipt-image-print-job
 
 interface Item { id: string; name: string; price: number; capacity_kg?: number; current_full?: number; current_empty?: number; }
 interface BuyerInventory { item_id: string; cylinders_pending: number; }
-interface Buyer { id: string; name: string; price_per_kg?: number; balance_pending?: number; address?: string; inventory?: BuyerInventory[]; }
+interface Buyer { id: string; name: string; phone?: string; price_per_kg?: number; balance_pending?: number; address?: string; inventory?: BuyerInventory[]; }
 
 interface CartItem {
   item: Item;
@@ -43,6 +43,8 @@ export default function DeliveryScreen() {
   const [buyerModalVisible, setBuyerModalVisible] = useState(false);
   const [itemModalVisible, setItemModalVisible] = useState(false);
   const [printerModalVisible, setPrinterModalVisible] = useState(false);
+  const [buyerSearchQuery, setBuyerSearchQuery] = useState('');
+  const [itemSearchQuery, setItemSearchQuery] = useState('');
 
   // Custom Alert State
   const [alertVisible, setAlertVisible] = useState(false);
@@ -60,8 +62,12 @@ export default function DeliveryScreen() {
   );
 
   const handleRefresh = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['driver_items'] });
-    queryClient.invalidateQueries({ queryKey: ['driver_buyers'] });
+    queryClient.resetQueries();
+    setCartItems([]);
+    setBuyerId('');
+    setItemId('');
+    setCashCollected('');
+    setUpiCollected('');
   }, [queryClient]);
 
   useLayoutEffect(() => {
@@ -114,10 +120,23 @@ export default function DeliveryScreen() {
       showAlert("Required", "Please select an item.", "info");
       return;
     }
-    const full = parseInt(fullDelivered || '0');
-    const empty = parseInt(emptyReceived || '0');
+    const full = parseInt(fullDelivered || '0', 10);
+    const empty = parseInt(emptyReceived || '0', 10);
+
+    if (full < 0 || empty < 0) {
+      showAlert("Invalid Quantity", "Delivered and received quantities cannot be negative.", "error");
+      return;
+    }
+
     if (full === 0 && empty === 0) {
-      showAlert("Required", "Please enter either full delivered or empty received.", "info");
+      showAlert("Required", "Please enter delivered or received quantity.", "info");
+      return;
+    }
+
+    const unitPrice = getUnitPrice(selectedItem);
+    
+    if (full > 0 && unitPrice <= 0) {
+      showAlert("Price Not Set", `The price for this buyer has not been set by the admin. Cannot bill.`, "error");
       return;
     }
 
@@ -136,7 +155,6 @@ export default function DeliveryScreen() {
       return;
     }
 
-    const unitPrice = getUnitPrice(selectedItem);
     const lineTotal = parseFloat((unitPrice * full).toFixed(2));
 
     setCartItems(prev => [...prev, {
@@ -402,6 +420,11 @@ export default function DeliveryScreen() {
             const upi = parseFloat(upiCollected || '0');
             const total = parseFloat(totalBill);
             
+            if (cash < 0 || upi < 0) {
+              showAlert("Invalid Payment", "Payment amounts cannot be negative.", "error");
+              return;
+            }
+            
             if (cash + upi > total) {
               showAlert("Invalid Payment", "Total collected amount cannot exceed the bill amount.");
               return;
@@ -434,24 +457,83 @@ export default function DeliveryScreen() {
 
       {/* Buyer Modal */}
       <Modal visible={buyerModalVisible} transparent={true} animationType="slide">
-        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
-          <View className="bg-white rounded-t-3xl h-3/4 p-4">
+        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <View className="bg-white rounded-t-[32px] h-3/4 p-4 pt-3 shadow-2xl">
+            <View className="w-12 h-1.5 bg-zinc-200 rounded-full self-center mb-4" />
             <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-xl font-bold text-zinc-800">Select Buyer</Text>
-              <TouchableOpacity onPress={() => setBuyerModalVisible(false)} className="p-2 bg-zinc-100 rounded-full">
-                <Ionicons name="close" size={24} color="#52525b" />
+              <Text className="text-xl font-bold text-zinc-900">Select Buyer</Text>
+              <TouchableOpacity onPress={() => setBuyerModalVisible(false)} className="p-2 bg-zinc-50 rounded-full border border-zinc-100">
+                <Ionicons name="close" size={20} color="#52525b" />
               </TouchableOpacity>
             </View>
+            <View className="flex-row items-center bg-zinc-50 rounded-2xl px-4 py-3 mb-4 border border-zinc-100">
+              <Ionicons name="search" size={20} color="#a1a1aa" />
+              <TextInput 
+                className="flex-1 ml-2 text-base text-zinc-800"
+                placeholder="Search buyers..."
+                placeholderTextColor="#a1a1aa"
+                value={buyerSearchQuery}
+                onChangeText={setBuyerSearchQuery}
+              />
+            </View>
             <ScrollView showsVerticalScrollIndicator={false}>
-              {buyers?.map(b => (
-                <TouchableOpacity 
-                  key={b.id} 
-                  className="py-4 border-b border-zinc-100"
-                  onPress={() => { setBuyerId(b.id); setBuyerModalVisible(false); }}
-                >
-                  <Text className="text-lg" style={{ color: buyerId === b.id ? '#2563eb' : '#3f3f46', fontWeight: buyerId === b.id ? 'bold' : 'normal' }}>{b.name}</Text>
-                </TouchableOpacity>
-              ))}
+              {buyers?.filter(b => b.name.toLowerCase().includes(buyerSearchQuery.toLowerCase())).length === 0 ? (
+                <View className="items-center justify-center py-12">
+                  <Ionicons name="search-outline" size={48} color="#e4e4e7" />
+                  <Text className="text-zinc-500 font-medium mt-4">No buyers found</Text>
+                </View>
+              ) : (
+                buyers?.filter(b => b.name.toLowerCase().includes(buyerSearchQuery.toLowerCase())).map(b => (
+                  <TouchableOpacity 
+                    key={b.id} 
+                    className={`p-4 mb-3 rounded-2xl active:opacity-80 ${buyerId === b.id ? 'bg-blue-50 border border-blue-200' : 'bg-white border border-zinc-100 shadow-sm'}`}
+                    onPress={() => { setBuyerId(b.id); setBuyerModalVisible(false); }}
+                  >
+                    <View className="flex-row justify-between items-start mb-2">
+                      <Text className={`text-base font-bold ${buyerId === b.id ? 'text-blue-800' : 'text-zinc-900'}`}>{b.name}</Text>
+                      <Text className={`font-bold text-sm ${buyerId === b.id ? 'text-blue-600' : 'text-zinc-500'}`}>₹ {b.balance_pending?.toFixed(2) || '0.00'}</Text>
+                    </View>
+                    
+                    {b.phone || b.address ? (
+                      <View className="flex-row flex-wrap items-center gap-x-3 mb-2">
+                        {b.phone ? (
+                          <View className="flex-row items-center">
+                            <Ionicons name="call" size={12} color={buyerId === b.id ? "#60a5fa" : "#a1a1aa"} className="mr-1" />
+                            <Text className={`text-xs ${buyerId === b.id ? 'text-blue-600' : 'text-zinc-500'}`}>{b.phone}</Text>
+                          </View>
+                        ) : null}
+                        {b.address ? (
+                          <View className="flex-row items-center">
+                            <Ionicons name="location" size={12} color={buyerId === b.id ? "#60a5fa" : "#a1a1aa"} className="mr-1" />
+                            <Text className={`text-xs ${buyerId === b.id ? 'text-blue-600' : 'text-zinc-500'}`}>{b.address}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    ) : null}
+                    
+                    {/* Cylinder Holding Section */}
+                    <View className={`rounded-xl p-2.5 mt-1 flex-row flex-wrap gap-2 ${buyerId === b.id ? 'bg-white/60' : 'bg-zinc-50 border border-zinc-100'}`}>
+                      <Ionicons name="layers" size={14} color={buyerId === b.id ? "#3b82f6" : "#71717a"} className="mr-1 mt-0.5" />
+                      {b.inventory && b.inventory.length > 0 && b.inventory.some(inv => inv.cylinders_pending > 0) ? (
+                        <View className="flex-1 flex-row flex-wrap gap-x-3 gap-y-1">
+                          {b.inventory.map((inv, idx) => {
+                            const itemName = items?.find(i => i.id === inv.item_id)?.name || 'Unknown';
+                            if (inv.cylinders_pending === 0) return null;
+                            return (
+                              <View key={idx} className="flex-row items-center">
+                                <Text className={`text-xs mr-1 ${buyerId === b.id ? 'text-blue-700' : 'text-zinc-500'}`}>{itemName}:</Text>
+                                <Text className={`font-bold text-xs ${buyerId === b.id ? 'text-blue-900' : 'text-zinc-800'}`}>{inv.cylinders_pending}</Text>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      ) : (
+                        <Text className={`text-xs italic ${buyerId === b.id ? 'text-blue-600' : 'text-zinc-400'}`}>No cylinders held</Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
               <View className="h-10" />
             </ScrollView>
           </View>
@@ -460,28 +542,53 @@ export default function DeliveryScreen() {
 
       {/* Item Modal */}
       <Modal visible={itemModalVisible} transparent={true} animationType="slide">
-        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
-          <View className="bg-white rounded-t-3xl h-2/3 p-4">
+        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <View className="bg-white rounded-t-[32px] h-3/4 p-4 pt-3 shadow-2xl">
+            <View className="w-12 h-1.5 bg-zinc-200 rounded-full self-center mb-4" />
             <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-xl font-bold text-zinc-800">Select Item</Text>
-              <TouchableOpacity onPress={() => setItemModalVisible(false)} className="p-2 bg-zinc-100 rounded-full">
-                <Ionicons name="close" size={24} color="#52525b" />
+              <Text className="text-xl font-bold text-zinc-900">Select Item</Text>
+              <TouchableOpacity onPress={() => setItemModalVisible(false)} className="p-2 bg-zinc-50 rounded-full border border-zinc-100">
+                <Ionicons name="close" size={20} color="#52525b" />
               </TouchableOpacity>
             </View>
+            <View className="flex-row items-center bg-zinc-50 rounded-2xl px-4 py-3 mb-4 border border-zinc-100">
+              <Ionicons name="search" size={20} color="#a1a1aa" />
+              <TextInput 
+                className="flex-1 ml-2 text-base text-zinc-800"
+                placeholder="Search items..."
+                placeholderTextColor="#a1a1aa"
+                value={itemSearchQuery}
+                onChangeText={setItemSearchQuery}
+              />
+            </View>
             <ScrollView showsVerticalScrollIndicator={false}>
-              {items?.map(i => {
-                const itemPrice = getUnitPrice(i);
-                return (
-                  <TouchableOpacity 
-                    key={i.id} 
-                    className="py-4 border-b border-zinc-100 flex-row justify-between items-center"
-                    onPress={() => { setItemId(i.id); setItemModalVisible(false); }}
-                  >
-                    <Text className="text-lg" style={{ color: itemId === i.id ? '#2563eb' : '#3f3f46', fontWeight: itemId === i.id ? 'bold' : 'normal' }}>{i.name}</Text>
-                    <Text className="text-zinc-500">₹{itemPrice}</Text>
-                  </TouchableOpacity>
-                );
-              })}
+              {items?.filter(i => i.name.toLowerCase().includes(itemSearchQuery.toLowerCase())).length === 0 ? (
+                <View className="items-center justify-center py-12">
+                  <Ionicons name="search-outline" size={48} color="#e4e4e7" />
+                  <Text className="text-zinc-500 font-medium mt-4">No items found</Text>
+                </View>
+              ) : (
+                items?.filter(i => i.name.toLowerCase().includes(itemSearchQuery.toLowerCase())).map(i => {
+                  const itemPrice = getUnitPrice(i);
+                  return (
+                    <TouchableOpacity 
+                      key={i.id} 
+                      className={`p-4 mb-3 rounded-2xl flex-row items-center border active:opacity-80 shadow-sm ${itemId === i.id ? 'bg-blue-50 border-blue-200' : 'bg-white border-zinc-100'}`}
+                      onPress={() => { setItemId(i.id); setItemModalVisible(false); }}
+                    >
+                      <View className="flex-1">
+                        <Text className={`text-base font-bold ${itemId === i.id ? 'text-blue-800' : 'text-zinc-900'}`}>{i.name}</Text>
+                        <View className="flex-row items-center mt-1">
+                          {i.capacity_kg ? <Text className="text-zinc-500 text-xs mr-2">{i.capacity_kg} kg</Text> : null}
+                        </View>
+                      </View>
+                      <View className={`px-3 py-1.5 rounded-full ${itemId === i.id ? 'bg-blue-100' : 'bg-zinc-100'}`}>
+                        <Text className={`font-bold text-sm ${itemId === i.id ? 'text-blue-800' : 'text-zinc-700'}`}>₹{itemPrice}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
               <View className="h-10" />
             </ScrollView>
           </View>

@@ -13,6 +13,7 @@ type ReceiptExportItem = {
 };
 
 type ReceiptExportPayload = {
+  isTestReceipt?: boolean;
   companyName: string;
   shopName: string;
   mobileText: string;
@@ -88,14 +89,16 @@ export function buildReceiptExportPayload(data: DeliveryReceiptData): ReceiptExp
   }));
 
   const isPayment = data.receipt_type === 'PAYMENT';
+  const isTestReceipt = data.receipt_type === 'TEST';
 
   return {
-    companyName: data.agency_name || "Sree Hari Agencies",
-    shopName: data.agency_address || "Namakkal",
-    mobileText: `Mobile: ${data.agency_mobile || "N/A"}`,
-    receiptTitleText: isPayment ? "PAYMENT RECEIPT" : undefined,
-    receiptNumberText: `${isPayment ? 'Receipt No' : 'Bill No'}: ${data.receipt_number}`,
-    dateText: `Date: ${format(new Date(data.date), "dd-MMM-yyyy hh:mm a")}`,
+    isTestReceipt,
+    companyName: isTestReceipt ? data.agency_name || "" : data.agency_name || "Sree Hari Agencies",
+    shopName: isTestReceipt ? data.agency_address || "" : data.agency_address || "Namakkal",
+    mobileText: isTestReceipt ? (data.agency_mobile || "") : `Mobile: ${data.agency_mobile || "N/A"}`,
+    receiptTitleText: isTestReceipt ? undefined : (isPayment ? "PAYMENT RECEIPT" : undefined),
+    receiptNumberText: isTestReceipt ? "" : `${isPayment ? 'Receipt No' : 'Bill No'}: ${data.receipt_number}`,
+    dateText: isTestReceipt ? `Date & Time: ${format(new Date(data.date), "dd-MMM-yyyy hh:mm a")}` : `Date: ${format(new Date(data.date), "dd-MMM-yyyy hh:mm a")}`,
     toText: isPayment ? "Customer:" : "To:",
     buyerName: data.buyer_name,
     buyerShopName: data.buyer_address,
@@ -392,9 +395,30 @@ function buildReceiptImageExportScript() {
                   lineHeightRatio: 1.15,
                 }).height;
                 y += 10;
+
+                if (payload.isTestReceipt) {
+                  y += drawWrappedText(measureContext, payload.dateText, 0, y, receiptWidth, {
+                    size: 17,
+                    weight: 700,
+                    align: "center",
+                    lineHeightRatio: 1.15,
+                  }).height;
+                  y += 10;
+                }
+
                 y += 7; // divider
 
-                if (payload.receiptTitleText) {
+                if (payload.isTestReceipt) {
+                  y += drawWrappedText(measureContext, "Ready to print", 0, y, receiptWidth, {
+                    size: 19,
+                    weight: 800,
+                    align: "center",
+                    lineHeightRatio: 1.15,
+                  }).height;
+                  y += 10;
+                  y += 7; // divider
+                } else {
+                  if (payload.receiptTitleText) {
                   y += 7;
                   y += drawWrappedText(measureContext, payload.receiptTitleText, 0, y, receiptWidth, {
                     size: 21,
@@ -469,53 +493,57 @@ function buildReceiptImageExportScript() {
 
                 y += 7;
 
-                var headerHeight = getLineHeight(16, 1.2);
-                y += headerHeight;
-                y += 7; // divider
+                if (payload.items && payload.items.length > 0) {
+                  var headerHeight = getLineHeight(16, 1.2);
+                  y += headerHeight;
+                  y += 7; // divider
 
-                for (var itemIndex = 0; itemIndex < payload.items.length; itemIndex += 1) {
-                  var item = payload.items[itemIndex];
-                  var itemNameLines = wrapText(measureContext, item.itemName, columnItemWidth - 6);
-                  var itemNameHeight = itemNameLines.length * getLineHeight(18, 1.3);
-                  var qtyHeight = getLineHeight(18, 1.15);
-                  var totalHeight = measureFittedTextHeight(measureContext, item.lineTotal, columnTotalWidth, {
-                    size: 21,
-                    weight: 800,
-                    lineHeightRatio: 1.15,
-                  });
-                  var rowHeight = Math.max(itemNameHeight, qtyHeight, totalHeight);
+                  for (var itemIndex = 0; itemIndex < payload.items.length; itemIndex += 1) {
+                    var item = payload.items[itemIndex];
+                    var itemNameLines = wrapText(measureContext, item.itemName, columnItemWidth - 6);
+                    var itemNameHeight = itemNameLines.length * getLineHeight(18, 1.3);
+                    var qtyHeight = getLineHeight(18, 1.15);
+                    var totalHeight = measureFittedTextHeight(measureContext, item.lineTotal, columnTotalWidth, {
+                      size: 21,
+                      weight: 800,
+                      lineHeightRatio: 1.15,
+                    });
+                    var rowHeight = Math.max(itemNameHeight, qtyHeight, totalHeight);
 
-                  y += 8;
-                  y += rowHeight;
-                  y += 8;
+                    y += 8;
+                    y += rowHeight;
+                    y += 8;
+                  }
+
+                  y += 10;
+                  y += 7; // divider
                 }
 
-                y += 10;
-                y += 7; // divider
+                function measureTotalRow(label, value, fontSize, fontWeight) {
+                  if (!label) return 0;
+                  var labelBlock = drawWrappedText(measureContext, label, 0, 0, totalLabelWidth, {
+                    size: fontSize,
+                    weight: fontWeight,
+                    align: "left",
+                    lineHeightRatio: 1.3,
+                  });
+                  var valueHeight = measureFittedTextHeight(measureContext, value, totalValueWidth, {
+                    size: fontSize,
+                    weight: fontWeight,
+                    lineHeightRatio: 1.3,
+                  });
+                  return Math.max(labelBlock.height, valueHeight);
+                }
 
-                y += measureFittedTextHeight(measureContext, payload.totalValue, totalValueWidth, {
-                  size: 20,
-                  weight: 800,
-                  lineHeightRatio: 1.3,
-                });
-                y += 8;
-                y += measureFittedTextHeight(measureContext, payload.cashValue, totalValueWidth, {
-                  size: 18,
-                  weight: 700,
-                  lineHeightRatio: 1.3,
-                });
-                y += 8;
-                y += measureFittedTextHeight(measureContext, payload.upiValue, totalValueWidth, {
-                  size: 18,
-                  weight: 700,
-                  lineHeightRatio: 1.3,
-                });
-                y += 8;
-                y += measureFittedTextHeight(measureContext, payload.balanceAmountValue, totalValueWidth, {
-                  size: 20,
-                  weight: 800,
-                  lineHeightRatio: 1.2,
-                });
+                var rowH;
+                rowH = measureTotalRow(payload.totalLabel, payload.totalValue, 20, 800);
+                if (rowH > 0) y += rowH + 8;
+                rowH = measureTotalRow(payload.cashLabel, payload.cashValue, 18, 700);
+                if (rowH > 0) y += rowH + 8;
+                rowH = measureTotalRow(payload.upiLabel, payload.upiValue, 18, 700);
+                if (rowH > 0) y += rowH + 8;
+                rowH = measureTotalRow(payload.balanceAmountLabel, payload.balanceAmountValue, 20, 800);
+                if (rowH > 0) y += rowH;
                 y += 10;
                 y += 7; // divider
 
@@ -543,7 +571,7 @@ function buildReceiptImageExportScript() {
                     var cb = payload.cylinderBalances[cIndex];
                     var combinedText = cb.name + " - Given: " + (cb.given || 0) + " Taken: " + (cb.taken || 0) + " Hold: " + cb.count;
                     y += drawWrappedText(measureContext, combinedText, 0, y, receiptWidth, {
-                      size: 16,
+                      size: 17,
                       weight: 700,
                       align: "center",
                       lineHeightRatio: 1.2,
@@ -553,6 +581,7 @@ function buildReceiptImageExportScript() {
                   y += 10;
                   y += 7; // divider
                 }
+                } // End if !payload.isTestReceipt
 
                 y += 18;
 
@@ -627,6 +656,16 @@ function buildReceiptImageExportScript() {
               }).height;
               y += 10;
 
+              if (payload.isTestReceipt) {
+                y += drawWrappedText(context, payload.dateText, 0, y, receiptWidth, {
+                  size: 17,
+                  weight: 700,
+                  align: "center",
+                  lineHeightRatio: 1.15,
+                }).height;
+                y += 10;
+              }
+
               context.lineWidth = 1.5;
               context.setLineDash([6, 4]);
               context.beginPath();
@@ -636,7 +675,25 @@ function buildReceiptImageExportScript() {
               context.setLineDash([]);
               y += 7;
 
-              if (payload.receiptTitleText) {
+              if (payload.isTestReceipt) {
+                y += drawWrappedText(context, "Ready to print", 0, y, receiptWidth, {
+                  size: 19,
+                  weight: 800,
+                  align: "center",
+                  lineHeightRatio: 1.15,
+                }).height;
+                y += 10;
+
+                context.lineWidth = 1.5;
+                context.setLineDash([6, 4]);
+                context.beginPath();
+                context.moveTo(0, y);
+                context.lineTo(receiptWidth, y);
+                context.stroke();
+                context.setLineDash([]);
+                y += 7;
+              } else {
+                if (payload.receiptTitleText) {
                 y += 7;
                 y += drawWrappedText(context, payload.receiptTitleText, 0, y, receiptWidth, {
                   size: 21,
@@ -879,7 +936,7 @@ function buildReceiptImageExportScript() {
                   var cb = payload.cylinderBalances[cIndex];
                   var combinedText = cb.name + " - Given: " + (cb.given || 0) + " Taken: " + (cb.taken || 0) + " Hold: " + cb.count;
                   y += drawWrappedText(context, combinedText, 0, y, receiptWidth, {
-                    size: 16,
+                    size: 17,
                     weight: 700,
                     align: "center",
                     lineHeightRatio: 1.2,
@@ -897,6 +954,7 @@ function buildReceiptImageExportScript() {
                 context.setLineDash([]);
                 y += 10;
               }
+              } // End if !payload.isTestReceipt
 
               y += 18;
 

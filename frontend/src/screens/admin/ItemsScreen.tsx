@@ -104,13 +104,8 @@ export default function ItemsScreen() {
 
   const renderItemCard = ({ item }: { item: Item }) => {
     return (
-      <View className="bg-white rounded-[24px] p-3 border border-slate-200 mb-4">
+      <View className="bg-white rounded-[24px] p-3 border border-slate-100 mb-4 shadow-sm">
         <View className="flex flex-row gap-3">
-          {/* Thumbnail Placeholder */}
-          <View className="w-[84px] h-[84px] bg-slate-100 rounded-xl items-center justify-center border border-slate-200">
-            <PackageOpen size={32} color="#94a3b8" />
-          </View>
-          
           {/* Details */}
           <View className="flex-1 flex flex-col gap-2.5">
             {/* Header Row */}
@@ -142,7 +137,7 @@ export default function ItemsScreen() {
             <View className="flex flex-row gap-2 mt-1">
               <Pressable 
                 onPress={() => openEditModal(item)}
-                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-2 items-center justify-center flex flex-row gap-1 active:bg-slate-100"
+                className="px-4 py-3 bg-rose-50 border border-rose-100 rounded-xl flex-1 items-center justify-center flex flex-row gap-1 active:bg-slate-100"
               >
                 <Edit2 size={14} color="#475569" />
                 <Text className="text-slate-700 text-xs font-bold">Edit</Text>
@@ -175,7 +170,7 @@ export default function ItemsScreen() {
         <Pressable 
           onPress={() => refetchItems()}
           disabled={isItemsRefetching}
-          className="p-2.5 bg-white border border-gray-200 rounded-xl active:bg-slate-50 shadow-sm"
+          className="px-4 py-3 bg-white border border-slate-200 rounded-xl active:bg-slate-50 shadow-sm"
           style={{ opacity: isItemsRefetching ? 0.5 : 1 }}
         >
           <RefreshCw size={20} color="#475569" />
@@ -237,7 +232,7 @@ export default function ItemsScreen() {
                     placeholder="e.g. 19kg Commercial"
                     value={newName}
                     onChangeText={setNewName}
-                    className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50"
+                    className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 text-sm text-slate-900"
                   />
                 </View>
                 <View className="flex-[1]">
@@ -247,7 +242,7 @@ export default function ItemsScreen() {
                     keyboardType="numeric"
                     value={newCapacity}
                     onChangeText={setNewCapacity}
-                    className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50 font-mono"
+                    className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 text-sm text-slate-900 font-mono"
                   />
                 </View>
               </View>
@@ -260,7 +255,7 @@ export default function ItemsScreen() {
                     keyboardType="numeric"
                     value={newHsnCode}
                     onChangeText={setNewHsnCode}
-                    className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50 font-mono"
+                    className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 text-sm text-slate-900 font-mono"
                   />
                 </View>
                 <View className="flex-1">
@@ -270,7 +265,7 @@ export default function ItemsScreen() {
                     keyboardType="numeric"
                     value={newGstPercent}
                     onChangeText={setNewGstPercent}
-                    className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50 font-mono"
+                    className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 text-sm text-slate-900 font-mono"
                   />
                 </View>
               </View>
@@ -335,7 +330,7 @@ export default function ItemsScreen() {
                     placeholder="e.g. 19kg Commercial"
                     value={editName}
                     onChangeText={setEditName}
-                    className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50"
+                    className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 text-sm text-slate-900"
                   />
                 </View>
                 <View className="flex-[1]">
@@ -345,7 +340,7 @@ export default function ItemsScreen() {
                     keyboardType="numeric"
                     value={editCapacity}
                     onChangeText={setEditCapacity}
-                    className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50 font-mono"
+                    className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 text-sm text-slate-900 font-mono"
                   />
                 </View>
               </View>
@@ -358,7 +353,7 @@ export default function ItemsScreen() {
                     keyboardType="numeric"
                     value={editHsnCode}
                     onChangeText={setEditHsnCode}
-                    className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50 font-mono"
+                    className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 text-sm text-slate-900 font-mono"
                   />
                 </View>
                 <View className="flex-1">
@@ -368,7 +363,7 @@ export default function ItemsScreen() {
                     keyboardType="numeric"
                     value={editGstPercent}
                     onChangeText={setEditGstPercent}
-                    className="w-full rounded-xl border-gray-300 border px-4 py-3 text-sm text-slate-900 bg-slate-50 font-mono"
+                    className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 text-sm text-slate-900 font-mono"
                   />
                 </View>
               </View>

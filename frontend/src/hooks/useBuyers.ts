@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
 import type { Buyer, BuyerCreate, BuyerUpdate } from '../types/api';
 
@@ -61,6 +61,27 @@ export interface GlobalBill {
   fullGiven: number;
   emptyCollected: number;
   total: number;
+}
+
+export function useGlobalBillsPaginated(billType: 'ALL' | 'SALES' | 'COLLECTIONS' = 'ALL') {
+  return useInfiniteQuery({
+    queryKey: ['buyers', 'bills', 'paginated', billType],
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      const params: any = {
+        paginated: true, 
+        cursor: pageParam, 
+        limit: 20
+      };
+      if (billType === 'SALES') params.bill_type = 'sales';
+      if (billType === 'COLLECTIONS') params.bill_type = 'collections';
+
+      const res = await api.get('/driver/entries', { params });
+      return res.data;
+    },
+    getNextPageParam: (lastPage) => lastPage.next_cursor || undefined,
+    select: (data) => data.pages.flatMap((page) => page.items),
+  });
 }
 
 export function useGlobalBills() {
